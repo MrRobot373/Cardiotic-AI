@@ -163,3 +163,54 @@ def train_beats(version: str = "v0.2") -> dict:
     _write(f"beat_classification_{version}", result)
     print(json.dumps({k: rep[k] for k in ("accuracy", "macro_f1")}), flush=True)
     return result
+
+
+# ---------------------------------------------------------------- end to end (what a user would get)
+def eval_pipeline() -> dict:
+    """Full pipeline (quality gate -> detection -> refinement -> classification) on every DS2 record,
+    scored against the cardiologist annotations. Reference beats with no matching detection count as
+    missed; beats in segments the quality gate rejected are reported separately."""
+    from cardiotic_ml import pipeline
+
+    models = pipeline.load_models()
+    labels = beat_data.CLASSES
+    y_true, y_pred, per_record = [], [], {}
+    missed_total = gated_total = extra_total = 0
+    for rid in mitdb.DS2:
+        rec = mitdb.load_record(rid)
+        res = pipeline.analyze(rec.signal, rec.fs, models)
+        det = np.array([round(b["time_s"] * rec.fs) for b in res["beats"]], dtype=np.int64)
+        cls = np.array([labels.index(b["class"]) for b in res["beats"]], dtype=np.int64)
+        unusable = [(s["start_s"], s["end_s"]) for s in res["quality_segments"] if s["quality"] == "unusable"]
+        tol = int(0.150 * rec.fs)
+        used = np.zeros(len(det), dtype=bool)
+        t_r, p_r, missed, gated = [], [], 0, 0
+        for samp, sym in zip(rec.ann_samples, rec.ann_symbols):
+            c = mitdb.aami_class(sym)
+            if c not in labels:
+                continue
+            j = np.searchsorted(det, samp)
+            cand = [k for k in (j - 1, j) if 0 <= k < len(det) and not used[k] and abs(det[k] - samp) <= tol]
+            if cand:
+                k = min(cand, key=lambda k: abs(det[k] - samp))
+                used[k] = True
+                t_r.append(labels.index(c)); p_r.append(cls[k])
+            elif any(a <= samp / rec.fs < b for a, b in unusable):
+                gated += 1
+            else:
+                missed += 1
+        y_true += t_r; y_pred += p_r
+        missed_total += missed; gated_total += gated; extra_total += int((~used).sum())
+        per_record[rid] = {"matched": len(t_r), "missed": missed, "in_unusable_segments": gated,
+                           "unmatched_detections": int((~used).sum()),
+                           "usable_fraction": res["measurements"].get("usable_fraction")}
+        print(f"record {rid}: matched {len(t_r)}, missed {missed}, gated {gated}", flush=True)
+    rep = class_report(np.array(y_true), np.array(y_pred), labels)
+    result = _meta(task="end_to_end_pipeline", beat_model=pipeline.BEAT_MODEL, qrs_method=pipeline.QRS_METHOD,
+                   test_patients=mitdb.DS2, test=rep,
+                   totals={"matched": len(y_true), "missed": missed_total, "in_unusable_segments": gated_total,
+                           "unmatched_detections": extra_total},
+                   per_record=per_record)
+    _write("end_to_end_pipeline", result)
+    print(json.dumps({k: rep[k] for k in ("accuracy", "macro_f1")}), flush=True)
+    return result

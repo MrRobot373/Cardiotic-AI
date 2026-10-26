@@ -86,3 +86,12 @@ def test_bandpass_and_resample():
     x = np.random.default_rng(0).normal(size=3600).astype(np.float32)
     assert dsp.bandpass(x, 360).shape == x.shape
     assert len(dsp.resample(x, 360, 500)) == 5000
+
+
+def test_refine_peaks_moves_late_detections_onto_r_peak():
+    fs = 360
+    x = nk.ecg_simulate(duration=30, sampling_rate=fs, heart_rate=70, random_state=3).astype(np.float32)
+    true = qrs.detect_qrs(x, fs, "neurokit")
+    late = true + 15  # ~42 ms late, like Pan-Tompkins
+    refined = qrs.refine_peaks(x, fs, late)
+    assert np.median(np.abs(refined[: len(true)] - true[: len(refined)])) <= 2

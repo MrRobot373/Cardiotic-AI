@@ -1,0 +1,78 @@
+{
+  "name": "beat_net",
+  "version": "v0.2",
+  "recipe": {
+    "dropout": 0.5,
+    "augment": true,
+    "label_smoothing": 0.05,
+    "epochs": 14
+  },
+  "task": "AAMI beat class N / S / V / F from MLII beat window + RR features",
+  "input": "234 samples @ 360 Hz (0.25 s before to 0.40 s after R), monitoring filter 0.5\u201340 Hz",
+  "labels": [
+    "N",
+    "S",
+    "V",
+    "F"
+  ],
+  "intended_use": "Research use only. Not validated on clinical data or other devices.",
+  "train_patients": [
+    101,
+    108,
+    109,
+    112,
+    114,
+    115,
+    116,
+    119,
+    122,
+    124,
+    201,
+    203,
+    205,
+    208,
+    209,
+    215,
+    223,
+    230
+  ],
+  "val_patients": [
+    106,
+    118,
+    207,
+    220
+  ],
+  "test_patients": [
+    100,
+    103,
+    105,
+    111,
+    113,
+    117,
+    121,
+    123,
+    200,
+    202,
+    210,
+    212,
+    213,
+    214,
+    219,
+    221,
+    222,
+    228,
+    231,
+    232,
+    233,
+    234
+  ],
+  "class_weights": [
+    0.18211145462285544,
+    1.4081379298227743,
+    0.6494081465234378,
+    1.7603424690309326
+  ],
+  "file": "beat_net_v0.2.pt",
+  "sha256": "e6273f91f9c0ba1e97b06086b9554a585d2f2195d858cfd6df7bb2b3d7144516",
+  "parameters": 161764
+}

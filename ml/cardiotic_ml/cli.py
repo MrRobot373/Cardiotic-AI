@@ -4,6 +4,7 @@
   eval-qrs        score QRS detectors on all 48 MIT-BIH records (EC57-style)
   train-quality   train + test the signal-quality model
   train-beats     train + test the beat classifier (inter-patient DS1 -> DS2)
+  eval-pipeline   run the full pipeline on all 22 DS2 test records and score it end to end
   analyze         run the full pipeline on one MIT-BIH record and save JSON (+ optional plot)
   report          regenerate ml/reports/RESULTS.md from the JSON results
 """
@@ -19,6 +20,7 @@ def main(argv: list[str] | None = None) -> None:
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("download")
     sub.add_parser("eval-qrs")
+    sub.add_parser("eval-pipeline")
     q = sub.add_parser("train-quality"); q.add_argument("--epochs", type=int, default=10)
     b = sub.add_parser("train-beats"); b.add_argument("--version", default="v0.2", choices=["v0.1", "v0.2"])
     a = sub.add_parser("analyze")
@@ -38,6 +40,9 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "eval-qrs":
         from cardiotic_ml.experiments import eval_qrs
         eval_qrs()
+    elif args.cmd == "eval-pipeline":
+        from cardiotic_ml.experiments import eval_pipeline
+        eval_pipeline()
     elif args.cmd == "train-quality":
         from cardiotic_ml.experiments import train_quality
         train_quality(epochs=args.epochs)

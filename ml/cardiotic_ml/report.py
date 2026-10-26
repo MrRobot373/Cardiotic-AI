@@ -76,13 +76,44 @@ def write_results() -> str:
             cell = lambda c: f"{_pct(pc[c]['sensitivity'])} / {_pct(pc[c]['ppv'])}"
             out.append(f"| {v} | {r['model_card'].get('recipe', {})} | {_pct(r['training']['best_val_macro_f1'])} | "
                        f"{_pct(r['test']['accuracy'])} | {cell('N')} | {cell('S')} | {cell('V')} | {cell('F')} |")
-        v, b = versions[-1]
+        from cardiotic_ml.pipeline import BEAT_MODEL
+        adopted = BEAT_MODEL.removeprefix("beat_net_")
+        v, b = next((v, r) for v, r in versions if v == adopted)
         rep = b["test"]
-        out += ["", f"Detail for {v}:", ""]
+        out += ["", f"**Adopted: {v}** (best on the validation patients). Detail:", ""]
         out += _class_table(rep) + [""] + _confusion(rep) + ["",
                 "N = normal or bundle-branch beats · S = supraventricular ectopic · V = ventricular ectopic · F = fusion. "
                 "In this protocol S and F are known to be hard (few training examples, S beats often look normal). "
                 "Accuracy is dominated by N and is not the number to judge the model by: read Se and +P for S and V.", ""]
+    e = _load("end_to_end_pipeline")
+    if e:
+        rep, t = e["test"], e["totals"]
+        ref_total = t["matched"] + t["missed"] + t["in_unusable_segments"]
+        out += ["## 4. End to end — the whole pipeline on 22 unseen patients", "",
+                f"Quality gate → `{e['qrs_method']}` detection → R-peak refinement → `{e['beat_model']}`, run on the full "
+                "30-minute DS2 recordings and scored against the cardiologists' annotations. This is what a user would get.", "",
+                f"- Reference beats: {ref_total:,} · matched to a detection: {t['matched']:,} ({_pct(t['matched'] / ref_total)}) · "
+                f"missed by the detector: {t['missed']:,} · inside segments the quality gate marked unusable: {t['in_unusable_segments']:,} · "
+                f"extra detections with no reference beat: {t['unmatched_detections']:,}",
+                f"- Classification of matched beats: accuracy **{_pct(rep['accuracy'])}**, macro-F1 **{_pct(rep['macro_f1'])}**", ""]
+        out += _class_table(rep) + [""]
+    out += ["## 5. Known issues (found while testing — next work)", "",
+            "1. **Pan-Tompkins places beats ~40 ms late.** The beat classifier is trained on R-peak positions, so the "
+            "first end-to-end run agreed with the cardiologists on only 42% of beats in a test minute. Fixed by refining every "
+            "detection to the R peak (`qrs.refine_peaks`): agreement on the same minute rose to 92%, and end-to-end accuracy now "
+            "matches the classifier's own test score. A regression test covers it.",
+            "2. **The quality gate rejects too much of some arrhythmic, low-amplitude recordings.** Record 222 (R amplitude "
+            "0.68 mV against a 1.45 mV median, with atrial flutter, AF and nodal-rhythm episodes) had about half its windows "
+            "marked unusable, including most flutter windows. An arrhythmia must never be hidden as 'not analysable'. Next: "
+            "train the quality model with arrhythmia-rich windows (MIT-BIH AF database) labelled good, and make it robust to "
+            "low amplitude. Product requirement: every 'not analysable' segment must be shown to the reader for manual review, never silently dropped.",
+            "3. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). A first augmentation recipe "
+            "(v0.2) scored lower on the validation patients, so it was not adopted. Next: more S/F training data (INCART, "
+            "long-term AF), patient-adaptive RR features, and a rhythm-level model (AF) that does not rely on single-beat labels.",
+            "4. **Quality labels are proxies** built from known noise levels, and some 'clean' MIT-BIH windows contain real "
+            "noise (part of the good/noisy confusion). Clinician-labelled windows are needed.",
+            "5. **Single dataset, single lead.** Everything here is MIT-BIH MLII at 360 Hz from 1975–79 Holter recorders. "
+            "Performance on modern 12-lead carts and OT monitors is unknown until tested on that data.", ""]
     path = REPORTS_DIR / "RESULTS.md"
     path.write_text("\n".join(out))
     return str(path)

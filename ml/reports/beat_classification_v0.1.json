@@ -838,7 +838,13 @@
     "file": "beat_net_v0.1.pt",
     "sha256": "2cb6111fa4ccfce3db9ec3fa6e28c39dae3dec56f28a6d19e6a309e1ad0182e6",
     "parameters": 161764,
-    "version": "v0.1"
+    "version": "v0.1",
+    "recipe": {
+      "dropout": 0.3,
+      "augment": false,
+      "label_smoothing": 0.0,
+      "epochs": 14
+    }
   },
   "version": "v0.1"
 }

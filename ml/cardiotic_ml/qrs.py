@@ -12,6 +12,8 @@ from dataclasses import dataclass
 import neurokit2 as nk
 import numpy as np
 
+from cardiotic_ml import dsp
+
 DETECTORS = ("neurokit", "pantompkins1985", "hamilton2002", "elgendi2010")
 
 
@@ -21,6 +23,22 @@ def detect_qrs(x: np.ndarray, fs: int, method: str = "neurokit") -> np.ndarray:
     cleaned = nk.ecg_clean(x, sampling_rate=fs, method=clean_method)
     _, info = nk.ecg_peaks(cleaned, sampling_rate=fs, method=method, correct_artifacts=False)
     return np.asarray(info["ECG_R_Peaks"], dtype=np.int64)
+
+
+def refine_peaks(x: np.ndarray, fs: int, peaks: np.ndarray, before_s: float = 0.10, after_s: float = 0.05) -> np.ndarray:
+    """Move each detection to the R-peak fiducial: the largest deflection of the band-passed signal
+    near it. Pan-Tompkins marks beats ~40 ms late (it works on an integrated signal); the beat
+    classifier is trained on R-peak positions, so detections must be aligned before classification."""
+    f = dsp.bandpass(x, fs, "monitoring")
+    f = f - np.median(f)
+    b, a = int(before_s * fs), int(after_s * fs)
+    out = [max(0, p - b) + int(np.argmax(np.abs(f[max(0, p - b):min(len(f), p + a + 1)]))) for p in peaks]
+    return np.unique(np.asarray(out, dtype=np.int64))
+
+
+def detect_beats(x: np.ndarray, fs: int, method: str = "pantompkins1985") -> np.ndarray:
+    """Detection (best-benchmarked detector) followed by R-peak refinement."""
+    return refine_peaks(x, fs, detect_qrs(x, fs, method))
 
 
 @dataclass

@@ -23,7 +23,7 @@ FS = 360
 # Best detector on the MIT-BIH benchmark (reports/qrs_detection.json).
 QRS_METHOD = "pantompkins1985"
 # Beat model version used by the pipeline — chosen on validation patients, never on the test set.
-BEAT_MODEL = "beat_net_v0.2"
+BEAT_MODEL = "beat_net_v0.1"  # v0.2 (augmentation) scored lower on validation patients
 
 
 @dataclass
@@ -64,7 +64,7 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
     if len(starts) == 0 or usable.mean() < 0.5:
         return _result(segments, [], {}, ["Not analysable: less than half the recording has usable signal quality."], models)
     # 2. beats, only inside usable windows
-    peaks = qrs.detect_qrs(x, FS, QRS_METHOD)
+    peaks = qrs.detect_beats(x, FS, QRS_METHOD)
     peaks = peaks[usable[peaks]]
     if len(peaks) < 3:
         return _result(segments, [], {}, ["Not analysable: too few beats detected in usable segments."], models)

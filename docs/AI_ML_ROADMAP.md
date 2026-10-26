@@ -16,9 +16,9 @@ how it is measured, and the order we build them. Measured results live in
 
 | # | Model | Question it answers | Type | Status |
 |---|---|---|---|---|
-| M1 | **Signal quality** | "Can this 2.5 s of signal be trusted?" good / noisy / unusable | 1D-CNN + amplitude statistics | **v0.1 trained** (MIT-BIH + NSTDB) |
-| — | **Beat detection** | "Where is every heartbeat?" | Classical DSP (NeuroKit2 / Pan-Tompkins), benchmarked EC57-style | **Benchmarked** on all 48 MIT-BIH records |
-| M2 | **Beat classifier** | "Is this beat normal, supraventricular (S), ventricular (V) or fusion (F)?" | 1D-CNN on beat shape + MLP on RR timing | **v0.1 trained** (inter-patient MIT-BIH) |
+| M1 | **Signal quality** | "Can this 2.5 s of signal be trusted?" good / noisy / unusable | 1D-CNN + amplitude statistics | **v0.1**: 85.1% accuracy; unusable caught 99.0% (unseen patients + unseen noise) |
+| — | **Beat detection** | "Where is every heartbeat?" | Pan-Tompkins + R-peak refinement (4 detectors benchmarked EC57-style) | **Se 99.5%, +P 99.3%** on all 48 MIT-BIH records |
+| M2 | **Beat classifier** | "Is this beat normal, supraventricular (S), ventricular (V) or fusion (F)?" | 1D-CNN on beat shape + MLP on RR timing | **v0.1**: V Se 84.9% / +P 96.5%; S and F weak (inter-patient MIT-BIH) |
 | M3 | **Rhythm classifier** | "What rhythm is this stretch?" sinus, AF, flutter, blocks, VT… | 1D ResNet over 10–30 s, then compare with an ECG foundation model | Next: PTB-XL, CinC 2017/2021, MIT-BIH AF |
 | M4 | **12-lead statements + measurements** | PR, QRS, QT/QTc, axis; MI, LVH, bundle-branch blocks… | Multi-label 1D ResNet + delineation | After M3: PTB-XL, CODE-15%, MIMIC-IV-ECG |
 | M5 | **Calibration and "not sure"** | "How sure am I, and is this input unlike anything I trained on?" | Temperature scaling + out-of-distribution detection | With M3 |
@@ -42,7 +42,8 @@ how it is measured, and the order we build them. Measured results live in
 
 | Step | Deliverable | Data | Done when |
 |---|---|---|---|
-| 1 | M1 quality + beat detection + M2 beats, end-to-end research pipeline | MIT-BIH, NSTDB | **Done (v0.1)**: numbers in RESULTS.md |
+| 1 | M1 quality + beat detection + M2 beats, end-to-end research pipeline | MIT-BIH, NSTDB | **Done (v0.1)**: end-to-end 91.7% beat accuracy on 22 unseen patients; numbers and known issues in RESULTS.md |
+| 1b | Fix the quality gate over-rejecting low-amplitude arrhythmic recordings (record 222) | + MIT-BIH AF database | Flutter/AF windows rated analysable; no rise in missed unusable windows |
 | 2 | Improve M2 on S/F beats (augmentation, patient-adaptive features, more data from INCART / LTAF) | + INCART, LTAF | S-beat Se and +P both improve on DS2 |
 | 3 | M3 rhythm classifier (AF first) | MIT-BIH AF, CinC 2017, PTB-XL | AF Se/+P reported per dataset, including on a dataset not used in training |
 | 4 | M5 calibration; confidence levels in the pipeline output | Held-out calibration sets | Reliability plots and expected calibration error reported |
