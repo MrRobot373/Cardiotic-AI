@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cardiotic AI — UI Concept</title>
+<!--
+  UI concept for Cardiotic AI — see ../PRODUCT_PLAN.md §10.
+  A separate product from MED AI (GMS Clinical AI), but deliberately in the same design language:
+  colour tokens, glass cards, badges, buttons, the top pill nav + icon rail shell and the patient
+  header + tab pills are taken from MED AI's current frontend so both GMS products feel like one family.
+  Standalone on purpose: no build step, no network. Every waveform, value and finding here is synthetic.
+-->
+<style>
+  :root {
+    --shadow: 30 50 90; --radius: 0.875rem;
+    --background: 214 32% 94%; --foreground: 220 45% 16%;
+    --card: 0 0% 100%; --muted: 214 30% 94%; --muted-foreground: 217 16% 46%; --subtle: 214 33% 97%;
+    --border: 214 26% 89%; --input: 214 22% 85%; --glass: 0 0% 100%; --glass-alpha: 0.78;
+    --primary: 221 98% 57%; --primary-foreground: 0 0% 100%; --primary-soft: 221 90% 95%; --primary-soft-foreground: 221 80% 42%;
+    --strong: 220 55% 25%; --strong-foreground: 0 0% 100%;
+    --success: 152 63% 38%; --success-soft: 150 55% 93%; --success-foreground: 152 70% 26%;
+    --warning: 35 92% 48%; --warning-soft: 42 100% 93%; --warning-foreground: 28 85% 32%;
+    --danger: 0 74% 54%; --danger-soft: 0 86% 95.5%; --danger-foreground: 0 70% 40%;
+    --info: 199 89% 46%; --info-soft: 199 90% 94%; --info-foreground: 200 80% 32%;
+    --violet: 262 83% 58%; --violet-soft: 262 90% 96%;
+    --glass-border: rgba(255,255,255,.7);
+    --card-pad: 1.25rem;
+  }
+  .dark {
+    --shadow: 0 0 0;
+    --background: 224 32% 7%; --foreground: 214 32% 94%; --card: 223 28% 11%;
+    --muted: 223 22% 16%; --muted-foreground: 216 15% 64%; --subtle: 223 28% 9.5%;
+    --border: 223 20% 19%; --input: 223 18% 25%; --glass: 223 28% 12%; --glass-alpha: 0.72;
+    --primary-soft: 221 45% 18%; --primary-soft-foreground: 221 95% 76%;
+    --strong: 221 85% 62%; --strong-foreground: 224 40% 8%;
+    --success: 152 60% 45%; --success-soft: 152 40% 14%; --success-foreground: 150 60% 70%;
+    --warning: 38 92% 55%; --warning-soft: 35 50% 14%; --warning-foreground: 40 90% 70%;
+    --danger: 0 80% 62%; --danger-soft: 0 45% 16%; --danger-foreground: 0 90% 76%;
+    --info: 199 85% 55%; --info-soft: 200 50% 15%; --info-foreground: 199 90% 74%;
+    --violet: 262 80% 70%; --violet-soft: 262 35% 18%;
+    --glass-border: rgba(255,255,255,.06);
+  }
+  * { box-sizing: border-box; border-color: hsl(var(--border)); }
+  html { font-size: 15px; }
+  body {
+    margin: 0; min-height: 100vh; color: hsl(var(--foreground)); background-color: hsl(var(--background));
+    font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased; font-feature-settings: "cv11", "ss01";
+    background-image: radial-gradient(1200px 600px at 85% -10%, hsl(var(--primary) / 0.09), transparent 60%),
+                      radial-gradient(900px 500px at -10% 110%, hsl(var(--strong) / 0.07), transparent 60%);
+    background-attachment: fixed;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: 0; padding: 0; }
+  svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  .num { font-variant-numeric: tabular-nums; }
+  .muted { color: hsl(var(--muted-foreground)); }
+  .label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: hsl(var(--muted-foreground)); }
+
+  /* glass surfaces — components/ui/card.tsx */
+  .glass { background: hsl(var(--glass) / var(--glass-alpha)); backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); }
+  .card { border-radius: calc(var(--radius) + 8px); border: 1px solid var(--glass-border); box-shadow: 0 1px 2px 0 rgb(var(--shadow) / .04), 0 8px 24px -12px rgb(var(--shadow) / .12); }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: var(--card-pad) var(--card-pad) 0; }
+  .card-head h3 { margin: 0; font-size: .95rem; font-weight: 600; letter-spacing: -.01em; }
+  .card-head p { margin: 2px 0 0; font-size: .8rem; color: hsl(var(--muted-foreground)); }
+  .card-body { padding: var(--card-pad); }
+  .head-icon { width: 32px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;
+    background: hsl(var(--primary-soft)); color: hsl(var(--primary-soft-foreground)); box-shadow: 0 0 0 1px hsl(var(--primary) / .1); }
+  .head-icon svg.i { width: 16px; height: 16px; }
+
+  /* badges — components/ui/badge.tsx */
+  .badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; border-radius: 999px; padding: 2px 8px; font-size: .7rem; font-weight: 500; line-height: 1rem; border: 1px solid transparent; }
+  .badge svg.i { width: 12px; height: 12px; }
+  .b-neutral { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .b-primary { background: hsl(var(--primary-soft)); color: hsl(var(--primary-soft-foreground)); }
+  .b-success { background: hsl(var(--success-soft)); color: hsl(var(--success-foreground)); }
+  .b-warning { background: hsl(var(--warning-soft)); color: hsl(var(--warning-foreground)); }
+  .b-danger { background: hsl(var(--danger-soft)); color: hsl(var(--danger-foreground)); }
+  .b-info { background: hsl(var(--info-soft)); color: hsl(var(--info-foreground)); }
+  .b-violet { background: hsl(var(--violet-soft)); color: hsl(var(--violet)); }
+  .b-outline { border-color: hsl(var(--border)); color: hsl(var(--muted-foreground)); }
+
+  /* buttons — components/ui/button.tsx */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; border-radius: calc(var(--radius) - 2px);
+    font-size: .875rem; font-weight: 500; height: 36px; padding: 0 16px; transition: all .15s; }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .5; pointer-events: none; }
+  .btn-sm { height: 32px; padding: 0 12px; font-size: .8rem; }
+  .btn-xs { height: 28px; padding: 0 8px; font-size: .75rem; border-radius: 6px; }
+  .btn-xs svg.i { width: 14px; height: 14px; }
+  .btn-strong { background: hsl(var(--strong)); color: hsl(var(--strong-foreground)); box-shadow: 0 1px 2px 0 rgb(var(--shadow) / .05); }
+  .btn-strong:hover { background: hsl(var(--strong) / .9); }
+  .btn-secondary { border: 1px solid hsl(var(--border) / .8); background: hsl(var(--card) / .9); box-shadow: 0 1px 2px 0 rgb(var(--shadow) / .05); }
+  .btn-secondary:hover { background: hsl(var(--card)); }
+  .btn-ghost { color: hsl(var(--muted-foreground)); }
+  .btn-ghost:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+  .btn-link { color: hsl(var(--primary)); height: auto; padding: 0; }
+  .btn-link:hover { text-decoration: underline; }
+  .pill-btn { border-radius: 999px; }
+  .icon-btn { width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; color: hsl(var(--muted-foreground)); position: relative; }
+  .icon-btn:hover { color: hsl(var(--foreground)); }
+  .icon-btn svg.i { width: 18px; height: 18px; }
+
+  /* concept switcher (outside the product) */
+  .concept { position: sticky; top: 0; z-index: 40; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 24px;
+    background: #0B1424; color: #DCE6F5; font-size: .78rem; }
+  .concept strong { color: #FFD580; font-weight: 600; }
+  .concept button { border-radius: 999px; padding: 4px 12px; color: #B9C6DA; border: 1px solid #23324A; }
+  .concept button.on { background: #DCE6F5; color: #0B1424; border-color: #DCE6F5; }
+
+  /* top bar — layout/AppShell.tsx */
+  header.top { position: sticky; top: 37px; z-index: 30; padding: 16px 24px; background: hsl(var(--background) / .7); backdrop-filter: blur(12px); }
+  .top-row { display: flex; align-items: center; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 0; }
+  .brand img { width: 36px; height: 36px; border-radius: 12px; background: #fff; object-fit: contain; padding: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.05); }
+  .brand .n { font-size: 1.05rem; font-weight: 600; letter-spacing: -.01em; line-height: 1.25; }
+  .brand .o { font-size: .7rem; color: hsl(var(--muted-foreground)); }
+  nav.primary { margin: 0 auto; display: flex; gap: 4px; padding: 4px; border-radius: 999px; }
+  .navpill { display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 8px 16px; font-size: .84rem; font-weight: 500; color: hsl(var(--muted-foreground)); transition: all .15s; white-space: nowrap; }
+  .navpill:hover { background: hsl(var(--muted) / .8); color: hsl(var(--foreground)); }
+  .navpill.on { background: hsl(var(--strong)); color: hsl(var(--strong-foreground)); box-shadow: 0 1px 2px 0 rgb(var(--shadow) / .04), 0 8px 24px -12px rgb(var(--shadow) / .12); }
+  .count { border-radius: 999px; background: hsl(var(--danger)); color: #fff; padding: 0 6px; font-size: .65rem; font-weight: 600; line-height: 1.1rem; }
+  .top-actions { display: flex; align-items: center; gap: 8px; }
+  .avatar { width: 40px; height: 40px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 600; background: hsl(var(--primary)); color: #fff; }
+
+  .shell { max-width: 1680px; margin: 0 auto; display: flex; gap: 16px; padding: 0 24px 24px; }
+  aside.rail { position: sticky; top: 125px; height: fit-content; flex-shrink: 0; }
+  .rail-inner { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px; border-radius: 999px; }
+  .rail-item { width: 40px; height: 40px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: hsl(var(--muted-foreground)); position: relative; }
+  .rail-item:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+  .rail-item.on { background: hsl(var(--strong)); color: hsl(var(--strong-foreground)); }
+  .rail-item svg.i { width: 18px; height: 18px; }
+  .rail-item .new { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 999px; background: hsl(var(--violet)); box-shadow: 0 0 0 2px hsl(var(--card)); }
+  .rail-sep { width: 24px; height: 1px; background: hsl(var(--border)); margin: 4px 0; }
+  .status-dot { width: 8px; height: 8px; border-radius: 999px; background: hsl(var(--success)); margin: 12px 0; }
+  main { flex: 1; min-width: 0; padding-bottom: 8px; }
+  footer.disc { margin-top: 32px; font-size: .7rem; color: hsl(var(--muted-foreground)); }
+
+  /* patient header — features/workspace/PatientWorkspace.tsx */
+  .pt-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .pt-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .back { width: 40px; height: 40px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: hsl(var(--muted-foreground)); }
+  .pt-avatar { width: 48px; height: 48px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: .9rem;
+    background: hsl(var(--danger-soft)); color: hsl(var(--danger-foreground)); box-shadow: 0 0 0 4px rgba(255,255,255,.7); }
+  .dark .pt-avatar { box-shadow: 0 0 0 4px rgba(255,255,255,.05); }
+  .pt-id h1 { margin: 0; font-size: 1.35rem; font-weight: 600; letter-spacing: -.02em; }
+  .pt-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 2px; font-size: .8rem; color: hsl(var(--muted-foreground)); }
+  .pt-meta b { color: hsl(var(--foreground) / .8); font-weight: 600; }
+  .pt-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-left: 16px; flex: 1 1 0; min-width: 220px; }
+  .pt-actions { display: flex; gap: 8px; margin-left: auto; }
+  nav.tabs { display: flex; gap: 4px; width: fit-content; max-width: 100%; overflow-x: auto; padding: 4px; border-radius: 999px; margin-bottom: 20px; scrollbar-width: none; }
+  .tab { display: flex; flex-shrink: 0; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 14px; font-size: .8rem; font-weight: 500; color: hsl(var(--muted-foreground)); }
+  .tab:hover { background: hsl(var(--muted) / .8); color: hsl(var(--foreground)); }
+  .tab.on { background: hsl(var(--strong)); color: hsl(var(--strong-foreground)); }
+  .tab .c { border-radius: 999px; background: rgba(0,0,0,.1); padding: 0 6px; font-size: .65rem; }
+  .tab.on .c, .dark .tab .c { background: rgba(255,255,255,.15); }
+
+  /* layouts */
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; align-items: start; }
+  @media (max-width: 1180px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .stack > * + * { margin-top: 16px; }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .between { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: hsl(var(--muted)); }
+  .seg button { border-radius: 999px; padding: 4px 12px; font-size: .78rem; font-weight: 500; color: hsl(var(--muted-foreground)); }
+  .seg button.on { background: hsl(var(--card)); color: hsl(var(--foreground)); box-shadow: 0 1px 2px rgb(var(--shadow) / .08); }
+
+  /* ECG viewer */
+  .thumbs { display: flex; gap: 8px; padding: 6px; border-radius: 16px; width: fit-content; margin: 14px auto 0; }
+  .thumb { width: 38px; height: 50px; border-radius: 8px; background: #fff; border: 1px solid hsl(var(--border)); position: relative; overflow: hidden; }
+  .thumb::before { content: ""; position: absolute; inset: 8px 6px auto; height: 26px; background: repeating-linear-gradient(#E3E8EF 0 2px, transparent 2px 6px); }
+  .thumb.ecg::before { inset: 6px 4px; height: auto; background: repeating-linear-gradient(90deg, #F6CFCF 0 1px, transparent 1px 4px), repeating-linear-gradient(#F6CFCF 0 1px, transparent 1px 4px), #FFF5F5; }
+  .thumb.xray { background: radial-gradient(circle at 50% 45%, #9AA3AF, #1F2937 70%); }
+  .thumb.xray::before { display: none; }
+  .thumb.on { outline: 2px solid hsl(var(--primary)); outline-offset: 1px; }
+  .viewer-tools { display: flex; flex-wrap: wrap; gap: 6px; justify-content: space-between; align-items: center; padding: 14px var(--card-pad) 0; }
+  .chipline { display: flex; flex-wrap: wrap; gap: 6px; }
+  .toggle { border-radius: 999px; padding: 4px 10px; font-size: .75rem; font-weight: 500; border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); display: inline-flex; gap: 6px; align-items: center; }
+  .toggle svg.i { width: 14px; height: 14px; }
+  .toggle[aria-pressed="true"] { background: hsl(var(--primary-soft)); color: hsl(var(--primary-soft-foreground)); border-color: transparent; }
+  .paper { margin: 12px var(--card-pad) var(--card-pad); border-radius: 12px; background: #fff; box-shadow: 0 10px 38px -10px rgb(30 50 90 / .25); overflow: hidden; }
+  .paper-head { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; font-size: .68rem; color: #1F2A44; border-bottom: 1px solid #F1D6D6; flex-wrap: wrap; }
+  .paper-head b { font-weight: 700; }
+  svg.ecg { display: block; width: 100%; height: auto; background: #FFFDFD; }
+
+  .measure { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .m { border: 1px solid hsl(var(--border)); border-radius: 12px; padding: 10px 12px; background: hsl(var(--card) / .6); }
+  .m .k { font-size: .72rem; color: hsl(var(--muted-foreground)); }
+  .m .v { font-size: 1.15rem; font-weight: 600; margin-top: 2px; }
+  .m .v small { font-size: .72rem; font-weight: 500; color: hsl(var(--muted-foreground)); }
+  .m .s { font-size: .68rem; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+  .m.na .v { font-size: .85rem; font-weight: 500; color: hsl(var(--muted-foreground)); }
+
+  .ai-box { border: 1px solid hsl(var(--primary) / .18); background: hsl(var(--primary-soft) / .35); border-radius: 16px; padding: 12px; }
+  .dark .ai-box { background: hsl(var(--primary-soft) / .25); }
+  .finding { border-radius: 12px; padding: 10px 12px; background: hsl(var(--card) / .85); border: 1px solid hsl(var(--border)); }
+  .finding + .finding { margin-top: 8px; }
+  .finding .t { font-size: .85rem; font-weight: 600; }
+  .finding .d { font-size: .76rem; color: hsl(var(--muted-foreground)); margin-top: 3px; }
+  .finding .acts { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+  .finding.ok { border-color: hsl(var(--success) / .45); }
+  .finding.no { border-color: hsl(var(--danger) / .4); opacity: .8; }
+  .who { font-size: .7rem; color: hsl(var(--muted-foreground)); margin-top: 6px; }
+
+  .notice { display: flex; gap: 8px; align-items: flex-start; border-radius: 12px; padding: 10px 12px; font-size: .78rem; }
+  .notice svg.i { width: 15px; height: 15px; margin-top: 1px; }
+  .n-warn { background: hsl(var(--warning-soft)); color: hsl(var(--warning-foreground)); }
+  .n-ok { background: hsl(var(--success-soft)); color: hsl(var(--success-foreground)); }
+  .n-info { background: hsl(var(--primary-soft)); color: hsl(var(--primary-soft-foreground)); }
+
+  .cmp { width: 100%; border-collapse: collapse; font-size: .8rem; }
+  .cmp th { text-align: left; font-weight: 600; font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: hsl(var(--muted-foreground)); padding: 6px 0; }
+  .cmp td { padding: 7px 0; border-top: 1px solid hsl(var(--border)); }
+  .cmp td:not(:first-child), .cmp th:not(:first-child) { text-align: right; }
+
+  .review-bar { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+  .review-bar input { flex: 1; min-width: 0; height: 36px; border-radius: 999px; border: 1px solid hsl(var(--input)); background: hsl(var(--card)); padding: 0 14px; font-size: .82rem; outline: none; }
+  .review-bar input:focus { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / .2); }
+
+  .feeds { display: grid; gap: 8px; }
+  .feed { display: flex; gap: 10px; align-items: flex-start; font-size: .78rem; }
+  .feed .fi { width: 28px; height: 28px; border-radius: 999px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .feed .fi svg.i { width: 14px; height: 14px; }
+
+  /* inbox list — features/inbox */
+  .page-h1 { margin: 0; font-size: 1.5rem; font-weight: 600; letter-spacing: -.02em; }
+  .page-sub { margin: 6px 0 0; max-width: 620px; color: hsl(var(--muted-foreground)); font-size: .88rem; line-height: 1.5; }
+  .filters { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: hsl(var(--muted)); flex-wrap: wrap; }
+  .filters button { border-radius: 999px; padding: 5px 14px; font-size: .8rem; font-weight: 500; color: hsl(var(--muted-foreground)); }
+  .filters button.on { background: hsl(var(--card)); color: hsl(var(--foreground)); box-shadow: 0 1px 2px rgb(var(--shadow) / .08); }
+  .filters .n { margin-left: 4px; opacity: .8; }
+  .inbox-row { display: flex; align-items: center; gap: 14px; padding: 14px var(--card-pad); border-top: 1px solid hsl(var(--border)); }
+  .ir-icon { width: 32px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ir-icon svg.i { width: 15px; height: 15px; }
+  .ir-main { flex: 1; min-width: 0; }
+  .ir-title { font-size: .88rem; font-weight: 500; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .ir-sub { font-size: .76rem; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+  .ir-sub b { color: hsl(var(--foreground) / .85); font-weight: 500; }
+  .mini-ecg { width: 120px; height: 34px; flex-shrink: 0; }
+  @media (max-width: 760px) { .mini-ecg { display: none; } }
+
+  /* timeline */
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 14px var(--card-pad) 0; }
+  @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .stat { border: 1px solid hsl(var(--border)); border-radius: 14px; padding: 10px 12px; }
+  .stat .v { font-size: 1.35rem; font-weight: 600; }
+  .stat .k { font-size: .74rem; color: hsl(var(--muted-foreground)); }
+  svg.tl { display: block; width: 100%; height: auto; }
+  .flag { display: flex; gap: 10px; padding: 12px 0; border-top: 1px solid hsl(var(--border)); }
+  .flag:first-child { border-top: 0; padding-top: 0; }
+  .flag .no { width: 22px; height: 22px; border-radius: 999px; background: hsl(var(--violet)); color: #fff; font-size: .7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .flag .t { font-size: .84rem; font-weight: 600; }
+  .flag .d { font-size: .76rem; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+
+  /* monitoring board */
+  .beds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 1100px) { .beds { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 640px) { .beds { grid-template-columns: 1fr; } }
+  .bed canvas { display: block; width: 100%; height: 76px; border-radius: 12px; background: hsl(var(--subtle)); border: 1px solid hsl(var(--border)); }
+  .vitals { display: flex; gap: 20px; }
+  .vitals .v { font-size: 1.6rem; font-weight: 600; line-height: 1.1; }
+  .bed.offline .ph { height: 76px; border-radius: 12px; border: 1px dashed hsl(var(--border)); display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 16px; font-size: .78rem; color: hsl(var(--muted-foreground));
+    background: repeating-linear-gradient(135deg, hsl(var(--muted) / .6) 0 8px, transparent 8px 16px); }
+
+  .view { display: none; } .view.on { display: block; }
+
+  /* modal */
+  .modal-bg { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; padding: 16px; background: rgb(15 23 42 / .35); }
+  .modal-bg.open { display: flex; }
+  .modal { width: 100%; max-width: 460px; background: hsl(var(--card)); }
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid hsl(var(--border)); font-size: .82rem; }
+  .kv span:last-child { font-weight: 500; text-align: right; word-break: break-all; }
+  .grp + .grp { margin-top: 14px; }
+
+  @media (max-width: 860px) {
+    nav.primary, aside.rail, .hide-sm { display: none; }
+    .shell, header.top, .concept { padding-left: 16px; padding-right: 16px; }
+    .pt-chips { margin-left: 0; flex-basis: 100%; } .pt-actions { margin-left: 0; } .back { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="concept" role="navigation" aria-label="Concept screens">
+  <strong>UI concept · synthetic data</strong>
+  <span style="opacity:.7">Not patient data, not output of a trained or validated model.</span>
+  <span style="flex:1"></span>
+  <button data-go="review" class="on">1 · ECG review</button>
+  <button data-go="inbox">2 · Worklist</button>
+  <button data-go="timeline">3 · OT case timeline</button>
+  <button data-go="board">4 · Monitoring board (future)</button>
+</div>
+
+<header class="top">
+  <div class="top-row">
+    <div class="brand">
+      <img src="../../assets/gms-logo.webp" alt="" />
+      <div><div class="n">Cardiotic AI</div><div class="o">Demo Hospital, Pune</div></div>
+    </div>
+    <nav class="primary glass card" aria-label="Primary">
+      <button class="navpill" data-nav="inbox"><svg class="i" data-i="inbox"></svg>Worklist <span class="count num">4</span></button>
+      <button class="navpill on" data-nav="patients"><svg class="i" data-i="users"></svg>Patients</button>
+      <button class="navpill" data-nav="board"><svg class="i" data-i="heart"></svg>Monitoring</button>
+      <button class="navpill" data-nav="reports"><svg class="i" data-i="file"></svg>Reports</button>
+    </nav>
+    <div class="top-actions">
+      <button class="icon-btn glass card" aria-label="Search"><svg class="i" data-i="search"></svg></button>
+      <button class="icon-btn glass card hide-sm" id="theme" aria-label="Toggle theme"><svg class="i" data-i="moon"></svg></button>
+      <button class="btn btn-strong hide-sm" style="height:40px;border-radius:12px;padding:0 14px"><svg class="i" data-i="upload"></svg>Upload ECG</button>
+      <div class="avatar">AR</div>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="rail">
+    <div class="rail-inner glass card">
+      <button class="rail-item" title="Devices &amp; integrations (ECG carts, monitors, HIS)"><svg class="i" data-i="plug"></svg></button>
+      <button class="rail-item" title="Model registry"><svg class="i" data-i="cpu"></svg></button>
+      <button class="rail-item" title="Audit log"><svg class="i" data-i="scroll"></svg></button>
+      <button class="rail-item" title="Settings"><svg class="i" data-i="gear"></svg></button>
+      <div class="rail-sep"></div>
+      <div class="status-dot" title="All services healthy"></div>
+    </div>
+  </aside>
+
+  <main>
+    <!-- Patient header (shared by screens 1 and 3) -->
+    <section id="pt-header">
+      <div class="pt-head">
+        <div class="pt-id">
+          <button class="back glass card" aria-label="Back to patients"><svg class="i" data-i="chevL"></svg></button>
+          <div class="pt-avatar">HG</div>
+          <div>
+            <h1>Harish Chandra Gupta</h1>
+            <div class="pt-meta"><b>UH-20432</b><span>74 y · Male</span><span>DOB 2 Mar 1952</span><span>Blood O+</span></div>
+          </div>
+        </div>
+        <div class="pt-chips">
+          <span class="badge b-neutral" title="From the hospital information system">Atrial fibrillation · from HIS</span>
+          <span class="badge b-neutral">On metoprolol</span>
+          <span class="badge b-warning"><svg class="i" data-i="alert"></svg>Pacemaker status not recorded</span>
+          <span class="badge b-outline">Ordered by Dr. Ananya Rao</span>
+        </div>
+        <div class="pt-actions">
+          <button class="btn btn-secondary pill-btn"><svg class="i" data-i="upload"></svg>Upload recording</button>
+          <button class="btn btn-strong pill-btn"><svg class="i" data-i="compare"></svg>Compare ECGs</button>
+          <button class="btn btn-secondary pill-btn" style="width:36px;padding:0" aria-label="More"><svg class="i" data-i="more"></svg></button>
+        </div>
+      </div>
+      <nav class="tabs glass card" aria-label="Patient sections">
+        <button class="tab"><svg class="i" data-i="layout"></svg>Overview</button>
+        <button class="tab on" data-tab="ecgs"><svg class="i" data-i="heart"></svg>ECGs <span class="c num">3</span></button>
+        <button class="tab" data-tab="sessions"><svg class="i" data-i="activity"></svg>Monitoring sessions <span class="c num">1</span></button>
+        <button class="tab"><svg class="i" data-i="trend"></svg>Trends</button>
+        <button class="tab"><svg class="i" data-i="file"></svg>Reports</button>
+        <button class="tab"><svg class="i" data-i="cal"></svg>Encounters</button>
+      </nav>
+    </section>
+
+    <!-- ================= 1. ECG review (Product A) ================= -->
+    <section class="view on" id="v-review">
+      <div class="two">
+        <div class="glass card">
+          <div class="card-head">
+            <div class="row" style="align-items:flex-start;gap:12px;flex-wrap:nowrap">
+              <div class="head-icon"><svg class="i" data-i="heart"></svg></div>
+              <div><h3>ECG 12-lead — resting</h3><p>10 Oct 2026, 10:12 · ECG room 2 · order ORD-55812 from HIS</p></div>
+            </div>
+            <div class="row">
+              <span class="badge b-success"><svg class="i" data-i="shield"></svg>Identity verified</span>
+              <button class="icon-btn btn-secondary" style="width:36px;height:36px;border-radius:999px" id="open-prov" aria-label="Details"><svg class="i" data-i="info"></svg></button>
+            </div>
+          </div>
+          <div class="thumbs glass card" aria-hidden="true">
+            <div class="thumb ecg on"></div><div class="thumb ecg"></div><div class="thumb ecg"></div>
+          </div>
+          <div class="viewer-tools">
+            <div class="chipline">
+              <span class="badge b-neutral">25 mm/s</span><span class="badge b-neutral">10 mm/mV</span>
+              <span class="badge b-neutral">Filter: diagnostic 0.05–150 Hz</span><span class="badge b-neutral">500 Hz · 12 leads · 10 s</span>
+              <span class="badge b-neutral">Philips PageWriter XML</span>
+            </div>
+            <div class="chipline">
+              <button class="toggle" aria-pressed="true" data-layer="beats"><svg class="i" data-i="activity"></svg>Beats</button>
+              <button class="toggle" aria-pressed="true" data-layer="quality"><svg class="i" data-i="alert"></svg>Quality</button>
+              <button class="toggle" aria-pressed="true" data-layer="caliper"><svg class="i" data-i="ruler"></svg>Calipers</button>
+            </div>
+          </div>
+          <div class="paper">
+            <div class="paper-head">
+              <span><b>GUPTA HARISH CHANDRA</b> · M/74Y · UH-20432</span>
+              <span>Analysed by ecg-engine 0.4.0 (RUO) · machine statement: <b>Atrial fibrillation</b> — unconfirmed</span>
+            </div>
+            <svg class="ecg" id="ecg12" viewBox="0 0 252 132" role="img" aria-label="Synthetic 12-lead ECG showing atrial fibrillation"></svg>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="glass card">
+            <div class="card-head">
+              <div><h3>ECG analysis</h3><p>Measured from the waveform · median of 11 beats</p></div>
+              <span class="badge b-outline">Draft · verify before acting</span>
+            </div>
+            <div class="card-body">
+              <div class="measure">
+                <div class="m"><div class="k">Ventricular rate</div><div class="v num">83 <small>bpm</small></div><div class="s">Irregular · 64–112</div></div>
+                <div class="m na"><div class="k">PR interval</div><div class="v">Not measurable</div><div class="s">No consistent P waves</div></div>
+                <div class="m"><div class="k">QRS duration</div><div class="v num">94 <small>ms</small></div><div class="s">Leads II, V5</div></div>
+                <div class="m"><div class="k">QT / QTc (Bazett)</div><div class="v num">356 / 419 <small>ms</small></div><div class="s">Fridericia 397 · approximate in AF</div></div>
+                <div class="m"><div class="k">Frontal QRS axis</div><div class="v num">+38°</div><div class="s">Normal range</div></div>
+                <div class="m"><div class="k">Signal quality</div><div class="v num" style="color:hsl(var(--warning-foreground))">11 / 12 <small>leads good</small></div><div class="s">V2 noisy 6.1–7.0 s</div></div>
+              </div>
+              <div class="notice n-warn" style="margin-top:10px">
+                <svg class="i" data-i="alert"></svg>
+                <span><b>V2 noisy, 6.1–7.0 s.</b> Muscle artifact; that segment is excluded and no finding is drawn from it.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass card">
+            <div class="card-head">
+              <div><h3>Findings</h3><p>Accept, edit or reject each one before marking reviewed</p></div>
+              <span style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-size:.72rem"><svg class="i" data-i="sparkle" style="width:13px;height:13px;color:hsl(var(--primary))"></svg><span class="muted">rhythm-resnet 0.3</span></span>
+            </div>
+            <div class="card-body">
+              <div class="ai-box" id="findings">
+                <div class="finding" data-id="f1">
+                  <div class="between" style="align-items:flex-start"><span class="t">Atrial fibrillation</span><span class="badge b-success">High</span></div>
+                  <div class="d">Irregularly irregular RR (CV 18%), no discernible P waves, fibrillatory baseline in II and V1.</div>
+                  <div class="acts">
+                    <button class="btn btn-xs btn-secondary" data-act="accept"><svg class="i" data-i="check"></svg>Accept</button>
+                    <button class="btn btn-xs btn-ghost" data-act="edit"><svg class="i" data-i="pencil"></svg>Edit</button>
+                    <button class="btn btn-xs btn-ghost" data-act="reject"><svg class="i" data-i="x"></svg>Reject</button>
+                    <span style="flex:1"></span><button class="btn btn-link" style="font-size:.75rem" data-jump="0,10">Show on ECG</button>
+                  </div>
+                </div>
+                <div class="finding" data-id="f2">
+                  <div class="between" style="align-items:flex-start"><span class="t">Premature ventricular complex ×1</span><span class="badge b-primary">Moderate</span></div>
+                  <div class="d">Wide (148 ms) beat at 5.9 s with a different morphology from the other beats.</div>
+                  <div class="acts">
+                    <button class="btn btn-xs btn-secondary" data-act="accept"><svg class="i" data-i="check"></svg>Accept</button>
+                    <button class="btn btn-xs btn-ghost" data-act="edit"><svg class="i" data-i="pencil"></svg>Edit</button>
+                    <button class="btn btn-xs btn-ghost" data-act="reject"><svg class="i" data-i="x"></svg>Reject</button>
+                    <span style="flex:1"></span><button class="btn btn-link" style="font-size:.75rem" data-jump="5.65,6.25">Show on ECG</button>
+                  </div>
+                </div>
+              </div>
+              <div class="review-bar">
+                <input placeholder="Your note — kept with the ECG for future visits" aria-label="Review note" />
+                <button class="btn btn-strong pill-btn" id="sign" disabled><svg class="i" data-i="check"></svg>Mark reviewed</button>
+              </div>
+              <div class="who" id="review-count">0 of 2 findings reviewed</div>
+            </div>
+          </div>
+
+          <div class="glass card">
+            <div class="card-head">
+              <div><h3>Compared with previous ECG</h3><p>24 Aug 2026 · Panchavati Hospital (admission)</p></div>
+              <svg class="i" data-i="compare" style="color:hsl(var(--muted-foreground))"></svg>
+            </div>
+            <div class="card-body" style="padding-top:8px">
+              <table class="cmp">
+                <thead><tr><th></th><th>24 Aug</th><th>10 Oct</th><th>Change</th></tr></thead>
+                <tbody>
+                  <tr><td>Rhythm</td><td>AF</td><td>AF</td><td class="muted">Unchanged</td></tr>
+                  <tr><td>Ventricular rate</td><td class="num">118</td><td class="num">83</td><td><span class="badge b-info">Decreased</span></td></tr>
+                  <tr><td>QRS</td><td class="num">96</td><td class="num">94</td><td class="muted">Unchanged</td></tr>
+                  <tr><td>QTc (Bazett)</td><td class="num">431</td><td class="num">419</td><td class="muted">Unchanged</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="glass card">
+            <div class="card-head"><div><h3>When reviewed</h3><p>Nothing leaves Cardiotic AI before sign-off</p></div></div>
+            <div class="card-body feeds">
+              <div class="feed"><span class="fi"><svg class="i" data-i="sign"></svg></span><span><b>Signed report:</b> PDF with waveform, measurements, findings and reviewer</span></div>
+              <div class="feed"><span class="fi"><svg class="i" data-i="plug"></svg></span><span><b>Hospital systems:</b> sent to the HIS/EMR as HL7 ORU or FHIR DiagnosticReport. Any EMR can receive it, MED AI included</span></div>
+              <div class="feed"><span class="fi"><svg class="i" data-i="trend"></svg></span><span><b>Trends:</b> rate, QRS and QTc are added to the patient's ECG trends</span></div>
+              <div class="feed"><span class="fi"><svg class="i" data-i="bell"></svg></span><span><b>Ordering doctor:</b> notified that the report is ready</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 2. ECG worklist ================= -->
+    <section class="view" id="v-inbox">
+      <h1 class="page-h1">ECG worklist</h1>
+      <p class="page-sub">Recordings waiting for a reader, highest priority first. Orders come in from the hospital system and are matched to the ECG automatically when it arrives.</p>
+      <div class="glass card" style="margin-top:20px">
+        <div class="between" style="padding:14px var(--card-pad)">
+          <div class="filters">
+            <button class="on">To review <span class="n num">4</span></button><button>High priority <span class="n num">1</span></button>
+            <button>Not analysable <span class="n num">1</span></button><button>Unmatched <span class="n num">0</span></button>
+            <button>Signed today <span class="n num">12</span></button><button>All <span class="n num">16</span></button>
+          </div>
+          <span class="muted" style="font-size:.76rem">Sorted by priority, then most recent</span>
+        </div>
+        <div class="inbox-row">
+          <span class="ir-icon" style="background:hsl(var(--danger-soft));color:hsl(var(--danger-foreground))"><svg class="i" data-i="heart"></svg></span>
+          <div class="ir-main">
+            <div class="ir-title">ECG: QTc 512 ms (Fridericia), above 500 ms <span class="badge b-danger">High priority</span></div>
+            <div class="ir-sub"><b>Abdul Rahman Shaikh</b> UH-20434 · on a QT-prolonging medicine (levofloxacin, from the HIS medication list) · 2 minutes ago</div>
+          </div>
+          <svg class="mini-ecg" data-mini="long" viewBox="0 0 120 34"></svg>
+          <button class="btn btn-sm btn-ghost">Open</button>
+        </div>
+        <div class="inbox-row">
+          <span class="ir-icon" style="background:hsl(var(--violet-soft));color:hsl(var(--violet))"><svg class="i" data-i="heart"></svg></span>
+          <div class="ir-main">
+            <div class="ir-title">ECG ready for review: atrial fibrillation, rate 83 bpm <span class="badge b-outline">2 findings</span></div>
+            <div class="ir-sub"><b>Harish Chandra Gupta</b> UH-20432 · order: rate control on metoprolol · rate decreased since 24 Aug · 6 minutes ago</div>
+          </div>
+          <svg class="mini-ecg" data-mini="af" viewBox="0 0 120 34"></svg>
+          <button class="btn btn-sm btn-ghost">Open</button>
+        </div>
+        <div class="inbox-row">
+          <span class="ir-icon" style="background:hsl(var(--warning-soft));color:hsl(var(--warning-foreground))"><svg class="i" data-i="micro"></svg></span>
+          <div class="ir-main">
+            <div class="ir-title">ECG ready for review: sinus rhythm, no findings flagged</div>
+            <div class="ir-sub"><b>Gurpreet Singh Bains</b> UH-20441 · order: exertional chest tightness · matched to order ORD-55840 · 12 minutes ago</div>
+          </div>
+          <svg class="mini-ecg" data-mini="sinus" viewBox="0 0 120 34"></svg>
+          <button class="btn btn-sm btn-ghost">Open</button>
+        </div>
+        <div class="inbox-row">
+          <span class="ir-icon" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))"><svg class="i" data-i="alert"></svg></span>
+          <div class="ir-main">
+            <div class="ir-title">ECG not analysable: leads V1–V3 noisy for the whole recording <span class="badge b-neutral">Repeat suggested</span></div>
+            <div class="ir-sub"><b>Ramesh Patil</b> UH-20443 · no rhythm or interval findings were produced · 20 minutes ago</div>
+          </div>
+          <svg class="mini-ecg" data-mini="noise" viewBox="0 0 120 34"></svg>
+          <button class="btn btn-sm btn-ghost">Open</button>
+        </div>
+      </div>
+      <div class="notice n-info" style="margin-top:14px">
+        <svg class="i" data-i="info"></svg>
+        <span>Reading is split from acquisition: technicians record and upload, readers work this list, and the ordering doctor gets the signed report in their own system.</span>
+      </div>
+    </section>
+
+    <!-- ================= 3. OT case timeline ================= -->
+    <section class="view" id="v-timeline">
+      <div class="two">
+        <div class="glass card">
+          <div class="card-head">
+            <div class="row" style="align-items:flex-start;gap:12px;flex-wrap:nowrap">
+              <div class="head-icon"><svg class="i" data-i="activity"></svg></div>
+              <div><h3>Intra-operative monitoring — TURP, OT-3</h3><p>Monitoring session · 26 Oct 2026, 09:05–11:20 · replay of recorded data, not live</p></div>
+            </div>
+            <div class="chipline"><span class="badge b-neutral">ECG II · 500 Hz</span><span class="badge b-neutral">ABP · SpO₂ · 2 s numerics</span></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="v num">2 h 15 m</div><div class="k">Case duration</div></div>
+            <div class="stat"><div class="v num">91%</div><div class="k">ECG analysable</div></div>
+            <div class="stat"><div class="v num">14</div><div class="k">Monitor alarms (imported)</div></div>
+            <div class="stat"><div class="v num" style="color:hsl(var(--violet))">3</div><div class="k">Review flags</div></div>
+          </div>
+          <div class="card-body"><svg class="tl" id="timeline" viewBox="0 0 1000 380" role="img" aria-label="Synthetic intra-operative timeline"></svg></div>
+        </div>
+        <div class="stack">
+          <div class="glass card">
+            <div class="card-head"><div><h3>Review flags</h3><p>For review after the case. Monitor alarms are never changed.</p></div><span class="badge b-outline">Draft</span></div>
+            <div class="card-body">
+              <div class="flag"><span class="no">1</span><div><div class="t">09:18 · HR 88 → 61 bpm with MAP 58 mmHg</div><div class="d">Co-occurring change after spinal anaesthesia. ECG quality good.</div><div class="row" style="margin-top:6px"><span class="badge b-violet">ECG + ABP</span><span class="badge b-primary">Unreviewed</span></div></div></div>
+              <div class="flag"><span class="no">2</span><div><div class="t">10:02 · Fast AF, 128–141 bpm for 3 min</div><div class="d">Known AF; ventricular rate above this case's range.</div><div class="row" style="margin-top:6px"><span class="badge b-violet">ECG</span><span class="badge b-primary">Unreviewed</span></div></div></div>
+              <div class="flag"><span class="no">3</span><div><div class="t">10:31 · Monitor "VT" alarm during diathermy</div><div class="d">ECG not analysable at that time (diathermy). Arterial pulse was continuous.</div><div class="row" style="margin-top:6px"><span class="badge b-neutral">Not analysable</span><span class="badge b-primary">Unreviewed</span></div></div></div>
+              <div class="review-bar"><input placeholder="Case review note" aria-label="Case note" /><button class="btn btn-strong pill-btn"><svg class="i" data-i="check"></svg>Mark reviewed</button></div>
+            </div>
+          </div>
+          <div class="glass card">
+            <div class="card-head"><div><h3>Legend</h3></div></div>
+            <div class="card-body feeds">
+              <div class="feed"><span class="fi" style="background:hsl(var(--success-soft));color:hsl(var(--success))"><svg class="i" data-i="check"></svg></span><span>ECG analysable</span></div>
+              <div class="feed"><span class="fi"><svg class="i" data-i="x"></svg></span><span>Hatched: diathermy / artifact, so no analysis was run</span></div>
+              <div class="feed"><span class="fi" style="background:hsl(var(--warning-soft));color:hsl(var(--warning))"><svg class="i" data-i="bell"></svg></span><span>Triangles: alarms exported by the bedside monitor, shown unchanged</span></div>
+              <div class="feed"><span class="fi" style="background:hsl(var(--violet-soft));color:hsl(var(--violet))"><svg class="i" data-i="flag"></svg></span><span>Numbered circles: review flags (advisory)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 4. Monitoring board (Product B, future) ================= -->
+    <section class="view" id="v-board">
+      <div class="between" style="align-items:flex-end">
+        <div>
+          <div class="row"><h1 class="page-h1">Monitoring</h1><span class="badge b-violet">Future · Live Assist</span></div>
+          <p class="page-sub">Advisory review flags for connected OT and ICU beds. This board never replaces, delays or silences the bedside monitor's alarms, and it is styled differently from them on purpose.</p>
+        </div>
+        <div class="seg"><button class="on">All beds</button><button>OT</button><button>ICU</button></div>
+      </div>
+      <div class="beds" id="beds" style="margin-top:20px"></div>
+    </section>
+
+    <footer class="disc">Cardiotic AI supports qualified clinicians. ECG results are drafts until reviewed and do not replace clinical judgement or the bedside monitor.</footer>
+  </main>
+</div>
+
+<div class="modal-bg" id="prov" role="dialog" aria-modal="true" aria-labelledby="prov-t">
+  <div class="modal card">
+    <div class="card-head"><div><h3 id="prov-t">Why these results</h3><p>Where every value on this ECG came from</p></div><button class="btn btn-sm btn-ghost" id="close-prov"><svg class="i" data-i="x"></svg></button></div>
+    <div class="card-body">
+      <div class="grp"><div class="label">Recording</div>
+        <div class="kv"><span>File</span><span>pagewriter_20261010_1012.xml</span></div>
+        <div class="kv"><span>SHA-256</span><span>9f2c…41ab</span></div>
+        <div class="kv"><span>Identity check</span><span>Name, ID and DOB match the chart</span></div>
+      </div>
+      <div class="grp"><div class="label">ECG engine</div>
+        <div class="kv"><span>Engine</span><span>ecg-engine 0.4.0 (research use only)</span></div>
+        <div class="kv"><span>Quality model</span><span>sqi-1dcnn 0.2.1</span></div>
+        <div class="kv"><span>Rhythm model</span><span>rhythm-resnet 0.3.0</span></div>
+        <div class="kv"><span>Filter mode</span><span>Diagnostic 0.05–150 Hz</span></div>
+        <div class="kv"><span>Analysed</span><span>10 Oct 2026, 10:14:07 · 1.8 s</span></div>
+      </div>
+      <div class="grp"><div class="label">Review</div><div class="kv"><span>Reviewer</span><span id="prov-who">Not yet reviewed</span></div></div>
+      <p class="muted" style="font-size:.72rem;margin:12px 0 0">Concept values. In the product these come from the analysis-run record and the model registry.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- lucide icon paths (subset), injected into <svg class="i" data-i="…"> ----------
+const ICONS = {
+  home: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  msgs: '<path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/>',
+  inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-14.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+  plus: '<path d="M5 12h14M12 5v14"/>',
+  steth: '<path d="M11 2v2M5 2v2M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/>',
+  book: '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/>',
+  chevL: '<path d="m15 18-6-6 6-6"/>',
+  alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  pencil: '<path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/>',
+  activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  sparkle: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',
+  more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  flask: '<path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2M8.5 2h7M7 16h10"/>',
+  layout: '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  ruler: '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2"/>',
+  compare: '<circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7M11 18H8a2 2 0 0 1-2-2V9"/>',
+  clip: '<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M10.4 12.6a2 2 0 0 1 3 3L8 21l-4 1 1-4Z"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5.5M4 13.5V6a2 2 0 0 1 2-2h2"/>',
+  micro: '<path d="M6 18h8M3 22h18M14 22a7 7 0 1 0 0-14h-1M9 14h2M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2ZM12 6V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3"/>',
+  sign: '<path d="M20 19.5v.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8.5L18 5.5"/><path d="M8 18h1M18.42 9.61a2.1 2.1 0 1 1 2.97 2.97L16.95 17 13 18l.99-3.95 4.43-4.44Z"/>',
+  pill: '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>',
+  cal: '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  wand: '<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72M14 7l3 3M5 6v4M19 14v4M10 2v2M7 8H3M21 16h-4M11 3H9"/>',
+  gauge: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+  upload: '<path d="M12 3v12M17 8l-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+  plug: '<path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>',
+  cpu: '<rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/>',
+  scroll: '<path d="M15 12h-5M15 8h-5M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/>',
+  trend: '<path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/>',
+  wifiOff: '<path d="M12 20h.01M8.5 16.429a5 5 0 0 1 7 0M5 12.859a10 10 0 0 1 5.17-2.69M19 12.859a10 10 0 0 0-2.007-1.523M2 8.82a15 15 0 0 1 4.177-2.643M22 8.82a15 15 0 0 0-11.288-3.764M2 2l20 20"/>',
+};
+function paintIcons(root = document) {
+  root.querySelectorAll("svg.i[data-i]").forEach((s) => { s.setAttribute("viewBox", "0 0 24 24"); s.innerHTML = ICONS[s.dataset.i] || ""; });
+}
+paintIcons();
+const css = (name, a = 1) => `hsl(${getComputedStyle(document.documentElement).getPropertyValue("--" + name).trim()} / ${a})`;
+
+// ---------- deterministic synthetic ECG (illustration only) ----------
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+const g = (t, c, w) => Math.exp(-((t - c) * (t - c)) / (2 * w * w));
+// [Q, R, S, T] amplitudes (mV) per lead; no P waves — this patient is in AF.
+const LEADS = {
+  I: [-0.05, 0.55, -0.1, 0.18], II: [-0.08, 1.0, -0.2, 0.28], III: [-0.05, 0.45, -0.15, 0.1],
+  aVR: [0.05, -0.75, 0.12, -0.22], aVL: [-0.03, 0.2, -0.18, 0.05], aVF: [-0.06, 0.72, -0.18, 0.18],
+  V1: [0, 0.22, -0.85, -0.05], V2: [0, 0.42, -1.1, 0.3], V3: [-0.03, 0.75, -0.65, 0.35],
+  V4: [-0.08, 1.2, -0.32, 0.32], V5: [-0.1, 1.1, -0.18, 0.26], V6: [-0.08, 0.85, -0.1, 0.22],
+};
+const FWAVE = { II: 0.04, III: 0.035, aVF: 0.04, V1: 0.075, V2: 0.04 };   // fibrillatory baseline
+const PVC_AT = 5.92;
+const R_PEAKS = (() => { const r = rng(11), out = []; let t = 0.35; while (t < 10) { out.push(t); t += 0.52 + r() * 0.42; } return out; })();
+// put the PVC between two beats
+(function () { const i = R_PEAKS.findIndex((x) => x > PVC_AT); R_PEAKS.splice(i, 0, PVC_AT); })();
+function beat(amp, dt, pvc) {
+  if (pvc) return -0.35 * g(dt, -0.03, 0.03) + 1.2 * Math.sign(amp[1]) * Math.min(1, Math.abs(amp[1]) + 0.3) * g(dt, 0.02, 0.028) - 0.45 * Math.sign(amp[1]) * g(dt, 0.26, 0.06);
+  const [q, r, s, tw] = amp;
+  return q * g(dt, -0.028, 0.007) + r * g(dt, 0, 0.009) + s * g(dt, 0.028, 0.008) + tw * g(dt, 0.25, 0.045);
+}
+function sample(name, t, noise) {
+  let v = 0;
+  for (const rp of R_PEAKS) { const dt = t - rp; if (dt > -0.2 && dt < 0.5) v += beat(LEADS[name], dt, rp === PVC_AT); }
+  const f = FWAVE[name] || 0.015;
+  v += f * Math.sin(2 * Math.PI * 6.3 * t + 0.7) + f * 0.6 * Math.sin(2 * Math.PI * 8.9 * t + 1.9);
+  v += 0.025 * Math.sin(2 * Math.PI * 0.22 * t) + (noise() - 0.5) * 0.012;
+  if (name === "V2" && t > 6.1 && t < 7.0) v += (noise() - 0.5) * 0.4 + 0.1 * Math.sin(2 * Math.PI * 41 * t);
+  return v;
+}
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; };
+
+(function draw12() {
+  const svg = document.getElementById("ecg12");
+  const defs = el("defs", {}, svg);
+  const minor = el("pattern", { id: "minor", width: 1, height: 1, patternUnits: "userSpaceOnUse" }, defs);
+  el("path", { d: "M1 0H0V1", fill: "none", stroke: "#F7D4D4", "stroke-width": 0.08 }, minor);
+  const major = el("pattern", { id: "major", width: 5, height: 5, patternUnits: "userSpaceOnUse" }, defs);
+  el("rect", { width: 5, height: 5, fill: "url(#minor)" }, major);
+  el("path", { d: "M5 0H0V5", fill: "none", stroke: "#EFA9A9", "stroke-width": 0.18 }, major);
+  const hatch = el("pattern", { id: "hatch", width: 2, height: 2, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, defs);
+  el("rect", { width: 2, height: 2, fill: "rgba(217,119,6,0.10)" }, hatch);
+  el("line", { x1: 0, y1: 0, x2: 0, y2: 2, stroke: "rgba(217,119,6,0.35)", "stroke-width": 0.5 }, hatch);
+  el("rect", { width: 252, height: 132, fill: "url(#major)" }, svg);
+  const X0 = 2, S = 25, G = 10, ROW = 31, INK = "#1A2440";
+  const layout = [["I", "aVR", "V1", "V4"], ["II", "aVL", "V2", "V5"], ["III", "aVF", "V3", "V6"]];
+  const noise = rng(42);
+  const trace = (name, t0, t1, y0, x0) => {
+    let d = "";
+    for (let t = t0; t <= t1; t += 0.004) d += (d ? "L" : "M") + (x0 + (t - t0) * S).toFixed(2) + " " + (y0 - sample(name, t, noise) * G).toFixed(2);
+    el("path", { d, fill: "none", stroke: INK, "stroke-width": 0.28, "stroke-linejoin": "round" }, svg);
+  };
+  const cal = (y) => el("path", { d: `M${X0} ${y}h2v-10h5v10h2`, fill: "none", stroke: INK, "stroke-width": 0.28 }, svg);
+  const quality = el("g", { "data-layer": "quality" }, svg);
+  layout.forEach((row, ri) => {
+    const y0 = 16 + ri * ROW;
+    cal(y0);
+    row.forEach((name, ci) => {
+      const t0 = ci * 2.5, x0 = X0 + 10 + ci * 2.5 * S;
+      if (name === "V2") el("rect", { x: x0 + (6.1 - t0) * S, y: y0 - 13, width: 0.9 * S, height: 24, fill: "url(#hatch)", rx: 0.8 }, quality);
+      trace(name, t0, t0 + 2.5, y0, x0);
+      el("text", { x: x0 + 2, y: y0 - 10, "font-size": 3.2, "font-weight": 600, fill: INK }, svg).textContent = name;
+      if (ci > 0) el("line", { x1: x0, y1: y0 - 3, x2: x0, y2: y0 + 3, stroke: INK, "stroke-width": 0.25 }, svg);
+    });
+  });
+  const rb = 16 + 3 * ROW, rx0 = X0 + 10;
+  cal(rb); trace("II", 0, 9.99, rb, rx0);
+  el("text", { x: rx0 + 1, y: rb + 10, "font-size": 3.2, "font-weight": 600, fill: INK }, svg).textContent = "II (rhythm)";
+  const beats = el("g", { "data-layer": "beats" }, svg);
+  R_PEAKS.forEach((rp, i) => {
+    const x = rx0 + rp * S, pvc = rp === PVC_AT, c = pvc ? "#7C3AED" : "#246BFD";
+    el("path", { d: `M${x} ${rb - 14.5}v1.8`, stroke: c, "stroke-width": 0.35 }, beats);
+    el("text", { x: x - 0.9, y: rb - 15.2, "font-size": 2.4, fill: c, "font-weight": 700 }, beats).textContent = pvc ? "V" : "N";
+    if (i > 0 && !pvc && R_PEAKS[i - 1] !== PVC_AT && i % 3 === 0) {
+      const ms = Math.round((rp - R_PEAKS[i - 1]) * 1000);
+      el("text", { x: rx0 + ((rp + R_PEAKS[i - 1]) / 2) * S - 2.6, y: rb - 19.8, "font-size": 2, fill: "#66758C" }, beats).textContent = ms;
+    }
+  });
+  const calp = el("g", { "data-layer": "caliper" }, svg);
+  const a = R_PEAKS[2], b = R_PEAKS[3];
+  [a, b].forEach((t) => el("line", { x1: rx0 + t * S, y1: rb - 12, x2: rx0 + t * S, y2: rb + 6, stroke: "#0EA5E9", "stroke-width": 0.3, "stroke-dasharray": "1 0.6" }, calp));
+  el("path", { d: `M${rx0 + a * S} ${rb + 5}H${rx0 + b * S}`, stroke: "#0EA5E9", "stroke-width": 0.3 }, calp);
+  el("rect", { x: rx0 + a * S + 1, y: rb + 6.4, width: 19, height: 4.2, rx: 1, fill: "#fff", stroke: "#0EA5E9", "stroke-width": 0.2 }, calp);
+  el("text", { x: rx0 + a * S + 2, y: rb + 9.5, "font-size": 2.7, fill: "#0369A1", "font-weight": 600 }, calp).textContent = `RR ${Math.round((b - a) * 1000)} ms`;
+  window.__hl = el("rect", { x: 0, y: rb - 15, width: 0, height: 22, fill: "rgba(36,107,253,0.10)", stroke: "#246BFD", "stroke-width": 0.3, rx: 1, opacity: 0 }, svg);
+  window.__geom = { rx0, S };
+})();
+
+// mini strips for inbox rows
+document.querySelectorAll("svg.mini-ecg").forEach((s, k) => {
+  const kind = s.dataset.mini, r = rng(5 + k);
+  let d = "", t = 0, next = 0.3;
+  const peaks = []; while (next < 3) { peaks.push(next); next += kind === "af" ? 0.45 + r() * 0.4 : kind === "long" ? 0.9 : 0.72; }
+  for (let x = 0; x <= 120; x++) {
+    t = x / 40; let v = 0;
+    for (const p of peaks) { const dt = t - p; v += 1 * g(dt, 0, 0.012) - 0.2 * g(dt, 0.03, 0.01) + 0.25 * g(dt, kind === "long" ? 0.42 : 0.26, 0.05) + (kind === "af" ? 0 : 0.1 * g(dt, -0.17, 0.025)); }
+    if (kind === "af") v += 0.06 * Math.sin(t * 40);
+    if (kind === "noise") v = v * 0.4 + (r() - 0.5) * 0.9;
+    d += (x ? "L" : "M") + x + " " + (24 - v * 16).toFixed(1);
+  }
+  el("path", { d, fill: "none", "stroke-width": 1.2, "stroke-linejoin": "round", style: "stroke:hsl(var(--muted-foreground))" }, s);
+});
+
+// toggles, findings review, jump-to-segment
+document.querySelectorAll(".toggle[data-layer]").forEach((b) => b.addEventListener("click", () => {
+  const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on));
+  document.querySelectorAll(`g[data-layer="${b.dataset.layer}"]`).forEach((g) => (g.style.display = on ? "" : "none"));
+}));
+const reviewed = {};
+document.querySelectorAll(".finding").forEach((f) => {
+  f.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => {
+    const act = b.dataset.act;
+    if (act === "edit") { const t = f.querySelector(".t"); const v = prompt("Edit finding", t.textContent); if (!v) return; t.textContent = v; }
+    reviewed[f.dataset.id] = act;
+    f.classList.toggle("ok", act !== "reject"); f.classList.toggle("no", act === "reject");
+    let w = f.querySelector(".who"); if (!w) { w = document.createElement("div"); w.className = "who"; f.appendChild(w); }
+    w.textContent = { accept: "Accepted by Dr. Ananya Rao", edit: "Edited by Dr. Ananya Rao", reject: "Rejected by Dr. Ananya Rao" }[act];
+    const n = Object.keys(reviewed).length;
+    document.getElementById("review-count").textContent = `${n} of 2 findings reviewed`;
+    document.getElementById("sign").disabled = n < 2;
+  }));
+  f.querySelectorAll("[data-jump]").forEach((b) => b.addEventListener("click", () => {
+    const [a, z] = b.dataset.jump.split(",").map(Number), { rx0, S } = window.__geom;
+    __hl.setAttribute("x", rx0 + a * S); __hl.setAttribute("width", (z - a) * S); __hl.setAttribute("opacity", 1);
+    document.getElementById("ecg12").scrollIntoView({ behavior: "smooth", block: "center" });
+  }));
+});
+document.getElementById("sign").addEventListener("click", () => {
+  document.getElementById("review-count").textContent = "Reviewed by Dr. Ananya Rao · 10 Oct 2026, 11:02 · now part of the chart";
+  document.getElementById("prov-who").textContent = "Dr. Ananya Rao";
+  document.getElementById("sign").disabled = true;
+});
+const prov = document.getElementById("prov");
+document.getElementById("open-prov").onclick = () => prov.classList.add("open");
+document.getElementById("close-prov").onclick = () => prov.classList.remove("open");
+prov.addEventListener("click", (e) => { if (e.target === prov) prov.classList.remove("open"); });
+
+// ---------- OT case timeline ----------
+function drawTimeline() {
+  const svg = document.getElementById("timeline"); svg.innerHTML = "";
+  const L = 92, R = 990, W = R - L, MIN = 135, x = (m) => L + (m / MIN) * W, r = rng(3);
+  const fg = css("foreground"), mute = css("muted-foreground"), bord = css("border");
+  const defs = el("defs", {}, svg);
+  const hatch = el("pattern", { id: "th", width: 6, height: 6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, defs);
+  el("rect", { width: 6, height: 6, style: `fill:${css("muted")}` }, hatch);
+  el("line", { x1: 0, y1: 0, x2: 0, y2: 6, "stroke-width": 2, style: `stroke:${css("muted-foreground", .45)}` }, hatch);
+  const label = (y, t, sub) => {
+    el("text", { x: 0, y, "font-size": 12, "font-weight": 600, style: `fill:${fg}` }, svg).textContent = t;
+    if (sub) el("text", { x: 0, y: y + 14, "font-size": 10, style: `fill:${mute}` }, svg).textContent = sub;
+  };
+  label(22, "Phase");
+  [[0, 14, "Spinal"], [14, 22, "Prep"], [22, 120, "Surgery"], [120, 135, "Recovery"]].forEach(([a, b, n], i) => {
+    el("rect", { x: x(a), y: 10, width: x(b) - x(a) - 2, height: 18, rx: 9, style: `fill:${css("primary-soft", i % 2 ? .6 : 1)}` }, svg);
+    el("text", { x: x(a) + 8, y: 23, "font-size": 10.5, "font-weight": 600, style: `fill:${css("primary-soft-foreground")}` }, svg).textContent = n;
+  });
+  label(52, "ECG quality");
+  el("rect", { x: L, y: 40, width: W, height: 16, rx: 8, style: `fill:${css("success", .28)}` }, svg);
+  [[28, 31], [39, 41.5], [52, 54], [64, 66.5], [85.5, 88], [97, 99], [108, 110]].forEach(([a, b]) => el("rect", { x: x(a), y: 40, width: x(b) - x(a), height: 16, fill: "url(#th)" }, svg));
+  const track = (y0, h, name, unit, lo, hi, fn, color, thr) => {
+    label(y0 + 16, name, unit);
+    el("rect", { x: L, y: y0, width: W, height: h, rx: 6, style: `fill:${css("subtle")};stroke:${bord}` }, svg);
+    const yv = (v) => y0 + h - ((v - lo) / (hi - lo)) * h;
+    [lo, hi].forEach((v) => (el("text", { x: L - 6, y: yv(v) + (v === lo ? -2 : 9), "font-size": 9.5, "text-anchor": "end", style: `fill:${mute}` }, svg).textContent = v));
+    if (thr) { el("line", { x1: L, x2: R, y1: yv(thr), y2: yv(thr), "stroke-dasharray": "4 3", style: `stroke:${css("danger")}` }, svg);
+      el("text", { x: R - 6, y: yv(thr) - 4, "font-size": 9.5, "text-anchor": "end", style: `fill:${css("danger")}` }, svg).textContent = "MAP 65"; }
+    let d = ""; for (let m = 0; m <= MIN; m += 0.5) d += (d ? "L" : "M") + x(m).toFixed(1) + " " + yv(fn(m)).toFixed(1);
+    el("path", { d, fill: "none", "stroke-width": 1.7, "stroke-linejoin": "round", style: `stroke:${color}` }, svg);
+  };
+  const hr = (m) => 86 + 6 * Math.sin(m / 7) + (r() - .5) * 9 - 26 * g(m, 13.5, 2.4) + 48 * g(m, 58.5, 1.3);
+  const map = (m) => 84 + 5 * Math.sin(m / 13) - 28 * g(m, 13.5, 3) + (r() - .5) * 2;
+  const spo2 = (m) => Math.min(100, 97.8 + 0.8 * Math.sin(m / 20) + (r() - .5) * .6);
+  track(72, 72, "Heart rate", "bpm · ECG", 40, 160, hr, css("success"));
+  track(158, 72, "MAP", "mmHg · ABP", 40, 120, map, css("danger"), 65);
+  track(244, 50, "SpO₂", "%", 90, 100, spo2, css("info"));
+  ["09:05", "09:35", "10:05", "10:35", "11:05"].forEach((t, i) => (el("text", { x: x(i * 30), y: 310, "font-size": 9.5, "text-anchor": i ? "middle" : "start", style: `fill:${mute}` }, svg).textContent = t));
+  label(330, "Monitor alarms", "imported");
+  [3, 13, 14, 29, 40, 52.5, 57, 65, 74, 86, 98, 103, 109, 126].forEach((m) => el("path", { d: `M${x(m)} 318l5 9h-10z`, style: `fill:${css("warning")}` }, svg));
+  label(362, "Review flags", "advisory");
+  [[13.5, 1], [58.5, 2], [65.5, 3]].forEach(([m, n]) => {
+    el("line", { x1: x(m), x2: x(m), y1: 10, y2: 348, "stroke-dasharray": "3 3", style: `stroke:${css("violet", .35)}` }, svg);
+    el("circle", { cx: x(m), cy: 358, r: 9, style: `fill:${css("violet")}` }, svg);
+    el("text", { x: x(m), y: 362, "font-size": 10.5, "font-weight": 700, "text-anchor": "middle", fill: "#fff" }, svg).textContent = n;
+  });
+}
+
+// ---------- monitoring board ----------
+const BEDS = [
+  { bed: "OT-1", name: "Synthetic patient A", hr: 72, spo2: 99, q: ["success", "Analysable"], flag: null, rr: 0.83 },
+  { bed: "OT-2", name: "Synthetic patient B", hr: 64, spo2: 97, q: ["success", "Analysable"], flag: "1 review flag", rr: 0.94 },
+  { bed: "OT-3", name: "Harish Chandra Gupta", hr: 88, spo2: 98, q: ["warning", "Diathermy — analysis paused"], flag: null, rr: 0.68, irregular: true, noisy: true },
+  { bed: "ICU-4", name: "Synthetic patient D", hr: 110, spo2: 95, q: ["success", "Analysable"], flag: "1 review flag", rr: 0.55, irregular: true },
+  { bed: "ICU-5", name: "Synthetic patient E", hr: 58, spo2: 100, q: ["success", "Analysable · paced"], flag: null, rr: 1.03, paced: true },
+  { bed: "ICU-6", name: "Synthetic patient F", offline: true },
+];
+(function beds() {
+  const host = document.getElementById("beds"), canv = [];
+  BEDS.forEach((d) => {
+    const c = document.createElement("div");
+    c.className = "glass card bed" + (d.offline ? " offline" : "");
+    c.innerHTML = `<div class="card-head"><div><h3>${d.bed}</h3><p>${d.name}</p></div>${d.offline ? '<span class="badge b-danger"><svg class="i" data-i="wifiOff"></svg>Assist offline</span>' : d.flag ? `<span class="badge b-violet"><svg class="i" data-i="flag"></svg>${d.flag}</span>` : '<span class="badge b-neutral">No flags</span>'}</div>
+      <div class="card-body">${d.offline ? '<div class="ph">Stream lost 00:14 ago. No data is shown; check the bedside monitor.</div>' : "<canvas></canvas>"}
+      <div class="between" style="margin-top:12px;align-items:flex-end">
+        <div class="vitals"><div><div class="label">HR · bpm</div><div class="v num" style="color:${d.offline ? css("muted-foreground") : css("success")}">${d.offline ? "—" : d.hr}</div></div>
+        <div><div class="label">SpO₂ · %</div><div class="v num" style="color:${d.offline ? css("muted-foreground") : css("info")}">${d.offline ? "—" : d.spo2}</div></div></div>
+        ${d.offline ? "" : `<span class="badge b-${d.q[0]}">${d.q[1]}</span>`}</div></div>`;
+    host.appendChild(c); paintIcons(c);
+    if (!d.offline) canv.push({ cv: c.querySelector("canvas"), d, r: rng(d.hr) });
+  });
+  const amp = LEADS.II, t0 = performance.now();
+  (function frame(now) {
+    const T = (now - t0) / 1000, ink = css("foreground", .85);
+    canv.forEach(({ cv, d, r }) => {
+      const w = cv.clientWidth, h = cv.clientHeight, dpr = devicePixelRatio || 1;
+      if (!w) return;
+      if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+      const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = ink; ctx.lineWidth = 1.3; ctx.beginPath();
+      for (let px = 0; px <= w; px++) {
+        const t = T - 4 + (px / w) * 4;
+        const rr = d.irregular ? d.rr * (1 + 0.25 * Math.sin(Math.floor(t / d.rr) * 2.7)) : d.rr;
+        const ph = ((t % rr) + rr) % rr - rr * 0.45;
+        let v = beat(amp, ph, false) + (d.irregular ? 0.04 * Math.sin(2 * Math.PI * 6.3 * t) : 0.12 * g(ph, -0.17, 0.022));
+        if (d.paced) v += 1.1 * g(ph, -0.06, 0.0015);
+        if (d.noisy && t % 6 > 3.5) v += (r() - 0.5) * 1.1;
+        const y = h * 0.64 - v * h * 0.42; px ? ctx.lineTo(px, y) : ctx.moveTo(px, y);
+      }
+      ctx.stroke();
+    });
+    requestAnimationFrame(frame);
+  })(t0);
+})();
+
+// ---------- screens, nav state, theme ----------
+const SCREENS = { review: { nav: "patients", pt: true, tab: "ecgs" }, inbox: { nav: "inbox", pt: false }, timeline: { nav: "patients", pt: true, tab: "sessions" }, board: { nav: "board", pt: false } };
+function go(name) {
+  const s = SCREENS[name];
+  document.querySelectorAll("[data-go]").forEach((b) => b.classList.toggle("on", b.dataset.go === name));
+  document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.id === "v-" + name));
+  document.getElementById("pt-header").style.display = s.pt ? "" : "none";
+  document.querySelectorAll("[data-nav]").forEach((b) => b.classList.toggle("on", b.dataset.nav === s.nav));
+  if (s.tab) document.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === s.tab));
+  if (name === "timeline") drawTimeline();
+  history.replaceState(null, "", "?view=" + name + (document.documentElement.classList.contains("dark") ? "&theme=dark" : ""));
+}
+document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => go(b.dataset.go)));
+document.querySelector('[data-nav="board"]').addEventListener("click", () => go("board"));
+document.querySelector('[data-tab="ecgs"]').addEventListener("click", () => go("review"));
+document.querySelector('[data-tab="sessions"]').addEventListener("click", () => go("timeline"));
+document.querySelector('[data-nav="inbox"]').addEventListener("click", () => go("inbox"));
+document.querySelector('[data-nav="patients"]').addEventListener("click", () => go("review"));
+function setTheme(dark) {
+  document.documentElement.classList.toggle("dark", dark);
+  const ic = document.querySelector("#theme svg"); ic.dataset.i = dark ? "sun" : "moon"; paintIcons(ic.parentElement);
+  const cur = document.querySelector(".view.on").id.slice(2);
+  if (cur === "timeline") drawTimeline();
+  history.replaceState(null, "", "?view=" + cur + (dark ? "&theme=dark" : ""));
+}
+document.getElementById("theme").addEventListener("click", () => setTheme(!document.documentElement.classList.contains("dark")));
+const qs = new URLSearchParams(location.search);
+if (qs.get("theme") === "dark") setTheme(true);
+go(SCREENS[qs.get("view")] ? qs.get("view") : "review");
+</script>
+</body>
+</html>
