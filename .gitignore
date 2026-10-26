@@ -10,3 +10,5 @@ data/
 *.dat
 *.hea
 *.edf
+ml/artifacts/*.pt.tmp
+*.egg-info/

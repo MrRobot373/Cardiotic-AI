@@ -3,13 +3,18 @@
 AI-assisted ECG analysis and cardiac monitoring for hospitals, ICUs and operation theatres.
 By GMS. A separate product from MED AI (GMS Clinical AI), built in the same GMS design language.
 
-> **Status: planning.** This repository currently holds the product plan and a UI concept. No
-> clinical software has been built or validated yet. Everything in the UI concept is synthetic.
+> **Status: early AI research.** The first two AI models (signal quality and beat classification)
+> and a heartbeat-detection benchmark are built and measured on public data. See
+> [ml/reports/RESULTS.md](ml/reports/RESULTS.md). Nothing is validated for clinical use. Everything in
+> the UI concept is synthetic.
 
 ## Start here
 
 | | |
 |---|---|
+| [docs/AI_ML_ROADMAP.md](docs/AI_ML_ROADMAP.md) | **The AI**: every model, what it learns from, how it is tested, build order |
+| [ml/](ml/) | AI research code: data loaders, signal processing, models, training, evaluation ([how to run](ml/README.md)) |
+| [ml/reports/RESULTS.md](ml/reports/RESULTS.md) | Measured results on patients the models never saw |
 | [docs/PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md) | Review of the original research, product definition, regulatory path, data, AI/ML design, architecture, roadmap, team, risks and **open decisions** (section 14) |
 | [docs/ui-concept/index.html](docs/ui-concept/index.html) | Clickable UI concept. Open it in a browser; switch screens with the bar at the top and switch theme with the moon icon |
 
