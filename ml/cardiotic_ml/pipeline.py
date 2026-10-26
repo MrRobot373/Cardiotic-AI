@@ -20,6 +20,8 @@ from cardiotic_ml.quality import dataset as q_data
 from cardiotic_ml.quality.model import QualityNet
 
 FS = 360
+# Best detector on the MIT-BIH benchmark (reports/qrs_detection.json).
+QRS_METHOD = "pantompkins1985"
 
 
 @dataclass
@@ -60,7 +62,7 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
     if len(starts) == 0 or usable.mean() < 0.5:
         return _result(segments, [], {}, ["Not analysable: less than half the recording has usable signal quality."], models)
     # 2. beats, only inside usable windows
-    peaks = qrs.detect_qrs(x, FS, "neurokit")
+    peaks = qrs.detect_qrs(x, FS, QRS_METHOD)
     peaks = peaks[usable[peaks]]
     if len(peaks) < 3:
         return _result(segments, [], {}, ["Not analysable: too few beats detected in usable segments."], models)
