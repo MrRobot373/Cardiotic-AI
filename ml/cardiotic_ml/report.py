@@ -63,12 +63,22 @@ def write_results() -> str:
         out += ["", "Labels are proxies derived from the injected noise level (see `quality/dataset.py`). "
                 "Clinician-labelled windows are needed before any claim about real-world quality detection.", ""]
 
-    b = _load("beat_classification")
-    if b:
-        rep = b["test"]
+    versions = [(v, _load(f"beat_classification_{v}")) for v in ("v0.1", "v0.2")]
+    versions = [(v, r) for v, r in versions if r]
+    if versions:
         out += ["## 3. Beat classifier (AI model #2)", "",
-                f"Inter-patient protocol (de Chazal): trained on DS1, tested on the 22 DS2 patients. "
-                f"Test beats: {sum(b['sizes']['test']):,}. Accuracy **{_pct(rep['accuracy'])}**, macro-F1 **{_pct(rep['macro_f1'])}**.", ""]
+                "Inter-patient protocol (de Chazal): trained on DS1, model selected on 4 held-out DS1 patients, "
+                f"tested once on the 22 DS2 patients ({sum(versions[0][1]['sizes']['test']):,} beats).", "",
+                "| Version | Recipe | Val macro-F1 | Test accuracy | N Se / +P | S Se / +P | V Se / +P | F Se / +P |",
+                "|---|---|---:|---:|---:|---:|---:|---:|"]
+        for v, r in versions:
+            pc = r["test"]["per_class"]
+            cell = lambda c: f"{_pct(pc[c]['sensitivity'])} / {_pct(pc[c]['ppv'])}"
+            out.append(f"| {v} | {r['model_card'].get('recipe', {})} | {_pct(r['training']['best_val_macro_f1'])} | "
+                       f"{_pct(r['test']['accuracy'])} | {cell('N')} | {cell('S')} | {cell('V')} | {cell('F')} |")
+        v, b = versions[-1]
+        rep = b["test"]
+        out += ["", f"Detail for {v}:", ""]
         out += _class_table(rep) + [""] + _confusion(rep) + ["",
                 "N = normal or bundle-branch beats · S = supraventricular ectopic · V = ventricular ectopic · F = fusion. "
                 "In this protocol S and F are known to be hard (few training examples, S beats often look normal). "

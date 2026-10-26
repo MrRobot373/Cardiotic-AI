@@ -20,7 +20,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("download")
     sub.add_parser("eval-qrs")
     q = sub.add_parser("train-quality"); q.add_argument("--epochs", type=int, default=10)
-    b = sub.add_parser("train-beats"); b.add_argument("--epochs", type=int, default=14)
+    b = sub.add_parser("train-beats"); b.add_argument("--version", default="v0.2", choices=["v0.1", "v0.2"])
     a = sub.add_parser("analyze")
     a.add_argument("--record", type=int, required=True)
     a.add_argument("--start", type=float, default=0.0, help="seconds")
@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> None:
         train_quality(epochs=args.epochs)
     elif args.cmd == "train-beats":
         from cardiotic_ml.experiments import train_beats
-        train_beats(epochs=args.epochs)
+        train_beats(version=args.version)
     elif args.cmd == "analyze":
         from cardiotic_ml import pipeline
         from cardiotic_ml.data import mitdb

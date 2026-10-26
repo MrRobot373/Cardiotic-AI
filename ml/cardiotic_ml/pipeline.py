@@ -22,6 +22,8 @@ from cardiotic_ml.quality.model import QualityNet
 FS = 360
 # Best detector on the MIT-BIH benchmark (reports/qrs_detection.json).
 QRS_METHOD = "pantompkins1985"
+# Beat model version used by the pipeline — chosen on validation patients, never on the test set.
+BEAT_MODEL = "beat_net_v0.2"
 
 
 @dataclass
@@ -34,9 +36,9 @@ class Models:
 def load_models(directory=ARTIFACTS_DIR) -> Models:
     q, b = QualityNet(len(q_data.LABELS)), BeatNet(len(beat_data.CLASSES))
     q.load_state_dict(torch.load(directory / "quality_net.pt", weights_only=True))
-    b.load_state_dict(torch.load(directory / "beat_net.pt", weights_only=True))
+    b.load_state_dict(torch.load(directory / f"{BEAT_MODEL}.pt", weights_only=True))
     q.eval(); b.eval()
-    cards = {n: json.loads((directory / f"{n}.card.json").read_text()) for n in ("quality_net", "beat_net")}
+    cards = {n: json.loads((directory / f"{n}.card.json").read_text()) for n in ("quality_net", BEAT_MODEL)}
     return Models(q, b, cards)
 
 

@@ -112,14 +112,34 @@ def train_quality(n_train: int = 30000, n_val: int = 5000, n_test: int = 10000, 
 
 
 # ---------------------------------------------------------------- beat classification
-def train_beats(epochs: int = 14) -> dict:
-    print("building beat datasets…", flush=True)
+def beat_augment(x: torch.Tensor, rr: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """Patient-to-patient variation the training set under-represents: gain, baseline, noise,
+    small misalignment of the R peak, and slight RR jitter."""
+    n = x.shape[0]
+    x = x * torch.empty(n, 1).uniform_(0.7, 1.3) + torch.randn(n, 1) * 0.1
+    x = x + torch.randn_like(x) * 0.03
+    x = torch.roll(x, shifts=int(torch.randint(-4, 5, (1,))), dims=1)
+    rr = rr * torch.empty(n, 1).uniform_(0.95, 1.05)
+    return x, rr
+
+
+BEAT_VERSIONS = {
+    "v0.1": {"dropout": 0.3, "augment": False, "label_smoothing": 0.0, "epochs": 14},
+    "v0.2": {"dropout": 0.5, "augment": True, "label_smoothing": 0.05, "epochs": 14},
+}
+
+
+def train_beats(version: str = "v0.2") -> dict:
+    spec = BEAT_VERSIONS[version]
+    epochs = spec["epochs"]
+    print(f"building beat datasets… ({version}: {spec})", flush=True)
     tr, va, te = beat_data.splits()
     counts = np.bincount(tr.y, minlength=len(beat_data.CLASSES)).astype(float)
     weights = (counts.sum() / np.maximum(counts, 1)) ** 0.5
     weights = (weights / weights.mean()).tolist()
-    model = BeatNet(len(beat_data.CLASSES))
-    cfg = TrainConfig(epochs=epochs, batch_size=256, lr=1e-3, class_weights=weights)
+    model = BeatNet(len(beat_data.CLASSES), dropout=spec["dropout"])
+    cfg = TrainConfig(epochs=epochs, batch_size=256, lr=1e-3, class_weights=weights,
+                      label_smoothing=spec["label_smoothing"], augment=beat_augment if spec["augment"] else None)
     model, info = train(model, (torch.from_numpy(tr.x), torch.from_numpy(tr.rr)), torch.from_numpy(tr.y),
                         (torch.from_numpy(va.x), torch.from_numpy(va.rr)), va.y, beat_data.CLASSES, cfg)
     probs = predict(model, (torch.from_numpy(te.x), torch.from_numpy(te.rr)))
@@ -128,18 +148,18 @@ def train_beats(epochs: int = 14) -> dict:
     for rid in np.unique(te.record):
         m = te.record == rid
         per_record[int(rid)] = class_report(te.y[m], probs[m].argmax(1), beat_data.CLASSES)["per_class"]
-    card = _save_model(model, "beat_net", {
-        "name": "beat_net", "task": "AAMI beat class N / S / V / F from MLII beat window + RR features",
+    card = _save_model(model, f"beat_net_{version}", {
+        "name": "beat_net", "version": version, "recipe": spec, "task": "AAMI beat class N / S / V / F from MLII beat window + RR features",
         "input": f"{beat_data.PRE + beat_data.POST} samples @ 360 Hz (0.25 s before to 0.40 s after R), monitoring filter 0.5–40 Hz",
         "labels": beat_data.CLASSES,
         "intended_use": "Research use only. Not validated on clinical data or other devices.",
         "train_patients": sorted(set(tr.record.tolist())), "val_patients": beat_data.VAL_PATIENTS, "test_patients": mitdb.DS2,
         "class_weights": weights,
     })
-    result = _meta(task="beat_classification", split="de Chazal inter-patient: DS1 train (minus val patients), DS2 test",
+    result = _meta(task="beat_classification", version=version, split="de Chazal inter-patient: DS1 train (minus val patients), DS2 test",
                    sizes={"train": np.bincount(tr.y, minlength=4).tolist(), "val": np.bincount(va.y, minlength=4).tolist(),
                           "test": np.bincount(te.y, minlength=4).tolist()},
                    test=rep, test_per_record=per_record, training=info, model_card=card)
-    _write("beat_classification", result)
+    _write(f"beat_classification_{version}", result)
     print(json.dumps({k: rep[k] for k in ("accuracy", "macro_f1")}), flush=True)
     return result

@@ -15,7 +15,7 @@ def _block(cin: int, cout: int, k: int, stride: int = 1) -> nn.Sequential:
 
 
 class BeatNet(nn.Module):
-    def __init__(self, n_classes: int = 4):
+    def __init__(self, n_classes: int = 4, dropout: float = 0.3):
         super().__init__()
         self.cnn = nn.Sequential(
             _block(1, 32, 7), _block(32, 32, 7, stride=2),
@@ -23,7 +23,7 @@ class BeatNet(nn.Module):
             _block(64, 96, 3), nn.AdaptiveAvgPool1d(8),
         )
         self.rr = nn.Sequential(nn.Linear(N_RR, 32), nn.ReLU(), nn.Linear(32, 32), nn.ReLU())
-        self.head = nn.Sequential(nn.Linear(96 * 8 + 32, 128), nn.ReLU(), nn.Dropout(0.3), nn.Linear(128, n_classes))
+        self.head = nn.Sequential(nn.Linear(96 * 8 + 32, 128), nn.ReLU(), nn.Dropout(dropout), nn.Linear(128, n_classes))
 
     def forward(self, x: torch.Tensor, rr: torch.Tensor) -> torch.Tensor:
         h = self.cnn(x.unsqueeze(1)).flatten(1)

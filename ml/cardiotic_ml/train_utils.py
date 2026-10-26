@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -49,6 +50,9 @@ class TrainConfig:
     weight_decay: float = 1e-4
     seed: int = 7
     class_weights: list[float] | None = None
+    label_smoothing: float = 0.0
+    # Training-only input augmentation: f(*inputs) -> inputs. Never applied to validation/test.
+    augment: Callable[..., tuple[torch.Tensor, ...]] | None = None
     log: list[str] = field(default_factory=list)
 
 
@@ -73,13 +77,15 @@ def train(model: nn.Module, train_inputs: tuple[torch.Tensor, ...], y_train: tor
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=cfg.epochs)
     w = torch.tensor(cfg.class_weights, dtype=torch.float32) if cfg.class_weights else None
-    loss_fn = nn.CrossEntropyLoss(weight=w)
+    loss_fn = nn.CrossEntropyLoss(weight=w, label_smoothing=cfg.label_smoothing)
     best, best_f1, history = None, -1.0, []
     for epoch in range(cfg.epochs):
         model.train()
         t0, total, n = time.time(), 0.0, 0
         for *xb, yb in _loader((*train_inputs, y_train), cfg.batch_size, shuffle=True):
             opt.zero_grad()
+            if cfg.augment:
+                xb = cfg.augment(*xb)
             loss = loss_fn(model(*xb), yb)
             loss.backward()
             opt.step()
