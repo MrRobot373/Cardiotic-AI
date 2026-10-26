@@ -1,0 +1,218 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-26T17:42:48+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "signal_quality",
+  "sizes": {
+    "train": 30000,
+    "val": 5000,
+    "test": 10000
+  },
+  "test": {
+    "accuracy": 0.8512,
+    "macro_f1": 0.8507585003200209,
+    "per_class": {
+      "good": {
+        "support": 3902,
+        "sensitivity": 0.8054843669912866,
+        "ppv": 0.8575716234652114,
+        "f1": 0.8307123034227566
+      },
+      "noisy": {
+        "support": 3027,
+        "sensitivity": 0.7690782953419227,
+        "ppv": 0.7812080536912752,
+        "f1": 0.7750957216580656
+      },
+      "unusable": {
+        "support": 3071,
+        "sensitivity": 0.9902311950504722,
+        "ppv": 0.9064083457526081,
+        "f1": 0.9464674758792406
+      }
+    },
+    "confusion": [
+      [
+        3143,
+        624,
+        135
+      ],
+      [
+        520,
+        2328,
+        179
+      ],
+      [
+        2,
+        28,
+        3041
+      ]
+    ],
+    "labels": [
+      "good",
+      "noisy",
+      "unusable"
+    ]
+  },
+  "test_accuracy_by_generator": {
+    "bw@high-snr": 0.8062992125984252,
+    "bw@mid-snr": 0.7361111111111112,
+    "clean": 0.8200207468879668,
+    "em@high-snr": 0.7644444444444445,
+    "em@low-snr": 0.9614147909967846,
+    "em@mid-snr": 0.738430583501006,
+    "flatline": 1.0,
+    "lead-off": 1.0,
+    "ma@high-snr": 0.8042168674698795,
+    "ma@low-snr": 0.9448051948051948,
+    "ma@mid-snr": 0.8312195121951219,
+    "noise-only": 1.0,
+    "saturation": 0.998389694041868
+  },
+  "training": {
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.39823415439128873,
+        "val_macro_f1": 0.8346119378000515,
+        "val_accuracy": 0.8326,
+        "seconds": 85.3
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.2745434619108836,
+        "val_macro_f1": 0.8371214239072153,
+        "val_accuracy": 0.8354,
+        "seconds": 10.1
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.24769249444007874,
+        "val_macro_f1": 0.7755285655147792,
+        "val_accuracy": 0.6002,
+        "seconds": 9.9
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.21977392429510753,
+        "val_macro_f1": 0.8786695646057815,
+        "val_accuracy": 0.8788,
+        "seconds": 10.0
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.20259933582146963,
+        "val_macro_f1": 0.8880388123120776,
+        "val_accuracy": 0.8914,
+        "seconds": 10.1
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.18621647755304974,
+        "val_macro_f1": 0.8966646199308567,
+        "val_accuracy": 0.899,
+        "seconds": 9.8
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.16818357005119325,
+        "val_macro_f1": 0.8717886849969029,
+        "val_accuracy": 0.8794,
+        "seconds": 9.3
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.15672513086795806,
+        "val_macro_f1": 0.8863945941593064,
+        "val_accuracy": 0.8916,
+        "seconds": 9.7
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.14365257317225139,
+        "val_macro_f1": 0.8767926892985702,
+        "val_accuracy": 0.8762,
+        "seconds": 9.6
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.1356313817580541,
+        "val_macro_f1": 0.8965351902753244,
+        "val_accuracy": 0.8974,
+        "seconds": 9.8
+      }
+    ],
+    "best_val_macro_f1": 0.8966646199308567
+  },
+  "model_card": {
+    "name": "quality_net",
+    "task": "single-lead 2.5 s window signal quality: good / noisy / unusable",
+    "input": "900 samples @ 360 Hz, millivolts, median removed",
+    "labels": [
+      "good",
+      "noisy",
+      "unusable"
+    ],
+    "intended_use": "Research use only. Gate for downstream analysis; not validated on clinical data.",
+    "train_patients": [
+      101,
+      108,
+      109,
+      112,
+      114,
+      115,
+      116,
+      119,
+      122,
+      124,
+      201,
+      203,
+      205,
+      208,
+      209,
+      215,
+      223,
+      230
+    ],
+    "val_patients": [
+      106,
+      118,
+      207,
+      220
+    ],
+    "test_patients": [
+      100,
+      103,
+      105,
+      111,
+      113,
+      117,
+      121,
+      123,
+      200,
+      202,
+      210,
+      212,
+      213,
+      214,
+      219,
+      221,
+      222,
+      228,
+      231,
+      232,
+      233,
+      234
+    ],
+    "noise_split": "NSTDB bw/em/ma: first 60% of each recording train, last 40% test",
+    "label_source": "proxy labels from known injected SNR and synthetic failure modes (see quality/dataset.py)",
+    "file": "quality_net.pt",
+    "sha256": "7f3aba61d4259df7594484bd540c0d4c43bafd34d5e97dd4ee030cfaa7ea963a",
+    "parameters": 66435
+  }
+}
