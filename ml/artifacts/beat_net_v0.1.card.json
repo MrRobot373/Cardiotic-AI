@@ -74,5 +74,6 @@
     "augment": false,
     "label_smoothing": 0.0,
     "epochs": 14
-  }
+  },
+  "temperature": 1.7106558084487915
 }

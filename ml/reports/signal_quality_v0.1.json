@@ -211,8 +211,15 @@
     ],
     "noise_split": "NSTDB bw/em/ma: first 60% of each recording train, last 40% test",
     "label_source": "proxy labels from known injected SNR and synthetic failure modes (see quality/dataset.py)",
-    "file": "quality_net.pt",
+    "file": "quality_net_v0.1.pt",
     "sha256": "7f3aba61d4259df7594484bd540c0d4c43bafd34d5e97dd4ee030cfaa7ea963a",
-    "parameters": 66435
-  }
+    "parameters": 66435,
+    "version": "v0.1",
+    "recipe": {
+      "extra_p": 0.0,
+      "low_amp_p": 0.0,
+      "epochs": 10
+    }
+  },
+  "version": "v0.1"
 }

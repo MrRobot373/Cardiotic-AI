@@ -1,7 +1,8 @@
 """End-to-end analysis of one single-lead recording — what the review screen shows.
 
-quality gate -> beat detection -> beat classification -> measurements -> findings.
-Segments the quality model marks *unusable* produce no beats and no findings.
+quality gate -> beat detection -> beat classification -> rhythm (30 s windows) -> measurements -> findings.
+Segments the quality model marks *unusable* produce no beats and no findings, and are listed for
+manual review rather than silently dropped. Probabilities are temperature-calibrated (M5).
 """
 
 from __future__ import annotations
@@ -12,44 +13,76 @@ from dataclasses import dataclass
 import numpy as np
 import torch
 
-from cardiotic_ml import __version__, dsp, qrs
+from cardiotic_ml import __version__, calibration as cal, dsp, qrs
 from cardiotic_ml.beats import dataset as beat_data
 from cardiotic_ml.beats.model import BeatNet
 from cardiotic_ml.paths import ARTIFACTS_DIR
 from cardiotic_ml.quality import dataset as q_data
 from cardiotic_ml.quality.model import QualityNet
+from cardiotic_ml.rhythm import dataset as rd
+from cardiotic_ml.rhythm.model import RhythmNet
 
 FS = 360
 # Best detector on the MIT-BIH benchmark (reports/qrs_detection.json).
 QRS_METHOD = "pantompkins1985"
-# Beat model version used by the pipeline — chosen on validation patients, never on the test set.
+# Model versions used by the pipeline — each chosen on validation data, never on the test set.
+QUALITY_MODEL = "quality_net_v0.1"
 BEAT_MODEL = "beat_net_v0.1"  # v0.2 (augmentation) scored lower on validation patients
+RHYTHM_MODEL = "rhythm_net_v0.1"
+RHYTHM_LABELS = ["N", "A", "O", "~"]
+RHYTHM_NAMES = {"N": "sinus rhythm", "A": "atrial fibrillation", "O": "other rhythm", "~": "too noisy for rhythm"}
 
 
 @dataclass
 class Models:
     quality: QualityNet
     beats: BeatNet
+    rhythm: RhythmNet | None
     cards: dict
 
 
 def load_models(directory=ARTIFACTS_DIR) -> Models:
+    cards = {n: json.loads((directory / f"{n}.card.json").read_text()) for n in (QUALITY_MODEL, BEAT_MODEL)}
     q, b = QualityNet(len(q_data.LABELS)), BeatNet(len(beat_data.CLASSES))
-    q.load_state_dict(torch.load(directory / "quality_net.pt", weights_only=True))
+    q.load_state_dict(torch.load(directory / f"{QUALITY_MODEL}.pt", weights_only=True))
     b.load_state_dict(torch.load(directory / f"{BEAT_MODEL}.pt", weights_only=True))
+    r = None
+    if (directory / f"{RHYTHM_MODEL}.pt").exists():
+        cards[RHYTHM_MODEL] = json.loads((directory / f"{RHYTHM_MODEL}.card.json").read_text())
+        r = RhythmNet(len(RHYTHM_LABELS))
+        r.load_state_dict(torch.load(directory / f"{RHYTHM_MODEL}.pt", weights_only=True))
+        r.eval()
     q.eval(); b.eval()
-    cards = {n: json.loads((directory / f"{n}.card.json").read_text()) for n in ("quality_net", BEAT_MODEL)}
-    return Models(q, b, cards)
+    return Models(q, b, r, cards)
 
 
-def confidence_level(p: float) -> str:
-    # Uncalibrated bins for the research build. Calibration on a locked set comes before any UI use.
-    return "high" if p >= 0.9 else "moderate" if p >= 0.7 else "low"
+confidence_level = cal.confidence_level
+
+
+@torch.no_grad()
+def _rhythm(signal: np.ndarray, fs: float, usable: np.ndarray, models: Models) -> list[dict]:
+    if models.rhythm is None or len(signal) < 9 * fs:
+        return []
+    x, beats = rd.prepare(np.asarray(signal, dtype=np.float32), fs)
+    w, r, starts = rd.windows(x, beats)
+    logits = models.rhythm(torch.from_numpy(w), torch.from_numpy(r)).numpy()
+    p = cal.softmax(logits, models.cards[RHYTHM_MODEL].get("temperature", 1.0))
+    out = []
+    for st, prob in zip(starts, p):
+        a, b = int(st * FS), int((st + rd.WIN_S) * FS)
+        if usable[a:b].mean() < 0.5:
+            continue  # rhythm is not called on mostly unusable signal
+        k = int(prob.argmax())
+        out.append({"start_s": float(st), "end_s": float(min(st + rd.WIN_S, len(signal) / fs)),
+                    "rhythm": RHYTHM_LABELS[k], "probability": float(prob[k]), "confidence": confidence_level(float(prob[k])),
+                    "probabilities": {l: float(v) for l, v in zip(RHYTHM_LABELS, prob)}})
+    return out
 
 
 @torch.no_grad()
 def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
-    x = dsp.resample(np.asarray(signal, dtype=np.float32), fs, FS)
+    raw = np.asarray(signal, dtype=np.float32)
+    x = dsp.resample(raw, fs, FS)
     win = q_data.WIN
     # 1. quality, per 2.5 s window
     starts = np.arange(0, max(len(x) - win, 0) + 1, win)
@@ -61,20 +94,24 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
     usable = np.zeros(len(x), dtype=bool)
     for s, l in zip(starts, q_label):
         usable[s:s + win] = l != 2
+    review = [f"{int((q_label == 2).sum())} of {len(q_label)} windows not analysable: shown for manual review"] if (q_label == 2).any() else []
     if len(starts) == 0 or usable.mean() < 0.5:
-        return _result(segments, [], {}, ["Not analysable: less than half the recording has usable signal quality."], models)
+        return _result(segments, [], [], {}, ["Not analysable: less than half the recording has usable signal quality."] + review, models)
     # 2. beats, only inside usable windows
     peaks = qrs.detect_beats(x, FS, QRS_METHOD)
     peaks = peaks[usable[peaks]]
     if len(peaks) < 3:
-        return _result(segments, [], {}, ["Not analysable: too few beats detected in usable segments."], models)
-    # 3. classify
+        return _result(segments, [], [], {}, ["Not analysable: too few beats detected in usable segments."] + review, models)
+    # 3. classify beats (calibrated)
     bw, rr, ok = beat_data.from_signal(x, peaks, FS)
-    bp = torch.softmax(models.beats(torch.from_numpy(bw), torch.from_numpy(rr)), 1).numpy()
+    bp = cal.softmax(models.beats(torch.from_numpy(bw), torch.from_numpy(rr)).numpy(),
+                     models.cards[BEAT_MODEL].get("temperature", 1.0))
     beats = [{"time_s": float(p / FS), "class": beat_data.CLASSES[c], "probability": float(bp[i, c]),
               "confidence": confidence_level(float(bp[i, c]))}
              for i, (p, c) in enumerate(zip(peaks[ok], bp.argmax(1)))]
-    # 4. measurements: rate from normal-to-normal intervals only
+    # 4. rhythm, per 30 s window
+    rhythm = _rhythm(raw, fs, usable, models)
+    # 5. measurements: rate from normal-to-normal intervals only
     cls = bp.argmax(1)
     t = peaks[ok] / FS
     nn_rr = np.array([t[i + 1] - t[i] for i in range(len(t) - 1) if cls[i] == 0 and cls[i + 1] == 0])
@@ -88,6 +125,14 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
     }
     counts = {c: int((cls == i).sum()) for i, c in enumerate(beat_data.CLASSES)}
     findings = []
+    if rhythm:
+        tally = {l: [s for s in rhythm if s["rhythm"] == l] for l in RHYTHM_LABELS}
+        if tally["A"]:
+            best = max(s["probability"] for s in tally["A"])
+            findings.append(f"Possible atrial fibrillation in {len(tally['A'])} of {len(rhythm)} rhythm windows "
+                            f"(highest confidence: {confidence_level(best)})")
+        main = max(RHYTHM_LABELS, key=lambda l: len(tally[l]))
+        findings.append(f"Predominant rhythm: {RHYTHM_NAMES[main]} ({len(tally[main])} of {len(rhythm)} windows)")
     if counts["V"]:
         findings.append(f"Premature ventricular complexes: {counts['V']} beat(s)")
     if counts["S"]:
@@ -97,14 +142,15 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
     if (q_label == 1).any():
         findings.append(f"Noisy signal in {int((q_label == 1).sum())} of {len(q_label)} windows: morphology less reliable there")
     meas["beat_counts"] = counts
-    return _result(segments, beats, meas, findings, models)
+    return _result(segments, beats, rhythm, meas, findings + review, models)
 
 
-def _result(segments, beats, measurements, findings, models: Models) -> dict:
+def _result(segments, beats, rhythm, measurements, findings, models: Models) -> dict:
     return {
         "engine": {"name": "cardiotic-ml research pipeline", "version": __version__, "use": "research use only",
-                   "models": {k: {"sha256": v["sha256"][:12]} for k, v in models.cards.items()}},
-        "quality_segments": segments, "beats": beats, "measurements": measurements, "findings": findings,
+                   "models": {k: {"sha256": v["sha256"][:12], "temperature": v.get("temperature")} for k, v in models.cards.items()}},
+        "quality_segments": segments, "beats": beats, "rhythm_segments": rhythm,
+        "measurements": measurements, "findings": findings,
     }
 
 

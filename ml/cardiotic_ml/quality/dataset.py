@@ -90,16 +90,34 @@ def make_example(clean: np.ndarray, pool: dict[str, np.ndarray], rng: np.random.
     return seg / (seg.std() + 1e-8) * rng.uniform(0.1, 0.6), 2, "noise-only"
 
 
-def build(record_ids: list[int], pool: dict[str, np.ndarray], n: int, seed: int) -> QualitySet:
+def build(record_ids: list[int], pool: dict[str, np.ndarray], n: int, seed: int,
+          extra_clean: np.ndarray | None = None, extra_p: float = 0.0, low_amp_p: float = 0.0) -> QualitySet:
+    """`extra_clean`: additional clean base windows (e.g. AF / other-rhythm windows from another
+    dataset) used with probability `extra_p`; `low_amp_p`: share of base windows scaled down to
+    0.3–0.8x so small-amplitude ECGs are not learned as "no signal"."""
     rng = np.random.default_rng(seed)
     cleans = clean_windows(record_ids)
     xs, ys, kinds = [], [], []
     for _ in range(n):
-        x, y, k = make_example(cleans[rng.integers(len(cleans))], pool, rng)
+        use_extra = extra_clean is not None and rng.random() < extra_p
+        base = extra_clean[rng.integers(len(extra_clean))] if use_extra else cleans[rng.integers(len(cleans))]
+        low = rng.random() < low_amp_p
+        if low:
+            base = base * rng.uniform(0.3, 0.8)
+        x, y, k = make_example(base, pool, rng)
         xs.append(np.clip(x, -10, 10))
         ys.append(y)
-        kinds.append(k)
+        kinds.append(("extra:" if use_extra else "") + ("low-amp:" if low else "") + k)
     return QualitySet(np.asarray(xs, dtype=np.float32), np.asarray(ys, dtype=np.int64), np.asarray(kinds))
+
+
+def signal_windows(signal: np.ndarray, fs: float) -> np.ndarray:
+    """Non-overlapping 2.5 s windows at 360 Hz, median removed — the model's input format."""
+    from cardiotic_ml import dsp
+
+    x = dsp.resample(np.asarray(signal, dtype=np.float32), fs, FS)
+    starts = range(0, len(x) - WIN + 1, WIN)
+    return np.asarray([x[s:s + WIN] - np.median(x[s:s + WIN]) for s in starts], dtype=np.float32).reshape(-1, WIN)
 
 
 def noise_pools() -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:

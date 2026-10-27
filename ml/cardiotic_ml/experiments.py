@@ -81,34 +81,105 @@ def eval_qrs(methods: tuple[str, ...] = qrs.DETECTORS) -> dict:
 
 
 # ---------------------------------------------------------------- signal quality
-def train_quality(n_train: int = 30000, n_val: int = 5000, n_test: int = 10000, epochs: int = 10) -> dict:
+QUALITY_VERSIONS = {
+    "v0.1": {"extra_p": 0.0, "low_amp_p": 0.0, "epochs": 10},
+    # v0.2 targets the record-222 finding: real AF / other-rhythm windows (CinC 2017) as "good"
+    # bases, and low-amplitude versions of clean windows.
+    "v0.2": {"extra_p": 0.3, "low_amp_p": 0.3, "epochs": 10},
+}
+QUALITY_VAL_PATIENTS = [106, 118, 207, 220]
+
+
+def _cinc_quality_bases(records: list[str], signals: dict[str, np.ndarray]) -> np.ndarray:
+    from cardiotic_ml.data import cinc2017
+    return np.concatenate([q_data.signal_windows(signals[r], cinc2017.FS) for r in records])
+
+
+@torch.no_grad()
+def rate_windows(model: QualityNet, windows: np.ndarray) -> np.ndarray:
+    model.eval()
+    if len(windows) == 0:
+        return np.zeros(0, dtype=np.int64)
+    return model(torch.from_numpy(np.clip(windows, -10, 10))).argmax(1).numpy()
+
+
+def quality_real_data(model: QualityNet, split: str, signals: dict[str, np.ndarray] | None = None) -> dict:
+    """Real expert-labelled check (CinC 2017): share of windows rated good / noisy / unusable for
+    normal, AF, other-rhythm and 'too noisy' recordings — the last one should be rated badly,
+    the other three should not. For split='test' also the MIT-BIH DS2 AF / flutter records."""
+    from cardiotic_ml.data import cinc2017
+    signals = signals if signals is not None else cinc2017.load_all()
+    ref = dict(cinc2017.reference())
+    out = {}
+    for lab in cinc2017.LABELS:
+        recs = [r for r in cinc2017.split()[split] if ref[r] == lab]
+        pred = rate_windows(model, _cinc_quality_bases(recs, signals))
+        out[f"cinc_{lab}"] = {q: float(np.mean(pred == i)) for i, q in enumerate(q_data.LABELS)} | {"windows": int(len(pred))}
+    if split == "test":
+        for rid in (201, 203, 210, 219, 221, 222):  # all have AF; 222 also flutter and low amplitude
+            if rid in mitdb.DS2:
+                rec = mitdb.load_record(rid)
+                pred = rate_windows(model, q_data.signal_windows(rec.signal, rec.fs))
+                out[f"mitdb_{rid}"] = {q: float(np.mean(pred == i)) for i, q in enumerate(q_data.LABELS)}
+    return out
+
+
+def train_quality(version: str = "v0.2", n_train: int = 30000, n_val: int = 5000, n_test: int = 10000) -> dict:
+    spec = QUALITY_VERSIONS[version]
     pool_train, pool_test = q_data.noise_pools()
-    val_ids = [106, 118, 207, 220]
+    val_ids = QUALITY_VAL_PATIENTS
     train_ids = [r for r in mitdb.DS1 if r not in val_ids]
-    print("building quality datasets…", flush=True)
-    tr = q_data.build(train_ids, pool_train, n_train, seed=1)
+    signals, extra = None, None
+    if spec["extra_p"]:
+        from cardiotic_ml.data import cinc2017
+        signals = cinc2017.load_all()
+        ref = dict(cinc2017.reference())
+        extra = _cinc_quality_bases([r for r in cinc2017.split()["train"] if ref[r] in ("A", "O")], signals)
+    print(f"building quality datasets… ({version}: {spec})", flush=True)
+    tr = q_data.build(train_ids, pool_train, n_train, seed=1, extra_clean=extra, extra_p=spec["extra_p"], low_amp_p=spec["low_amp_p"])
     va = q_data.build(val_ids, pool_train, n_val, seed=2)
     te = q_data.build(mitdb.DS2, pool_test, n_test, seed=3)
     model = QualityNet(len(q_data.LABELS))
-    cfg = TrainConfig(epochs=epochs, batch_size=256, lr=2e-3)
+    cfg = TrainConfig(epochs=spec["epochs"], batch_size=256, lr=2e-3)
     model, info = train(model, (torch.from_numpy(tr.x),), torch.from_numpy(tr.y),
                         (torch.from_numpy(va.x),), va.y, q_data.LABELS, cfg)
     probs = predict(model, (torch.from_numpy(te.x),))
     rep = class_report(te.y, probs.argmax(1), q_data.LABELS)
+    val_rep = class_report(va.y, predict(model, (torch.from_numpy(va.x),)).argmax(1), q_data.LABELS)
     by_kind = {k: float((probs.argmax(1)[te.kind == k] == te.y[te.kind == k]).mean()) for k in sorted(set(te.kind))}
-    card = _save_model(model, "quality_net", {
-        "name": "quality_net", "task": "single-lead 2.5 s window signal quality: good / noisy / unusable",
+    card = _save_model(model, f"quality_net_{version}", {
+        "name": "quality_net", "version": version, "recipe": spec,
+        "task": "single-lead 2.5 s window signal quality: good / noisy / unusable",
         "input": "900 samples @ 360 Hz, millivolts, median removed", "labels": q_data.LABELS,
         "intended_use": "Research use only. Gate for downstream analysis; not validated on clinical data.",
         "train_patients": train_ids, "val_patients": val_ids, "test_patients": mitdb.DS2,
         "noise_split": "NSTDB bw/em/ma: first 60% of each recording train, last 40% test",
-        "label_source": "proxy labels from known injected SNR and synthetic failure modes (see quality/dataset.py)",
+        "label_source": "proxy labels from known injected SNR and synthetic failure modes (see quality/dataset.py)"
+                        + ("; extra good bases from CinC 2017 train-split AF / other-rhythm records" if extra is not None else ""),
     })
-    result = _meta(task="signal_quality", sizes={"train": len(tr.y), "val": len(va.y), "test": len(te.y)},
-                   test=rep, test_accuracy_by_generator=by_kind, training=info, model_card=card)
-    _write("signal_quality", result)
+    print("real-data checks…", flush=True)
+    result = _meta(task="signal_quality", version=version, sizes={"train": len(tr.y), "val": len(va.y), "test": len(te.y)},
+                   test=rep, val=val_rep, test_accuracy_by_generator=by_kind, training=info, model_card=card,
+                   real_data_val=quality_real_data(model, "val", signals), real_data_test=quality_real_data(model, "test", signals))
+    _write(f"signal_quality_{version}", result)
     print(json.dumps({k: rep[k] for k in ("accuracy", "macro_f1")}), flush=True)
     return result
+
+
+def quality_real_data_for(version: str) -> None:
+    """Add the real-data checks to an existing quality report (used for v0.1, trained before they existed)."""
+    path = REPORTS_DIR / f"signal_quality_{version}.json"
+    result = json.loads(path.read_text())
+    model = QualityNet(len(q_data.LABELS))
+    model.load_state_dict(torch.load(ARTIFACTS_DIR / f"quality_net_{version}.pt", weights_only=True))
+    from cardiotic_ml.data import cinc2017
+    signals = cinc2017.load_all()
+    pool_train, _ = q_data.noise_pools()
+    va = q_data.build(QUALITY_VAL_PATIENTS, pool_train, 5000, seed=2)
+    result["val"] = class_report(va.y, predict(model, (torch.from_numpy(va.x),)).argmax(1), q_data.LABELS)
+    result["real_data_val"] = quality_real_data(model, "val", signals)
+    result["real_data_test"] = quality_real_data(model, "test", signals)
+    path.write_text(json.dumps(result, indent=2, default=float))
 
 
 # ---------------------------------------------------------------- beat classification
@@ -206,7 +277,7 @@ def eval_pipeline() -> dict:
                            "usable_fraction": res["measurements"].get("usable_fraction")}
         print(f"record {rid}: matched {len(t_r)}, missed {missed}, gated {gated}", flush=True)
     rep = class_report(np.array(y_true), np.array(y_pred), labels)
-    result = _meta(task="end_to_end_pipeline", beat_model=pipeline.BEAT_MODEL, qrs_method=pipeline.QRS_METHOD,
+    result = _meta(task="end_to_end_pipeline", quality_model=pipeline.QUALITY_MODEL, beat_model=pipeline.BEAT_MODEL, qrs_method=pipeline.QRS_METHOD,
                    test_patients=mitdb.DS2, test=rep,
                    totals={"matched": len(y_true), "missed": missed_total, "in_unusable_segments": gated_total,
                            "unmatched_detections": extra_total},

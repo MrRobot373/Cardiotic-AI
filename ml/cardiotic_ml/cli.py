@@ -2,7 +2,11 @@
 
   download        fetch MIT-BIH (mitdb) and NSTDB noise records from PhysioNet into data/raw
   eval-qrs        score QRS detectors on all 48 MIT-BIH records (EC57-style)
-  train-quality   train + test the signal-quality model
+  train-quality   train + test the signal-quality model (--version v0.1 | v0.2)
+  quality-real    add CinC 2017 real-data checks to an existing quality report (--version)
+  train-rhythm    train + test the rhythm model on CinC 2017 (also fits its calibration)
+  eval-rhythm-mitdb  cross-dataset AF test of the rhythm model on MIT-BIH
+  calibrate-beats    fit the beat model's calibration temperature on its validation patients
   train-beats     train + test the beat classifier (inter-patient DS1 -> DS2)
   eval-pipeline   run the full pipeline on all 22 DS2 test records and score it end to end
   analyze         run the full pipeline on one MIT-BIH record and save JSON (+ optional plot)
@@ -21,7 +25,11 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("download")
     sub.add_parser("eval-qrs")
     sub.add_parser("eval-pipeline")
-    q = sub.add_parser("train-quality"); q.add_argument("--epochs", type=int, default=10)
+    q = sub.add_parser("train-quality"); q.add_argument("--version", default="v0.2", choices=["v0.1", "v0.2"])
+    qr = sub.add_parser("quality-real"); qr.add_argument("--version", default="v0.1")
+    tr = sub.add_parser("train-rhythm"); tr.add_argument("--epochs", type=int, default=16)
+    sub.add_parser("eval-rhythm-mitdb")
+    sub.add_parser("calibrate-beats")
     b = sub.add_parser("train-beats"); b.add_argument("--version", default="v0.2", choices=["v0.1", "v0.2"])
     a = sub.add_parser("analyze")
     a.add_argument("--record", type=int, required=True)
@@ -45,7 +53,19 @@ def main(argv: list[str] | None = None) -> None:
         eval_pipeline()
     elif args.cmd == "train-quality":
         from cardiotic_ml.experiments import train_quality
-        train_quality(epochs=args.epochs)
+        train_quality(version=args.version)
+    elif args.cmd == "quality-real":
+        from cardiotic_ml.experiments import quality_real_data_for
+        quality_real_data_for(args.version)
+    elif args.cmd == "train-rhythm":
+        from cardiotic_ml.experiments_rhythm import train_rhythm
+        train_rhythm(epochs=args.epochs)
+    elif args.cmd == "eval-rhythm-mitdb":
+        from cardiotic_ml.experiments_rhythm import eval_rhythm_mitdb
+        eval_rhythm_mitdb()
+    elif args.cmd == "calibrate-beats":
+        from cardiotic_ml.experiments_rhythm import calibrate_beats
+        calibrate_beats()
     elif args.cmd == "train-beats":
         from cardiotic_ml.experiments import train_beats
         train_beats(version=args.version)
@@ -59,7 +79,9 @@ def main(argv: list[str] | None = None) -> None:
         result["source"] = {"database": "mitdb", "record": args.record, "start_s": args.start, "seconds": args.seconds}
         with open(args.out, "w") as f:
             json.dump(result, f, indent=2)
-        print(json.dumps({"measurements": result["measurements"], "findings": result["findings"]}, indent=2))
+        print(json.dumps({"measurements": result["measurements"], "rhythm_segments": [
+            {k: s[k] for k in ("start_s", "rhythm", "confidence")} for s in result["rhythm_segments"]],
+            "findings": result["findings"]}, indent=2))
         if args.plot:
             pipeline.plot_strip(sig, rec.fs, result, 0.0, min(10.0, args.seconds), args.plot)
     elif args.cmd == "report":

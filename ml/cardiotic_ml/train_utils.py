@@ -61,12 +61,13 @@ def _loader(tensors: tuple[torch.Tensor, ...], batch: int, shuffle: bool) -> Dat
 
 
 @torch.no_grad()
-def predict(model: nn.Module, inputs: tuple[torch.Tensor, ...], batch: int = 1024) -> np.ndarray:
+def predict_logits(model: nn.Module, inputs: tuple[torch.Tensor, ...], batch: int = 1024) -> np.ndarray:
     model.eval()
-    probs = []
-    for chunk in _loader(inputs, batch, shuffle=False):
-        probs.append(torch.softmax(model(*chunk), dim=1))
-    return torch.cat(probs).numpy()
+    return torch.cat([model(*chunk) for chunk in _loader(inputs, batch, shuffle=False)]).numpy()
+
+
+def predict(model: nn.Module, inputs: tuple[torch.Tensor, ...], batch: int = 1024) -> np.ndarray:
+    return torch.softmax(torch.from_numpy(predict_logits(model, inputs, batch)), dim=1).numpy()
 
 
 def train(model: nn.Module, train_inputs: tuple[torch.Tensor, ...], y_train: torch.Tensor,

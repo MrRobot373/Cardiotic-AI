@@ -51,17 +51,36 @@ def write_results() -> str:
         out += ["", f"Hardest records for `{best[0]}`: " + ", ".join(
             f"{r['record']} (Se {_pct(r['sensitivity'])}, +P {_pct(r['ppv'])})" for r in worst), ""]
 
-    s = _load("signal_quality")
-    if s:
-        rep = s["test"]
+    qvers = [(v, _load(f"signal_quality_{v}")) for v in ("v0.1", "v0.2")]
+    qvers = [(v, r) for v, r in qvers if r]
+    if qvers:
+        from cardiotic_ml.pipeline import QUALITY_MODEL
+        adopted_q = QUALITY_MODEL.removeprefix("quality_net_")
         out += ["## 2. Signal-quality model (AI model #1)", "",
-                f"Test set: {s['sizes']['test']:,} windows from the 22 DS2 patients, with noise taken from a part of the noise "
-                f"recordings never used in training. Accuracy **{_pct(rep['accuracy'])}**, macro-F1 **{_pct(rep['macro_f1'])}**.", ""]
-        out += _class_table(rep) + [""] + _confusion(rep) + ["", "Accuracy by how the test window was made:", "",
-                "| Generator | Accuracy |", "|---|---:|"]
-        out += [f"| {k} | {_pct(v)} |" for k, v in s["test_accuracy_by_generator"].items()]
-        out += ["", "Labels are proxies derived from the injected noise level (see `quality/dataset.py`). "
-                "Clinician-labelled windows are needed before any claim about real-world quality detection.", ""]
+                "Synthetic test: 10,000 windows from the 22 DS2 patients, noise from a part of the noise recordings never "
+                "used in training. Real-data check: CinC 2017 recordings labelled by experts (normal, AF, other rhythm, and "
+                "'too noisy to classify'), plus MIT-BIH DS2 records with AF or flutter.", "",
+                "| Version | Recipe | Synthetic test accuracy | Unusable caught (Se) | CinC AF windows rated unusable | CinC 'too noisy' windows rated noisy or unusable | MIT-BIH 222 windows rated unusable |",
+                "|---|---|---:|---:|---:|---:|---:|"]
+        for v, r in qvers:
+            real = r.get("real_data_test", {})
+            af, nz, m222 = real.get("cinc_A", {}), real.get("cinc_~", {}), real.get("mitdb_222", {})
+            noisy_or_bad = (nz.get("noisy", 0) + nz.get("unusable", 0)) if nz else None
+            out.append(f"| {v}{' (adopted)' if v == adopted_q else ''} | {r['model_card'].get('recipe', {})} | {_pct(r['test']['accuracy'])} | "
+                       f"{_pct(r['test']['per_class']['unusable']['sensitivity'])} | {_pct(af.get('unusable'))} | {_pct(noisy_or_bad)} | {_pct(m222.get('unusable'))} |")
+        v, s = next((v, r) for v, r in qvers if v == adopted_q)
+        rep = s["test"]
+        out += ["", f"**Adopted: {v}.** Synthetic-test detail:", ""]
+        out += _class_table(rep) + [""] + _confusion(rep) + [""]
+        if s.get("real_data_test"):
+            out += ["Real-data check (test split), share of 2.5 s windows rated:", "",
+                    "| Recording type | Windows | good | noisy | unusable |", "|---|---:|---:|---:|---:|"]
+            for k, m in s["real_data_test"].items():
+                out.append(f"| {k} | {m.get('windows', '—') if isinstance(m.get('windows'), int) else '—'} | "
+                           f"{_pct(m['good'])} | {_pct(m['noisy'])} | {_pct(m['unusable'])} |")
+            out.append("")
+        out += ["Synthetic labels are proxies derived from the injected noise level (see `quality/dataset.py`). "
+                "The CinC 'too noisy' label is for the whole recording, so not every window in such a recording is bad.", ""]
 
     versions = [(v, _load(f"beat_classification_{v}")) for v in ("v0.1", "v0.2")]
     versions = [(v, r) for v, r in versions if r]
@@ -85,19 +104,58 @@ def write_results() -> str:
                 "N = normal or bundle-branch beats · S = supraventricular ectopic · V = ventricular ectopic · F = fusion. "
                 "In this protocol S and F are known to be hard (few training examples, S beats often look normal). "
                 "Accuracy is dominated by N and is not the number to judge the model by: read Se and +P for S and V.", ""]
+    rh = _load("rhythm_classification_v0.1")
+    if rh:
+        rep = rh["test"]
+        out += ["## 4. Rhythm classifier (AI model #3)", "",
+                f"Trained on CinC 2017 handheld single-lead ECGs ({rh['sizes']['train']['records']:,} records), tested on "
+                f"{rh['sizes']['test']['records']:,} held-out records (stratified split by record; the dataset has no patient IDs). "
+                f"Record-level result (average of 30 s windows). **Challenge F1 (mean of N, A, O): {_pct(rh['test_challenge_f1'])}**. "
+                "For context, the best 2017 challenge entries scored about 83% on the hidden test set (not directly comparable).", ""]
+        out += _class_table(rep) + [""] + _confusion(rep) + ["", "N normal sinus · A atrial fibrillation · O other rhythm · ~ too noisy to classify.", ""]
+    x = _load("rhythm_cross_dataset_mitdb")
+    if x:
+        out += ["### Cross-dataset test: same model on MIT-BIH (never seen in training)", "",
+                f"Different device (Holter vs handheld), lead (MLII vs lead I), sampling rate and decade. {x['protocol']}.", "",
+                f"- AF windows: {x['windows_af']:,} · non-AF windows: {x['windows_non_af']:,}",
+                f"- **AF sensitivity {_pct(x['af_sensitivity'])}**, **AF positive predictivity {_pct(x['af_ppv'])}**, "
+                f"specificity {_pct(x['af_specificity'])}",
+                f"- What the model said on non-AF windows: {x['predictions_on_non_af_windows']}", "",
+                "| Record | AF windows | AF detected | False AF windows |", "|---|---:|---:|---:|"]
+        out += [f"| {r['record']} | {r['af_windows']} | {r['af_detected']} | {r['false_af_windows']} |" for r in x["per_record"]]
+        out.append("")
+    cb = _load("beat_calibration")
+    if rh or cb:
+        out += ["## 5. Confidence calibration (M5)", "",
+                "Temperature scaling fitted on validation data only. ECE = expected calibration error "
+                "(gap between stated confidence and observed accuracy; lower is better).", "",
+                "| Model | Temperature | Test ECE before | Test ECE after | 'High' share / accuracy | 'Moderate' share / accuracy | 'Low' share / accuracy |",
+                "|---|---:|---:|---:|---:|---:|---:|"]
+        def lv(d, k):
+            return f"{_pct(d[k]['share'])} / {_pct(d[k]['accuracy'])}"
+        if rh:
+            c = rh["calibration"]
+            out.append(f"| rhythm_net v0.1 (records) | {c['temperature']:.2f} | {_pct(c['ece_before'])} | {_pct(c['ece_after'])} | "
+                       f"{lv(c['confidence_levels'], 'high')} | {lv(c['confidence_levels'], 'moderate')} | {lv(c['confidence_levels'], 'low')} |")
+        if cb:
+            c = cb["confidence_levels_after"]
+            out.append(f"| {cb['beat_model']} (beats) | {cb['temperature']:.2f} | {_pct(cb['ece_before'])} | {_pct(cb['ece_after'])} | "
+                       f"{lv(c, 'high')} | {lv(c, 'moderate')} | {lv(c, 'low')} |")
+        out.append("")
+
     e = _load("end_to_end_pipeline")
     if e:
         rep, t = e["test"], e["totals"]
         ref_total = t["matched"] + t["missed"] + t["in_unusable_segments"]
-        out += ["## 4. End to end — the whole pipeline on 22 unseen patients", "",
-                f"Quality gate → `{e['qrs_method']}` detection → R-peak refinement → `{e['beat_model']}`, run on the full "
+        out += ["## 6. End to end — the whole pipeline on 22 unseen patients", "",
+                f"Quality gate `{e.get('quality_model', 'quality_net_v0.1')}` → `{e['qrs_method']}` detection → R-peak refinement → `{e['beat_model']}`, run on the full "
                 "30-minute DS2 recordings and scored against the cardiologists' annotations. This is what a user would get.", "",
                 f"- Reference beats: {ref_total:,} · matched to a detection: {t['matched']:,} ({_pct(t['matched'] / ref_total)}) · "
                 f"missed by the detector: {t['missed']:,} · inside segments the quality gate marked unusable: {t['in_unusable_segments']:,} · "
                 f"extra detections with no reference beat: {t['unmatched_detections']:,}",
                 f"- Classification of matched beats: accuracy **{_pct(rep['accuracy'])}**, macro-F1 **{_pct(rep['macro_f1'])}**", ""]
         out += _class_table(rep) + [""]
-    out += ["## 5. Known issues (found while testing — next work)", "",
+    out += ["## 7. Known issues (found while testing — next work)", "",
             "1. **Pan-Tompkins places beats ~40 ms late.** The beat classifier is trained on R-peak positions, so the "
             "first end-to-end run agreed with the cardiologists on only 42% of beats in a test minute. Fixed by refining every "
             "detection to the R peak (`qrs.refine_peaks`): agreement on the same minute rose to 92%, and end-to-end accuracy now "

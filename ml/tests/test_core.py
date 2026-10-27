@@ -95,3 +95,48 @@ def test_refine_peaks_moves_late_detections_onto_r_peak():
     late = true + 15  # ~42 ms late, like Pan-Tompkins
     refined = qrs.refine_peaks(x, fs, late)
     assert np.median(np.abs(refined[: len(true)] - true[: len(refined)])) <= 2
+
+
+def test_temperature_scaling_reduces_overconfidence():
+    from cardiotic_ml import calibration as cal
+
+    rng = np.random.default_rng(0)
+    y = rng.integers(0, 3, 4000)
+    logits = rng.normal(0, 1, (4000, 3))
+    logits[np.arange(4000), y] += 1.0
+    logits *= 4.0  # artificially overconfident
+    t = cal.fit_temperature(logits, y)
+    assert t > 2.0
+    assert cal.ece(cal.softmax(logits, t), y) < cal.ece(cal.softmax(logits), y)
+
+
+def test_confidence_levels():
+    from cardiotic_ml.calibration import confidence_level
+
+    assert [confidence_level(p) for p in (0.95, 0.8, 0.5)] == ["high", "moderate", "low"]
+
+
+def test_rr_irregularity_features_separate_af_like_from_regular():
+    from cardiotic_ml.rhythm.dataset import rr_window_features
+
+    regular = np.arange(0, 30, 0.8)
+    irregular = np.cumsum(np.random.default_rng(1).uniform(0.4, 1.2, 40))
+    f_reg, f_irr = rr_window_features(regular, 30), rr_window_features(irregular[irregular < 30], 30)
+    assert f_irr[2] > 5 * f_reg[2] + 0.05  # coefficient of variation
+    assert rr_window_features(np.array([1.0, 2.0]), 30)[-1] == 1.0  # too-few-beats flag
+
+
+def test_rhythm_windows_pad_short_and_cover_tail():
+    from cardiotic_ml.rhythm import dataset as rd
+
+    short, _, st = rd.windows(np.ones(10 * rd.FS_MODEL, dtype=np.float32), np.arange(0, 10, 1.0))
+    assert short.shape == (1, rd.WIN) and list(st) == [0.0]
+    long_, _, st = rd.windows(np.ones(50 * rd.FS_MODEL, dtype=np.float32), np.arange(0, 50, 1.0))
+    assert st[-1] == 20.0 and long_.shape[1] == rd.WIN
+
+
+def test_rhythm_model_forward_shape():
+    from cardiotic_ml.rhythm.dataset import N_RRF, WIN
+    from cardiotic_ml.rhythm.model import RhythmNet
+
+    assert RhythmNet()(torch.zeros(2, WIN), torch.zeros(2, N_RRF)).shape == (2, 4)
