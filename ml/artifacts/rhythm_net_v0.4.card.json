@@ -1,0 +1,25 @@
+{
+  "name": "rhythm_net",
+  "version": "v0.4",
+  "recipe": {
+    "ectopy_features": true,
+    "mitdb_train": true,
+    "afdb_train": true,
+    "epochs": 14
+  },
+  "n_rrf": 16,
+  "task": "30 s single-lead rhythm: N normal / A atrial fibrillation / O other rhythm / ~ too noisy",
+  "input": "4500 samples @ 150 Hz (monitoring band-pass, per-window std normalisation) + 16 RR features (ectopy-aware: uses the beat classifier's V/F labels)",
+  "labels": [
+    "N",
+    "A",
+    "O",
+    "~"
+  ],
+  "temperature": 1.4754940271377563,
+  "intended_use": "Research use only. Not validated on clinical monitors.",
+  "data": "PhysioNet/CinC Challenge 2017 training set (ODC-By 1.0), REFERENCE-v3 labels, stratified 70/10/20 by record; plus 1677 MIT-BIH windows from records [101, 106, 108, 109, 112, 114, 115, 116, 118, 119, 122, 124, 203, 205, 208, 223, 230]; plus MIT-BIH AF Database training patients ['05091', '06453', '08434', '08378', '06995', '05121', '08405', '07162'] (ODC-By 1.0)",
+  "file": "rhythm_net_v0.4.pt",
+  "sha256": "2e46f91c90d82227dffb234d4fa0ca0ddd3e500e96805f79d77160ce00d32a4c",
+  "parameters": 1032868
+}

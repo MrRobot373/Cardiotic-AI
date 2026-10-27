@@ -91,8 +91,10 @@ MIT-BIH split for rhythm work: **validation** records 201, 215, 207, 209, 220 (u
 
 | Version | Recipe | CinC val F1 | CinC test F1 | MIT-BIH val: AF found · false-AF windows | MIT-BIH test (DS2): AF Se · false-AF windows · AF PPV · specificity | AFDB val: AF Se · false-AF windows | AFDB test: AF Se · false-AF windows · AF PPV · specificity |
 |---|---|---:|---:|---:|---:|---:|---:|
-| v0.1 (adopted) | {'ectopy_features': False, 'mitdb_train': False, 'epochs': 14} | 84.4% | 83.1% | 18/18 · 38 | 96.9% · 106 · 59.8% · 90.6% | — | — |
+| v0.1 (adopted) | {'ectopy_features': False, 'mitdb_train': False, 'epochs': 14} | 84.4% | 83.1% | 18/18 · 38 | 96.9% · 106 · 59.8% · 90.6% | 95.0% · 162 | 97.4% · 148 · 95.5% · 97.1% |
 | v0.2 | {'ectopy_features': True, 'mitdb_train': True, 'epochs': 14} | 85.7% | 83.0% | 18/18 · 3 | 77.3% · 25 · 83.4% · 97.8% | — | — |
+| v0.4 | {'ectopy_features': True, 'mitdb_train': True, 'afdb_train': True, 'epochs': 14} | 85.5% | 82.7% | 18/18 · 6 | — | 90.8% · 94 | — |
+| v0.5 | {'ectopy_features': False, 'mitdb_train': True, 'afdb_train': True, 'epochs': 14} | 84.6% | 82.3% | 18/18 · 33 | — | 88.4% · 99 | — |
 | v0.3 | v0.1 + ectopy gate {'pvc_min': 0.02, 'tau': 0.16, 'leads': ['MLII', 'II']} (CinC = v0.1: gate off for lead I) | 84.4% | 83.1% | 18/18 · 6 | 65.0% · 71 · 59.9% · 93.7% | — | — |
 
 **What happened with the AF false-alarm fix (issue 5):**
@@ -101,6 +103,29 @@ MIT-BIH split for rhythm work: **validation** records 201, 215, 207, 209, 220 (u
 - **v0.3** (v0.1 + an ectopy gate: an AF call is withdrawn when the rhythm becomes regular once PVC-adjacent beats are removed; gate only on lead MLII/II, where the beat classifier is validated) cut validation false AF 38 → 6 with no AF lost, but on DS2 found AF in only 65% of AF windows. AF irregularity varies a lot between patients (PVC-free RR variation median 0.22 in validation patient 201, 0.14 in test patient 210), and a threshold chosen on one AF patient does not transfer. **Not adopted.**
 - **Pipeline keeps v0.1**: it catches ~97% of AF but raises more false alarms, which go to a reader for review. Missing AF is the more harmful error for this product.
 - **Lessons:** the validation set had a single AF patient, too few to choose anything that trades AF sensitivity; and DS2 has now informed two decisions, so it is no longer an unbiased final test. Both are fixed by an AF validation set with many AF patients (MIT-BIH AF Database, 23 patients) and a fresh external test set.
+
+**Retry with the MIT-BIH AF Database** (23 Holter patients, ~10 h each): patients ranked by AF burden and dealt into train 8 / validation 8 / test 7. The AFDB test patients were not used for any decision.
+
+Selection rule (fixed before any AFDB result): Adopt a candidate over v0.1 only if, on VALIDATION data: (1) AF sensitivity drops by at most 2 points on AFDB-val and on MIT-BIH-val, and no AFDB-val AF patient's AF sensitivity drops by more than 10 points; (2) CinC val challenge F1 drops by at most 1 point; (3) false-AF windows on AFDB-val + MIT-BIH-val are fewer than v0.1's. Among passing candidates, fewest false-AF windows wins. Fixed before any AFDB result.
+
+| Candidate | Passes | AFDB-val AF Se drop | MIT-BIH-val AF Se drop | Worst AFDB-val patient drop | CinC val F1 drop | False-AF windows (val) vs v0.1 |
+|---|---|---:|---:|---:|---:|---:|
+| v0.4 | no | 4.2% | 0.0% | 16.1% | -1.1% | 100 vs 200 |
+| v0.5 | no | 6.6% | 0.0% | 26.6% | -0.1% | 132 vs 200 |
+
+**Chosen by the rule: v0.1.** Neither candidate passed. v0.4 halved validation false-AF windows (200 → 100) and kept every MIT-BIH AF window, but lost 4.2 points of AF sensitivity on AFDB validation, 16 points in patient 07859 — fast (~100 bpm), unusually regular AF (RR variation 0.12) where the windows it dropped had twice the 'PVC' share (4.1% vs 2.1%). In AF the beat classifier's PVC labels are partly AF beats it misreads, so features built on them stay fragile. This time the validation rule caught the problem, so the AFDB test patients were used only once, for the chosen model; v0.4 and v0.5 were never run on them, which keeps them clean for future attempts.
+
+AFDB test patients, v0.1 (fresh data):
+
+| Patient | AF windows | AF detected | Non-AF windows | False AF windows |
+|---|---:|---:|---:|---:|
+| 04048 | 6 | 6 | 1209 | 0 |
+| 04126 | 40 | 40 | 1175 | 24 |
+| 07910 | 194 | 193 | 1026 | 8 |
+| 08219 | 223 | 214 | 928 | 85 |
+| 07879 | 739 | 739 | 486 | 1 |
+| 04936 | 854 | 821 | 307 | 21 |
+| 06426 | 1148 | 1108 | 32 | 9 |
 
 **Adopted: v0.1.** CinC test detail:
 
@@ -169,7 +194,7 @@ Quality gate `quality_net_v0.3` → `pantompkins1985` detection → R-peak refin
 4. **'Supraventricular ectopic beats' reported during AF.** Premature atrial beats are not defined in AF; that finding is now suppressed when AF is the predominant rhythm.
 
 ### Open (next work)
-5. **AF over-called in ectopy-rich recordings — two fixes tried, neither adopted** (section 4). Both cut false AF a lot but lost real AF on unseen patients. Next: an AF validation set with many AF patients (MIT-BIH AF Database), an ectopy approach that also covers atrial premature beats (record 232's false AF is APC-driven), and a fresh external test set, because DS2 has now informed two rhythm decisions.
+5. **AF over-called in ectopy-rich recordings — four candidates tried, none adopted** (section 4). Every candidate cut false AF substantially but lost real AF in some patient. With the MIT-BIH AF Database (8 validation AF patients) the pre-declared rule now catches this on validation. On fresh AFDB test patients, v0.1 itself finds 97.4% of AF windows with 95.5% positive predictivity, so the false-alarm problem is concentrated in non-AF patients with frequent ectopy (MIT-BIH DS2: PPV ~60%). Next options: (a) an explicit AF-probability operating point chosen on validation per use case (screening vs. review) — a transparent sensitivity/false-alarm trade-off; (b) more AF data (Long-Term AF Database, 84 patients); (c) beat labels inside AF for a beat classifier that is reliable during AF.
 5b. **The beat classifier labels some AF beats as ventricular**, on handheld lead I especially (a quarter of CinC AF windows had ≥10% 'PVCs'). Anything built on its PVC labels must be restricted to leads where it is validated.
 6. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). The v0.2 augmentation recipe scored lower on validation and was not adopted. Next: more S/F data (INCART, long-term AF database), patient-adaptive RR features.
 7. **Beat-model calibration does not transfer across patients.** A temperature fitted on the 4 validation patients made test ECE worse (slightly under-confident). The rhythm model's calibration did improve on test. Next: calibrate beats on a larger, more varied patient set; until then beat confidence levels must not be shown as calibrated in any UI.

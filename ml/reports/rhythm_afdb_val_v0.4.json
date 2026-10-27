@@ -1,0 +1,97 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T06:05:01+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)",
+    "afdb": "PhysioNet MIT-BIH Atrial Fibrillation Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "rhythm_afdb_af",
+  "version": "v0.4",
+  "split": "val",
+  "records": [
+    "04015",
+    "05261",
+    "04908",
+    "04043",
+    "04746",
+    "08455",
+    "08215",
+    "07859"
+  ],
+  "protocol": "30 s non-overlapping windows on AFDB channel 0; AF = window entirely (AFIB; non-AF = no AFIB; mixed skipped",
+  "windows_af": 4011,
+  "windows_non_af": 5602,
+  "false_af_windows": 94,
+  "af_sensitivity": 0.9082523061580653,
+  "af_ppv": 0.9748461332619749,
+  "af_specificity": 0.9832202784719742,
+  "per_record": [
+    {
+      "record": "04015",
+      "af_windows": 5,
+      "af_detected": 5,
+      "false_af_windows": 33,
+      "non_af_windows": 1214,
+      "af_sensitivity": 1.0
+    },
+    {
+      "record": "05261",
+      "af_windows": 11,
+      "af_detected": 11,
+      "false_af_windows": 0,
+      "non_af_windows": 1201,
+      "af_sensitivity": 1.0
+    },
+    {
+      "record": "04908",
+      "af_windows": 97,
+      "af_detected": 97,
+      "false_af_windows": 53,
+      "non_af_windows": 1118,
+      "af_sensitivity": 1.0
+    },
+    {
+      "record": "04043",
+      "af_windows": 184,
+      "af_detected": 176,
+      "false_af_windows": 8,
+      "non_af_windows": 885,
+      "af_sensitivity": 0.9565217391304348
+    },
+    {
+      "record": "04746",
+      "af_windows": 649,
+      "af_detected": 631,
+      "false_af_windows": 0,
+      "non_af_windows": 571,
+      "af_sensitivity": 0.9722650231124808
+    },
+    {
+      "record": "08455",
+      "af_windows": 848,
+      "af_detected": 817,
+      "false_af_windows": 0,
+      "non_af_windows": 377,
+      "af_sensitivity": 0.9634433962264151
+    },
+    {
+      "record": "08215",
+      "af_windows": 989,
+      "af_detected": 938,
+      "false_af_windows": 0,
+      "non_af_windows": 236,
+      "af_sensitivity": 0.948432760364004
+    },
+    {
+      "record": "07859",
+      "af_windows": 1228,
+      "af_detected": 968,
+      "false_af_windows": 0,
+      "non_af_windows": 0,
+      "af_sensitivity": 0.7882736156351792
+    }
+  ]
+}

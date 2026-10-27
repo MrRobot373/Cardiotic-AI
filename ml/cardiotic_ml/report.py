@@ -161,7 +161,13 @@ def write_results() -> str:
             for c in sel["candidates"]:
                 out.append(f"| {c['version']} | {'yes' if c['passes'] else 'no'} | {_pct(c['afdb_af_se_drop'])} | {_pct(c['mitdb_af_se_drop'])} | "
                            f"{_pct(c['worst_patient_af_se_drop'])} | {_pct(c['cinc_val_f1_drop'])} | {c['false_af']} vs {c['false_af_baseline']} |")
-            out += ["", f"**Chosen by the rule: {sel['chosen']}.**", ""]
+            out += ["", f"**Chosen by the rule: {sel['chosen']}.** Neither candidate passed. v0.4 halved validation false-AF "
+                    "windows (200 → 100) and kept every MIT-BIH AF window, but lost 4.2 points of AF sensitivity on AFDB "
+                    "validation, 16 points in patient 07859 — fast (~100 bpm), unusually regular AF (RR variation 0.12) where the "
+                    "windows it dropped had twice the 'PVC' share (4.1% vs 2.1%). In AF the beat classifier's PVC labels are "
+                    "partly AF beats it misreads, so features built on them stay fragile. This time the validation rule caught the "
+                    "problem, so the AFDB test patients were used only once, for the chosen model; v0.4 and v0.5 were never run "
+                    "on them, which keeps them clean for future attempts.", ""]
             at = _load(f"rhythm_afdb_test_{adopted_r}")
             if at:
                 out += [f"AFDB test patients, {adopted_r} (fresh data):", "",
@@ -227,10 +233,13 @@ def write_results() -> str:
             "4. **'Supraventricular ectopic beats' reported during AF.** Premature atrial beats are not defined in AF; that finding "
             "is now suppressed when AF is the predominant rhythm.", "",
             "### Open (next work)",
-            "5. **AF over-called in ectopy-rich recordings — two fixes tried, neither adopted** (section 4). Both cut false AF a "
-            "lot but lost real AF on unseen patients. Next: an AF validation set with many AF patients (MIT-BIH AF Database), "
-            "an ectopy approach that also covers atrial premature beats (record 232's false AF is APC-driven), and a fresh "
-            "external test set, because DS2 has now informed two rhythm decisions.",
+            "5. **AF over-called in ectopy-rich recordings — four candidates tried, none adopted** (section 4). Every candidate "
+            "cut false AF substantially but lost real AF in some patient. With the MIT-BIH AF Database (8 validation AF patients) "
+            "the pre-declared rule now catches this on validation. On fresh AFDB test patients, v0.1 itself finds 97.4% of AF "
+            "windows with 95.5% positive predictivity, so the false-alarm problem is concentrated in non-AF patients with frequent "
+            "ectopy (MIT-BIH DS2: PPV ~60%). Next options: (a) an explicit AF-probability operating point chosen on validation per "
+            "use case (screening vs. review) — a transparent sensitivity/false-alarm trade-off; (b) more AF data (Long-Term AF "
+            "Database, 84 patients); (c) beat labels inside AF for a beat classifier that is reliable during AF.",
             "5b. **The beat classifier labels some AF beats as ventricular**, on handheld lead I especially (a quarter of CinC AF "
             "windows had ≥10% 'PVCs'). Anything built on its PVC labels must be restricted to leads where it is validated.",
             "6. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). The v0.2 augmentation recipe scored lower "
