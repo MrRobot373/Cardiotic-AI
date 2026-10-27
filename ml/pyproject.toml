@@ -11,6 +11,7 @@ dependencies = [
   "scikit-learn>=1.4",
   "torch>=2.2",
   "matplotlib>=3.8",
+  "openpyxl>=3.1",  # Chapman–Shaoxing label sheet (.xlsx)
 ]
 
 [project.optional-dependencies]

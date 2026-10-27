@@ -21,6 +21,8 @@ models from here (see [docs/AI_ML_ROADMAP.md](../docs/AI_ML_ROADMAP.md)).
 | `data/ptbxl.py` | PTB-XL 12-lead loader (official patient-wise folds), SCP statements, PTB-XL+ reference measurements (GE 12SL, Uni-G) |
 | `ecg12/measure.py` | **M4 measurements**: median beat, QRS onset/offset (spatial velocity), T end, P wave → HR, PR, QRS, QT/QTc, axes |
 | `ecg12/model.py`, `experiments_ecg12.py` | **M4 statements**: 12-lead 1D ResNet, 71 SCP statements + 5 superclasses; measurement tuning and agreement |
+| `data/chapman.py`, `data/ningbo.py` | Chapman–Shaoxing (external test, GE MUSE measurements) and Chapman–Shaoxing–Ningbo loaders; fixed label maps to SCP statements |
+| `ecg12/rules.py` | Rate / interval statements from our own measurements (compared with the learned model) |
 | `ecg12/analyze.py` | 12-lead end to end: per-lead quality → measurements → calibrated statements |
 | `pipeline.py` | End to end: quality gate → beats → classification → rhythm → measurements → findings (JSON + plot) |
 | `experiments_rhythm.py` | Rhythm training, cross-dataset AF test on MIT-BIH, beat calibration |
@@ -51,6 +53,11 @@ cd ml
 ../.venv/bin/python -m cardiotic_ml.cli tune-ecg12-measure --version v0.2            # training folds only
 ../.venv/bin/python -m cardiotic_ml.cli eval-ecg12-measure --version v0.2 --split val
 ../.venv/bin/python -m cardiotic_ml.cli train-ecg12 --version v0.1                    # CPU, ~2 h
+# Chapman–Shaoxing (figshare collection 4560497: ECGData.zip + Diagnostics.xlsx) into data/raw/chapman/:
+../.venv/bin/python -m cardiotic_ml.cli eval-ecg12-external --version v0.1           # external test
+../.venv/bin/python -m cardiotic_ml.cli eval-ecg12-rules
+# Chapman–Shaoxing–Ningbo (https://physionet.org/content/ecg-arrhythmia/1.0.0/) unzipped into data/raw/ningbo/:
+../.venv/bin/python -m cardiotic_ml.cli train-ecg12 --version v0.2                    # PTB-XL + Ningbo part
 ../.venv/bin/python -m cardiotic_ml.cli report          # writes reports/RESULTS.md
 ../.venv/bin/python -m cardiotic_ml.cli analyze --record 233 --start 600 --seconds 60 --plot strip.png
 ../.venv/bin/pytest -q                                   # fast tests, no download needed
@@ -70,6 +77,11 @@ for detecting atrial fibrillation using R-R intervals.* Computers in Cardiology 
 PTB-XL and PTB-XL+: Creative Commons Attribution 4.0. Cite: Wagner P et al. *PTB-XL, a large publicly
 available electrocardiography dataset.* Scientific Data 7:154 (2020), and Strodthoff N et al. *PTB-XL+, a
 comprehensive electrocardiographic feature dataset.* Scientific Data 10:279 (2023).
+
+Chapman–Shaoxing (CC0) and Chapman–Shaoxing–Ningbo (CC BY 4.0). Cite: Zheng J et al. *A 12-lead
+electrocardiogram database for arrhythmia research covering more than 10,000 patients.* Scientific Data
+7:48 (2020), and Zheng J et al. *A large scale 12-lead electrocardiogram database for arrhythmia study.*
+PhysioNet (2022).
 
 For all PhysioNet data, cite: Moody GB, Mark RG. *The impact of the MIT-BIH Arrhythmia
 Database.* IEEE Eng in Med and Biol 20(3):45-50 (2001), and Goldberger AL et al. *PhysioBank,

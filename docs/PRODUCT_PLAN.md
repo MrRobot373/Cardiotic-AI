@@ -303,6 +303,8 @@ silent-mode prospective study.
 | MIT-BIH Noise Stress Test | Calibrated noise added to clean ECG | **Signal-quality robustness, EC57 noise testing** | ODC-By 1.0 | ✅ |
 | MIT-BIH AF / Long-Term AF | Long AF recordings | AF episode detection | ODC-By 1.0 | ✅ |
 | PTB-XL 1.0.3 | 21,799 × 10 s 12-lead, 18,869 patients | 12-lead diagnostic statements | CC BY 4.0 | ✅ with attribution |
+| Chapman–Shaoxing (figshare 4560497) | 10,646 × 10 s 12-lead, 500 Hz, China, GE MUSE, with MUSE measurements | **External test** of statements and measurements (never trained on) | CC0 | ✅ |
+| Chapman–Shaoxing–Ningbo (PhysioNet `ecg-arrhythmia` 1.0.0) | 45,152 × 10 s 12-lead (includes the 10,646 above) | Training data from a second country (Ningbo part only) | CC BY 4.0 | ✅ with attribution |
 | PTB-XL+ 1.0.1 | Measurements of the same ECGs by GE 12SL and Uni-G (intervals, axes, amplitudes) | **Reference for our interval measurements** (not ground truth) | CC BY 4.0 | ✅ with attribution |
 | **PhysioNet/CinC 2015** | ~1,250 ICU alarms (asystole, brady, tachy, VT, VF/flutter), ECG + ABP/PPG | **False-alarm reduction: our exact thesis** | ODC-By 1.0 | ✅ |
 | PhysioNet/CinC 2017 | ~8.5k single-lead AF recordings | AF vs other vs noise | Verify | Verify |

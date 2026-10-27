@@ -1,0 +1,225 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T11:38:53+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "ptbxl": "PhysioNet PTB-XL 1.0.3 (CC BY 4.0)",
+    "chapman": "Chapman\u2013Shaoxing (figshare, CC0), external"
+  },
+  "task": "ecg12_rules",
+  "version": "v0.1",
+  "selection_rule": "For each rule statement, use the rule instead of the statement model if its F1 on PTB-XL validation fold 9 is at least the model's. Rules use fixed clinical cut-offs (ecg12/rules.py).",
+  "rules": {
+    "SBRAD": "sinus rhythm and heart rate < 60 bpm",
+    "STACH": "sinus rhythm and heart rate > 100 bpm",
+    "1AVB": "PR interval > 200 ms",
+    "LNGQT": "QTc (Bazett) >= 460 ms"
+  },
+  "chosen": {
+    "SBRAD": "model",
+    "STACH": "model",
+    "1AVB": "model",
+    "LNGQT": "model"
+  },
+  "results": {
+    "ptbxl_val": {
+      "SBRAD": {
+        "model": {
+          "support": 64,
+          "sensitivity": 0.703125,
+          "specificity": 0.9848985370457763,
+          "ppv": 0.5844155844155844,
+          "f1": 0.6382978723404256
+        },
+        "rule": {
+          "support": 64,
+          "sensitivity": 0.84375,
+          "specificity": 0.8612553091080698,
+          "ppv": 0.15517241379310345,
+          "f1": 0.26213592233009714
+        }
+      },
+      "STACH": {
+        "model": {
+          "support": 83,
+          "sensitivity": 0.8313253012048193,
+          "specificity": 0.9938095238095238,
+          "ppv": 0.8414634146341463,
+          "f1": 0.8363636363636364
+        },
+        "rule": {
+          "support": 83,
+          "sensitivity": 0.7951807228915663,
+          "specificity": 0.9852380952380952,
+          "ppv": 0.6804123711340206,
+          "f1": 0.7333333333333334
+        }
+      },
+      "1AVB": {
+        "model": {
+          "support": 80,
+          "sensitivity": 0.6625,
+          "specificity": 0.9781264859724204,
+          "ppv": 0.5353535353535354,
+          "f1": 0.5921787709497206
+        },
+        "rule": {
+          "support": 80,
+          "sensitivity": 0.6125,
+          "specificity": 0.9467427484545887,
+          "ppv": 0.30434782608695654,
+          "f1": 0.40663900414937765
+        }
+      },
+      "LNGQT": {
+        "model": {
+          "support": 12,
+          "sensitivity": 0.16666666666666666,
+          "specificity": 1.0,
+          "ppv": 1.0,
+          "f1": 0.2857142857142857
+        },
+        "rule": {
+          "support": 12,
+          "sensitivity": 0.9166666666666666,
+          "specificity": 0.8415476738830032,
+          "ppv": 0.030985915492957747,
+          "f1": 0.059945504087193464
+        }
+      }
+    },
+    "ptbxl_test": {
+      "SBRAD": {
+        "model": {
+          "support": 64,
+          "sensitivity": 0.625,
+          "specificity": 0.9878163074039362,
+          "ppv": 0.6060606060606061,
+          "f1": 0.6153846153846154
+        },
+        "rule": {
+          "support": 64,
+          "sensitivity": 0.921875,
+          "specificity": 0.8603561387066542,
+          "ppv": 0.16526610644257703,
+          "f1": 0.2802850356294536
+        }
+      },
+      "STACH": {
+        "model": {
+          "support": 82,
+          "sensitivity": 0.8414634146341463,
+          "specificity": 0.9948015122873346,
+          "ppv": 0.8625,
+          "f1": 0.8518518518518519
+        },
+        "rule": {
+          "support": 82,
+          "sensitivity": 0.9024390243902439,
+          "specificity": 0.9919659735349716,
+          "ppv": 0.8131868131868132,
+          "f1": 0.8554913294797688
+        }
+      },
+      "1AVB": {
+        "model": {
+          "support": 79,
+          "sensitivity": 0.620253164556962,
+          "specificity": 0.9797074091552619,
+          "ppv": 0.532608695652174,
+          "f1": 0.5730994152046783
+        },
+        "rule": {
+          "support": 79,
+          "sensitivity": 0.6075949367088608,
+          "specificity": 0.9466729589428976,
+          "ppv": 0.2981366459627329,
+          "f1": 0.4
+        }
+      },
+      "LNGQT": {
+        "model": {
+          "support": 11,
+          "sensitivity": 0.09090909090909091,
+          "specificity": 0.9986282578875172,
+          "ppv": 0.25,
+          "f1": 0.13333333333333333
+        },
+        "rule": {
+          "support": 11,
+          "sensitivity": 0.7272727272727273,
+          "specificity": 0.8427069044352995,
+          "ppv": 0.022727272727272728,
+          "f1": 0.0440771349862259
+        }
+      }
+    },
+    "chapman_external": {
+      "SBRAD": {
+        "model": {
+          "support": 3889,
+          "sensitivity": 0.12085368989457444,
+          "specificity": 0.9995560159834246,
+          "ppv": 0.9936575052854123,
+          "f1": 0.21549747822099954
+        },
+        "rule": {
+          "support": 3889,
+          "sensitivity": 0.9362303934173309,
+          "specificity": 0.9923042770460263,
+          "ppv": 0.9859193067966423,
+          "f1": 0.9604326035346874
+        }
+      },
+      "STACH": {
+        "model": {
+          "support": 1568,
+          "sensitivity": 0.7665816326530612,
+          "specificity": 0.9946023353161489,
+          "ppv": 0.9608313349320543,
+          "f1": 0.8527846754168145
+        },
+        "rule": {
+          "support": 1568,
+          "sensitivity": 0.8775510204081632,
+          "specificity": 0.9898656091650143,
+          "ppv": 0.9373297002724795,
+          "f1": 0.9064558629776021
+        }
+      },
+      "1AVB": {
+        "model": {
+          "support": 252,
+          "sensitivity": 0.5198412698412699,
+          "specificity": 0.9888397152203194,
+          "ppv": 0.5303643724696356,
+          "f1": 0.5250501002004009
+        },
+        "rule": {
+          "support": 252,
+          "sensitivity": 0.6626984126984127,
+          "specificity": 0.9689243794496825,
+          "ppv": 0.3408163265306122,
+          "f1": 0.45013477088948783
+        }
+      },
+      "LNGQT": {
+        "model": {
+          "support": 58,
+          "sensitivity": 0.017241379310344827,
+          "specificity": 0.9977332829618436,
+          "ppv": 0.04,
+          "f1": 0.024096385542168676
+        },
+        "rule": {
+          "support": 58,
+          "sensitivity": 0.9137931034482759,
+          "specificity": 0.8048734416320362,
+          "ppv": 0.025011798017932987,
+          "f1": 0.048690858980248046
+        }
+      }
+    }
+  }
+}

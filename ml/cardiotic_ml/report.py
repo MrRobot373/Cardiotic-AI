@@ -112,6 +112,50 @@ def _ecg12_section() -> list[str]:
         out += ["", "The v0.1 test result prompted the work on v0.2; its causes were diagnosed on training ECGs and the "
                 "fix chosen on validation. v0.1 had large misses in wide-QRS ECGs (QRS end ran into the ST segment), low or slowly rising P waves "
                 "(P onset too early) and flat T waves (T end drifted late); v0.2 adds a rule for each.", ""]
+    ex = _load("ecg12_external_chapman_v0.1")
+    if ex:
+        out += ["### 7.3 External test — Chapman–Shaoxing (China, GE MUSE, 2013–2018)", "",
+                f"All {ex['n_records']:,} ECGs, one per patient, never used for any choice. Different country, years and ECG "
+                "system from PTB-XL. Physician labels mapped to our statements by a fixed table "
+                "(`data/chapman.py`); condition labels are not exhaustive, so specificity and PPV are lower bounds.", "",
+                "| Statement | ECGs with it | AUC | Sensitivity | Specificity | PPV |", "|---|---:|---:|---:|---:|---:|"]
+        for k, v in sorted(ex["per_label"].items(), key=lambda kv: -kv[1]["support"]):
+            out.append(f"| {k} ({v['description']}) | {v['support']:,} | {v['auc']:.3f} | {_pct(v['sensitivity'])} | "
+                       f"{_pct(v['specificity'])} | {_pct(v['ppv'])} |")
+        sg = ex["subgroups"]
+        mm = ex["measurements"]
+        out += ["", "NORM here is a proxy (sinus rhythm with no other label), so its numbers are only indicative. "
+                f"AF AUC by sex: women {sg['female']['afib_auc']:.3f}, men {sg['male']['afib_auc']:.3f}.", "",
+                "**Ranking transfers, thresholds do not always.** AUCs stay high, but the yes/no thresholds chosen on PTB-XL "
+                "miss many Chapman bradycardias (SBRAD AUC 0.965, sensitivity 12%) and almost all atrial flutter. Thresholds "
+                "are an operating point to set per site on local validation data, not a property of the model.", "",
+                f"Measurements against **GE MUSE** (third commercial reference; {mm['failed']} ECG not measurable, "
+                f"{1000 * mm['seconds_per_ecg']:.0f} ms per ECG):", "",
+                "| Measurement | Ours − MUSE: mean ± SD | Within tolerance | n |", "|---|---|---:|---:|"]
+        for k, (name, unit) in ECG12_MEASURE_NAMES.items():
+            a = mm["vs_muse"].get(k)
+            if a:
+                out.append(f"| {name} (±{a['within']} {unit}) | {a['mean_diff']:+.1f} ± {a['sd_diff']:.1f} {unit} | {_pct(a['share_within'])} | {a['n']:,} |")
+        out += ["", "MUSE publishes no PR interval in this dataset. MUSE heart rate is the ventricular rate; ours is the mean RR, "
+                "which explains most of the heart-rate spread in atrial fibrillation.", ""]
+    ru = _load("ecg12_rules_v0.1")
+    if ru:
+        out += ["### 7.4 Rate and interval statements: measurement rules vs the learned model", "",
+                "Rules with fixed clinical cut-offs on our own measurements (`ecg12/rules.py`): "
+                + "; ".join(f"{k}: {v}" for k, v in ru["rules"].items()) + ". " + ru["selection_rule"], "",
+                "| Statement | Data | Model F1 | Rule F1 | Rule sensitivity | Rule PPV |", "|---|---|---:|---:|---:|---:|"]
+        names = {"ptbxl_val": "PTB-XL validation", "ptbxl_test": "PTB-XL test", "chapman_external": "Chapman (external)"}
+        for k in ru["rules"]:
+            for split, d in ru["results"].items():
+                v = d[k]
+                out.append(f"| {k} | {names[split]} | {v['model']['f1']:.2f} | {v['rule']['f1']:.2f} | "
+                           f"{_pct(v['rule']['sensitivity'])} | {_pct(v['rule']['ppv'])} |")
+        out += ["", "Decision (validation): " + ", ".join(f"{k} → {v}" for k, v in ru["chosen"].items()) + ".", "",
+                "**Finding: hospitals write these statements differently.** Chapman's physicians label sinus bradycardia "
+                "by the definition (rule F1 0.96 there); PTB-XL's cardiologists mostly do not label 55–59 bpm (rule PPV 16%). "
+                "No single model or rule matches both. In the product these statements must follow the **site's own "
+                "convention**, chosen and verified on that hospital's data during installation. Long QT is labelled far "
+                "less often than QTc ≥ 460 ms occurs in both datasets.", ""]
     return out
 
 

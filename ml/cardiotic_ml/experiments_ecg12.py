@@ -30,8 +30,16 @@ FS_LR = 100
 CROP = 900                    # training crop (9 s); validation / test use the full 10 s
 KEY_STATEMENTS = ["NORM", "IMI", "ASMI", "AMI", "LVH", "CLBBB", "CRBBB", "IRBBB", "LAFB", "1AVB", "WPW",
                   "NDT", "ISCAL", "LNGQT", "AFIB", "AFLT", "STACH", "SBRAD", "SARRH", "PVC", "PACE"]
-ECG12_VERSIONS = {"v0.1": {"epochs": 30, "width": 64, "lr": 1e-3, "weight_decay": 1e-2, "batch": 128}}
+ECG12_VERSIONS = {
+    "v0.1": {"epochs": 30, "width": 64, "lr": 1e-3, "weight_decay": 1e-2, "batch": 128},
+    # + Ningbo part of Chapman–Shaoxing–Ningbo (China): more flutter, PACs, bradycardia, AV block. Loss is masked:
+    # Ningbo rows only teach the statements its labels map to unambiguously (data/ningbo.py).
+    "v0.2": {"epochs": 20, "width": 64, "lr": 1e-3, "weight_decay": 1e-2, "batch": 128, "ningbo": True},
+}
+ECG12_SELECTION_RULE = ("Adopt v0.2 over v0.1 only if, on VALIDATION data: PTB-XL macro-AUC (all statements) drops by "
+                        "at most 0.005, and Ningbo-validation macro-AUC on the mapped statements improves.")
 DATASET = "PhysioNet PTB-XL 1.0.3 (CC BY 4.0)"
+NINGBO_DATASET = "PhysioNet Chapman–Shaoxing–Ningbo 12-lead ECG database 1.0.0 (CC BY 4.0)"
 DATASET_PLUS = "PhysioNet PTB-XL+ 1.0.1 (CC BY 4.0): GE 12SL and Uni-G measurements"
 
 
@@ -149,11 +157,32 @@ def train_ecg12(version: str = "v0.1") -> dict:
     std = x[tr].std(axis=(0, 2), keepdims=True) + 1e-6
     x = ((x - mean) / std).astype(np.float32)
     xtr, ytr = torch.from_numpy(x[tr]), torch.from_numpy(y[tr])
+    mtr = torch.ones_like(ytr)
+    labels_all = stmts + supers
+    nb = None
+    if spec.get("ningbo"):
+        from cardiotic_ml.data import ningbo
+        print("loading Ningbo 100 Hz…", flush=True)
+        nb = {}
+        for part in ("train", "val", "test"):
+            nrecs = ningbo.ningbo_part(part)
+            xn = ((preprocess(ningbo.load_lr(nrecs)) - mean) / std).astype(np.float32)
+            yn = np.zeros((len(nrecs), len(labels_all)), dtype=np.float32)
+            for i, r in enumerate(nrecs):
+                for c in r.scp():
+                    yn[i, labels_all.index(c)] = 1
+            nb[part] = (xn, yn)
+        nb_cols = [labels_all.index(c) for c in ningbo.MAPPED]
+        mn = np.zeros_like(nb["train"][1]); mn[:, nb_cols] = 1
+        xtr = torch.cat([xtr, torch.from_numpy(nb["train"][0])])
+        ytr = torch.cat([ytr, torch.from_numpy(nb["train"][1])])
+        mtr = torch.cat([mtr, torch.from_numpy(mn)])
+        print(f"training ECGs: PTB-XL {int(tr.sum())} + Ningbo {len(nb['train'][1])}", flush=True)
     model = ECG12Net(y.shape[1], width=spec["width"])
     opt = torch.optim.AdamW(model.parameters(), lr=spec["lr"], weight_decay=spec["weight_decay"])
-    steps = spec["epochs"] * int(np.ceil(tr.sum() / spec["batch"]))
+    steps = spec["epochs"] * int(np.ceil(len(xtr) / spec["batch"]))
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=spec["lr"], total_steps=steps)
-    loss_fn = nn.BCEWithLogitsLoss()
+    loss_fn = nn.BCEWithLogitsLoss(reduction="none")
     best, best_auc, history = None, -1.0, []
     for epoch in range(spec["epochs"]):
         model.train()
@@ -162,14 +191,17 @@ def train_ecg12(version: str = "v0.1") -> dict:
         for i in range(0, len(order), spec["batch"]):
             idx = order[i:i + spec["batch"]]
             opt.zero_grad()
-            loss = loss_fn(model(_augment(xtr[idx], rng)), ytr[idx])
+            loss = (loss_fn(model(_augment(xtr[idx], rng)), ytr[idx]) * mtr[idx]).sum() / mtr[idx].sum()
             loss.backward()
             opt.step(); sched.step()
             total += loss.item() * len(idx)
         auc = macro_auc(y[va], _sigmoid(_logits(model, x[va])))
-        history.append({"epoch": epoch + 1, "train_loss": total / tr.sum(), "val_macro_auc": auc,
-                        "seconds": round(time.time() - t0, 1)})
-        print(f"epoch {epoch + 1:2d}  loss {total / tr.sum():.4f}  val macro-AUC {auc:.4f}  ({time.time() - t0:.0f}s)", flush=True)
+        nb_auc = macro_auc(nb["val"][1], _sigmoid(_logits(model, nb["val"][0])), nb_cols) if nb else None
+        history.append({"epoch": epoch + 1, "train_loss": total / len(xtr), "val_macro_auc": auc,
+                        "ningbo_val_macro_auc": nb_auc, "seconds": round(time.time() - t0, 1)})
+        print(f"epoch {epoch + 1:2d}  loss {total / len(xtr):.4f}  val macro-AUC {auc:.4f}"
+              + (f"  Ningbo val {nb_auc:.4f}" if nb else "") + f"  ({time.time() - t0:.0f}s)", flush=True)
+        auc = auc if nb_auc is None else (auc + nb_auc) / 2
         if auc > best_auc:
             best_auc, best = auc, copy.deepcopy(model.state_dict())
     model.load_state_dict(best)
@@ -203,6 +235,15 @@ def train_ecg12(version: str = "v0.1") -> dict:
     subgroups = {g: {"n": int(np.sum(m)), "superclass_macro_auc": macro_auc(yt[np.array(m)], pt[np.array(m)], cols["superclass"])}
                  for g, m in groups.items()}
     calib = {"temperature": temperature, "ece_before": binary_ece(_sigmoid(test_logits), yt), "ece_after": binary_ece(pt, yt)}
+    ningbo_eval = None
+    if nb:
+        ningbo_eval = {}
+        for part in ("val", "test"):
+            xn, yn = nb[part]
+            pn = _sigmoid(_logits(model, xn) / temperature)
+            ningbo_eval[part] = {"n": len(yn), "macro_auc_mapped": macro_auc(yn, pn, nb_cols),
+                                 "per_label": {labels[j]: {"support": int(yn[:, j].sum()), "auc": float(roc_auc_score(yn[:, j], pn[:, j]))}
+                                               for j in nb_cols if 0 < yn[:, j].sum() < len(yn)}}
     card = _save_model(model, f"ecg12_net_{version}", {
         "name": "ecg12_net", "version": version, "recipe": spec, "labels": labels,
         "task": "10 s 12-lead ECG -> probability of each SCP-ECG statement (multi-label) and of 5 diagnostic superclasses",
@@ -211,14 +252,16 @@ def train_ecg12(version: str = "v0.1") -> dict:
         "thresholds": dict(zip(labels, map(float, th))),
         "threshold_rule": "per statement, maximise F1 on validation fold 9",
         "intended_use": "Research use only. Not validated on clinical ECG machines.",
-        "data": f"{DATASET}: folds 1–8 train ({int(tr.sum())} ECGs), 9 validation, 10 test; patient-wise folds",
+        "data": f"{DATASET}: folds 1–8 train ({int(tr.sum())} ECGs), 9 validation, 10 test; patient-wise folds"
+                + (f"; plus {NINGBO_DATASET}, Ningbo part only (Chapman–Shaoxing records excluded), {len(nb['train'][1])} "
+                   f"training ECGs, mapped statements {ningbo.MAPPED} only" if nb else ""),
     })
     result = _meta(task="ecg12_statements", version=version, sizes={"train": int(tr.sum()), "val": int(va.sum()), "test": int(te.sum())},
                    val=val_tasks, test=test_tasks, per_label=per_label, subgroups=subgroups, calibration=calib,
-                   training={"history": history, "best_val_macro_auc": best_auc}, model_card=card,
+                   training={"history": history, "best_val_selection_metric": best_auc}, model_card=card, ningbo=ningbo_eval,
                    benchmark_note="Published PTB-XL benchmark (Strodthoff et al. 2021, separate model per task): macro-AUC "
                                   "all 0.925, diagnostic 0.937, form 0.896, rhythm 0.957, superclass 0.930 (best models).")
-    result["datasets"] = {"ptbxl": DATASET}
+    result["datasets"] = {"ptbxl": DATASET} | ({"ningbo": NINGBO_DATASET} if nb else {})
     _write(f"ecg12_statements_{version}", result)
     print(json.dumps({k: round(v["macro_auc"], 4) for k, v in test_tasks.items()}), flush=True)
     return result
@@ -376,3 +419,128 @@ def eval_measurements(version: str = "v0.2", split: str = "val") -> dict:
     print(json.dumps({k: {kk: round(vv["mean_diff"], 1) for kk, vv in v.items()} for k, v in result["agreement"].items()}), flush=True)
     return result
 
+
+
+# ---------------------------------------------------------------- external test: Chapman–Shaoxing (China, GE MUSE)
+EXTERNAL_MIN_POSITIVES = 20
+
+
+def predict_statements(x: np.ndarray, fs: float, version: str = "v0.1") -> tuple[np.ndarray, dict]:
+    """(n, 12, samples) mV at fs -> calibrated probabilities (n, labels) with a shipped statement model."""
+    from cardiotic_ml.paths import ARTIFACTS_DIR
+
+    card = json.loads((ARTIFACTS_DIR / f"ecg12_net_{version}.card.json").read_text())
+    model = ECG12Net(len(card["labels"]), width=card["recipe"]["width"])
+    model.load_state_dict(torch.load(ARTIFACTS_DIR / f"ecg12_net_{version}.pt", weights_only=True))
+    out = []
+    for i in range(0, len(x), 512):
+        xb = dsp.resample(x[i:i + 512], fs, FS_LR) if fs != FS_LR else x[i:i + 512]
+        xb = xb[..., :1000] if xb.shape[-1] >= 1000 else np.pad(xb, ((0, 0), (0, 0), (0, 1000 - xb.shape[-1])))
+        xb = (preprocess(xb) - np.array(card["lead_mean"])[None, :, None]) / np.array(card["lead_std"])[None, :, None]
+        out.append(_sigmoid(_logits(model, xb.astype(np.float32)) / card["temperature"]))
+    return np.concatenate(out), card
+
+
+def eval_external_chapman(version: str = "v0.1") -> dict:
+    """Statements and measurements on all 10,646 Chapman–Shaoxing ECGs (never used for any choice)."""
+    from cardiotic_ml.data import chapman
+
+    recs = chapman.records()
+    x = chapman.load_all()
+    p, card = predict_statements(x, chapman.FS, version)
+    labels = card["labels"]
+    per_label = {}
+    for name in sorted({s for r in recs for s in r.scp()}):
+        y = np.array([name in r.scp() for r in recs])
+        if y.sum() < EXTERNAL_MIN_POSITIVES or name not in labels:
+            continue
+        j = labels.index(name)
+        pred = p[:, j] >= card["thresholds"][name]
+        per_label[name] = {"support": int(y.sum()), "auc": float(roc_auc_score(y, p[:, j])),
+                           "sensitivity": float(pred[y].mean()), "specificity": float((~pred[~y]).mean()),
+                           "ppv": float(pred[y].sum() / max(pred.sum(), 1)),
+                           "description": ptbxl.statements()[name]["description"]}
+    sex = np.array([r.sex for r in recs])
+    af = np.array(["AFIB" in r.scp() for r in recs])
+    jaf = labels.index("AFIB")
+    subgroups = {g: {"n": int((sex == v).sum()), "afib_auc": float(roc_auc_score(af[sex == v], p[sex == v, jaf]))}
+                 for g, v in (("female", 1), ("male", 0))}
+    # measurements vs GE MUSE
+    pairs = {k: [] for k in chapman.MUSE_TO_OURS.values()}
+    failed, t0 = 0, time.time()
+    for i, r in enumerate(recs):
+        m = ms.measure(x[i], chapman.FS)
+        failed += not m["ok"]
+        for k in pairs:
+            if m.get("ok") and m.get(k) is not None and k in r.muse and (r.muse[k] > 0 or k.endswith("_deg")):
+                pairs[k].append((m[k], r.muse[k]))
+    result = _meta(task="ecg12_external_chapman", version=version, measure_version=ADOPTED_MEASURE, n_records=len(recs),
+                   per_label=per_label, subgroups=subgroups,
+                   measurements={"failed": failed, "seconds_per_ecg": (time.time() - t0) / len(recs),
+                                 "vs_muse": _agreement(pairs)},
+                   label_mapping={"rhythm": chapman.RHYTHM_TO_SCP, "condition": chapman.CONDITION_TO_SCP,
+                                  "NORM": "rhythm SR and no condition label"},
+                   note="External: different country (China), years (2013–2018) and ECG system (GE MUSE) from PTB-XL. "
+                        "Condition labels are not exhaustive, so specificity and PPV are lower bounds.")
+    result["datasets"] = {"chapman": "Chapman University – Shaoxing People's Hospital 12-lead ECG database (figshare, CC0)"}
+    _write(f"ecg12_external_chapman_{version}", result)
+    print(json.dumps({k: round(v["auc"], 3) for k, v in per_label.items()}), flush=True)
+    return result
+
+
+# ---------------------------------------------------------------- measurement rules vs learned statements
+RULE_SELECTION = ("For each rule statement, use the rule instead of the statement model if its F1 on PTB-XL "
+                  "validation fold 9 is at least the model's.")
+
+
+def _binary(y: np.ndarray, pred: np.ndarray) -> dict:
+    tp = int((pred & y).sum())
+    se = tp / max(int(y.sum()), 1)
+    ppv = tp / max(int(pred.sum()), 1)
+    return {"support": int(y.sum()), "sensitivity": se, "specificity": float((~pred[~y]).mean()), "ppv": ppv,
+            "f1": 2 * se * ppv / (se + ppv) if se + ppv else 0.0}
+
+
+def _rule_eval(signals_500, probs, card, truth: list[set[str]]) -> dict:
+    from cardiotic_ml.ecg12 import rules
+
+    labels, th = card["labels"], card["thresholds"]
+    ia, il = labels.index("AFIB"), labels.index("AFLT")
+    rule_pred = {k: [] for k in rules.RULES}
+    for i, sig in enumerate(signals_500):
+        m = ms.measure(sig, 500)
+        sin = rules.sinus(m, probs[i, ia], probs[i, il], th["AFIB"], th["AFLT"])
+        for k, v in rules.rule_statements(m, sin).items():
+            rule_pred[k].append(v)
+    out = {}
+    for k in rules.RULES:
+        y = np.array([k in t for t in truth])
+        out[k] = {"model": _binary(y, probs[:, labels.index(k)] >= th[k]), "rule": _binary(y, np.array(rule_pred[k]))}
+    return out
+
+
+def eval_rules(version: str = "v0.1") -> dict:
+    from cardiotic_ml.data import chapman
+    from cardiotic_ml.ecg12 import rules
+
+    recs = ptbxl.records()
+    x100 = ptbxl.load_all_lr()
+    folds = np.array([r.fold for r in recs])
+    res = {}
+    for split, fset in (("ptbxl_val", ptbxl.VAL_FOLDS), ("ptbxl_test", ptbxl.TEST_FOLDS)):
+        idx = np.flatnonzero(np.isin(folds, fset))
+        p, card = predict_statements(x100[idx], FS_LR, version)
+        sigs = (ptbxl.load_signal(recs[i], hr=True) for i in idx)
+        res[split] = _rule_eval(sigs, p, card, [set(recs[i].codes) for i in idx])
+        print(split, "done", flush=True)
+    crecs = chapman.records()
+    cx = chapman.load_all()
+    p, card = predict_statements(cx, chapman.FS, version)
+    res["chapman_external"] = _rule_eval(cx, p, card, [r.scp() for r in crecs])
+    chosen = {k: "rule" if res["ptbxl_val"][k]["rule"]["f1"] >= res["ptbxl_val"][k]["model"]["f1"] else "model" for k in rules.RULES}
+    result = _meta(task="ecg12_rules", version=version, selection_rule=RULE_SELECTION, rules=rules.RULES, chosen=chosen,
+                   results=res)
+    result["datasets"] = {"ptbxl": DATASET, "chapman": "Chapman–Shaoxing (figshare, CC0), external"}
+    _write(f"ecg12_rules_{version}", result)
+    print(json.dumps(chosen), flush=True)
+    return result

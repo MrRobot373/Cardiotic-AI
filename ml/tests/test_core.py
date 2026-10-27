@@ -287,3 +287,27 @@ def test_analyze_12lead_end_to_end_with_shipped_models():
     for junk in (np.zeros((12, 5000), dtype=np.float32), np.random.default_rng(0).normal(0, 1, (12, 5000)).astype(np.float32)):
         o = analyze_12lead(junk, 500, Models12())
         assert not o["measurements"]["ok"] and o["statements"] == []
+
+
+def test_chapman_and_ningbo_label_mapping_and_split():
+    from cardiotic_ml.data import chapman, ningbo
+
+    r = chapman.Record("f", "AFIB", ("RBBB", "TWC"), 85, 0, {})
+    assert r.scp() == {"AFIB", "CRBBB"}
+    assert chapman.Record("f", "SR", (), 40, 1, {}).scp() == {"SR", "NORM"}
+    n = ningbo.Record("JS00001", "x", ("164889003", "59118001", "164934002"), 85, 0)
+    assert n.is_chapman and n.scp() == {"AFIB", "CRBBB"}
+    assert not ningbo.Record("JS10647", "x", (), None, None).is_chapman
+    assert "164909002" not in ningbo.SNOMED_TO_SCP  # LBBB code is shared with fascicular blocks: never mapped
+    splits = [ningbo.Record(f"JS{k:05d}", "x", (), None, None).split for k in range(20000, 22000)]
+    assert 0.07 < splits.count("test") / len(splits) < 0.13 and splits == [ningbo.Record(f"JS{k:05d}", "x", (), None, None).split for k in range(20000, 22000)]
+
+
+def test_measurement_rules():
+    from cardiotic_ml.ecg12 import rules
+
+    m = {"ok": True, "heart_rate_bpm": 52, "pr_ms": 220, "qtc_bazett_ms": 470}
+    assert rules.rule_statements(m, True) == {"SBRAD": True, "STACH": False, "1AVB": True, "LNGQT": True}
+    assert rules.rule_statements(m, False)["SBRAD"] is False
+    assert not rules.sinus({"ok": True, "pr_ms": None}, 0.0, 0.0, 0.5, 0.5)
+    assert not any(rules.rule_statements({"ok": False}, True).values())

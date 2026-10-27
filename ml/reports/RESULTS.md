@@ -266,6 +266,68 @@ Versions (ours − 12SL, mean ± SD; v0.2 was chosen over v0.1 on validation fol
 
 The v0.1 test result prompted the work on v0.2; its causes were diagnosed on training ECGs and the fix chosen on validation. v0.1 had large misses in wide-QRS ECGs (QRS end ran into the ST segment), low or slowly rising P waves (P onset too early) and flat T waves (T end drifted late); v0.2 adds a rule for each.
 
+### 7.3 External test — Chapman–Shaoxing (China, GE MUSE, 2013–2018)
+
+All 10,646 ECGs, one per patient, never used for any choice. Different country, years and ECG system from PTB-XL. Physician labels mapped to our statements by a fixed table (`data/chapman.py`); condition labels are not exhaustive, so specificity and PPV are lower bounds.
+
+| Statement | ECGs with it | AUC | Sensitivity | Specificity | PPV |
+|---|---:|---:|---:|---:|---:|
+| SBRAD (sinus bradycardia) | 3,889 | 0.965 | 12.1% | 100.0% | 99.4% |
+| SR (sinus rhythm) | 1,826 | 0.928 | 99.1% | 54.1% | 30.9% |
+| AFIB (atrial fibrillation) | 1,780 | 0.978 | 93.6% | 92.8% | 72.3% |
+| STACH (sinus tachycardia) | 1,568 | 0.992 | 76.7% | 99.5% | 96.1% |
+| NORM (normal ECG) | 1,366 | 0.788 | 90.5% | 56.2% | 23.3% |
+| SVTAC (supraventricular tachycardia) | 587 | 0.983 | 92.0% | 95.4% | 54.1% |
+| CRBBB (complete right bundle branch block) | 460 | 0.979 | 77.4% | 99.4% | 84.4% |
+| AFLT (atrial flutter) | 445 | 0.876 | 4.5% | 99.7% | 42.6% |
+| SARRH (sinus arrhythmia) | 399 | 0.918 | 30.6% | 99.2% | 58.9% |
+| PVC (ventricular premature complex) | 310 | 0.975 | 76.8% | 99.0% | 68.8% |
+| PAC (atrial premature complex) | 278 | 0.866 | 16.5% | 99.7% | 61.3% |
+| 1AVB (first degree AV block) | 252 | 0.949 | 52.0% | 98.9% | 53.0% |
+| LAFB (left anterior fascicular block) | 108 | 0.976 | 87.0% | 96.4% | 20.0% |
+| CLBBB (complete left bundle branch block) | 94 | 0.996 | 85.1% | 99.8% | 75.5% |
+| LNGQT (long QT-interval) | 58 | 0.766 | 1.7% | 99.8% | 4.0% |
+
+NORM here is a proxy (sinus rhythm with no other label), so its numbers are only indicative. AF AUC by sex: women 0.975, men 0.981.
+
+**Ranking transfers, thresholds do not always.** AUCs stay high, but the yes/no thresholds chosen on PTB-XL miss many Chapman bradycardias (SBRAD AUC 0.965, sensitivity 12%) and almost all atrial flutter. Thresholds are an operating point to set per site on local validation data, not a property of the model.
+
+Measurements against **GE MUSE** (third commercial reference; 1 ECG not measurable, 8 ms per ECG):
+
+| Measurement | Ours − MUSE: mean ± SD | Within tolerance | n |
+|---|---|---:|---:|
+| Heart rate (±5 bpm) | -0.5 ± 6.0 bpm | 95.7% | 10,645 |
+| QRS duration (±10 ms) | +0.6 ± 15.1 ms | 83.0% | 10,645 |
+| QT interval (±20 ms) | -1.7 ± 27.1 ms | 84.7% | 10,339 |
+| QTc (Bazett) (±20 ms) | -0.4 ± 32.7 ms | 77.3% | 10,339 |
+| QRS axis (±30 °) | -1.0 ± 17.5 ° | 95.3% | 10,645 |
+| T axis (±30 °) | -3.0 ± 25.1 ° | 90.4% | 10,339 |
+
+MUSE publishes no PR interval in this dataset. MUSE heart rate is the ventricular rate; ours is the mean RR, which explains most of the heart-rate spread in atrial fibrillation.
+
+### 7.4 Rate and interval statements: measurement rules vs the learned model
+
+Rules with fixed clinical cut-offs on our own measurements (`ecg12/rules.py`): SBRAD: sinus rhythm and heart rate < 60 bpm; STACH: sinus rhythm and heart rate > 100 bpm; 1AVB: PR interval > 200 ms; LNGQT: QTc (Bazett) >= 460 ms. For each rule statement, use the rule instead of the statement model if its F1 on PTB-XL validation fold 9 is at least the model's. Rules use fixed clinical cut-offs (ecg12/rules.py).
+
+| Statement | Data | Model F1 | Rule F1 | Rule sensitivity | Rule PPV |
+|---|---|---:|---:|---:|---:|
+| SBRAD | PTB-XL validation | 0.64 | 0.26 | 84.4% | 15.5% |
+| SBRAD | PTB-XL test | 0.62 | 0.28 | 92.2% | 16.5% |
+| SBRAD | Chapman (external) | 0.22 | 0.96 | 93.6% | 98.6% |
+| STACH | PTB-XL validation | 0.84 | 0.73 | 79.5% | 68.0% |
+| STACH | PTB-XL test | 0.85 | 0.86 | 90.2% | 81.3% |
+| STACH | Chapman (external) | 0.85 | 0.91 | 87.8% | 93.7% |
+| 1AVB | PTB-XL validation | 0.59 | 0.41 | 61.3% | 30.4% |
+| 1AVB | PTB-XL test | 0.57 | 0.40 | 60.8% | 29.8% |
+| 1AVB | Chapman (external) | 0.53 | 0.45 | 66.3% | 34.1% |
+| LNGQT | PTB-XL validation | 0.29 | 0.06 | 91.7% | 3.1% |
+| LNGQT | PTB-XL test | 0.13 | 0.04 | 72.7% | 2.3% |
+| LNGQT | Chapman (external) | 0.02 | 0.05 | 91.4% | 2.5% |
+
+Decision (validation): SBRAD → model, STACH → model, 1AVB → model, LNGQT → model.
+
+**Finding: hospitals write these statements differently.** Chapman's physicians label sinus bradycardia by the definition (rule F1 0.96 there); PTB-XL's cardiologists mostly do not label 55–59 bpm (rule PPV 16%). No single model or rule matches both. In the product these statements must follow the **site's own convention**, chosen and verified on that hospital's data during installation. Long QT is labelled far less often than QTc ≥ 460 ms occurs in both datasets.
+
 ## 8. Issues found while testing
 
 ### Fixed
