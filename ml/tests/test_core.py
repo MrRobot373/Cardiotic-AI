@@ -190,3 +190,32 @@ def test_ectopy_gate_only_on_validated_leads_and_only_regular_ectopic_windows():
     out, gated = gate.apply(probs, feats, g)
     assert gated.tolist() == [True, False, False]  # no PVCs -> untouched; not called AF -> untouched
     assert out[0].argmax() == 2 and abs(out[0].sum() - 1) < 1e-9
+
+
+def test_select_rhythm_rule(tmp_path, monkeypatch):
+    import json as _json
+
+    from cardiotic_ml import experiments_rhythm as er
+
+    def put(name, d):
+        (tmp_path / f"{name}.json").write_text(_json.dumps(d))
+
+    def afdb(se, fa, pats):
+        return {"af_sensitivity": se, "false_af_windows": fa,
+                "per_record": [{"record": r, "af_sensitivity": s} for r, s in pats]}
+
+    put("rhythm_afdb_val_v0.1", afdb(0.95, 100, [("a", 0.9), ("b", 1.0)]))
+    put("rhythm_mitdb_val_v0.1", {"af_sensitivity": 1.0, "false_af_windows": 38})
+    put("rhythm_classification_v0.1", {"val_challenge_f1": 0.84})
+    # v0.4: fewer false AF but one patient collapses -> must fail; v0.5: modest but safe -> chosen
+    put("rhythm_afdb_val_v0.4", afdb(0.94, 20, [("a", 0.7), ("b", 1.0)]))
+    put("rhythm_mitdb_val_v0.4", {"af_sensitivity": 1.0, "false_af_windows": 3})
+    put("rhythm_classification_v0.4", {"val_challenge_f1": 0.85})
+    put("rhythm_afdb_val_v0.5", afdb(0.94, 60, [("a", 0.88), ("b", 1.0)]))
+    put("rhythm_mitdb_val_v0.5", {"af_sensitivity": 0.99, "false_af_windows": 20})
+    put("rhythm_classification_v0.5", {"val_challenge_f1": 0.835})
+    monkeypatch.setattr(er, "REPORTS_DIR", tmp_path)
+    monkeypatch.setattr(er, "_write", lambda name, payload: None)
+    res = er.select_rhythm()
+    assert res["chosen"] == "v0.5"
+    assert [c["passes"] for c in res["candidates"]] == [False, True]

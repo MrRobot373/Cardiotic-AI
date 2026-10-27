@@ -12,3 +12,4 @@ data/
 *.edf
 ml/artifacts/*.pt.tmp
 *.egg-info/
+ml/cache/

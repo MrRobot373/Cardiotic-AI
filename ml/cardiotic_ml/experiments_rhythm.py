@@ -9,7 +9,7 @@ import numpy as np
 import torch
 
 from cardiotic_ml import calibration as cal
-from cardiotic_ml.data import cinc2017, mitdb
+from cardiotic_ml.data import afdb, cinc2017, mitdb
 from cardiotic_ml.experiments import _meta, _save_model, _write
 from cardiotic_ml.paths import ARTIFACTS_DIR, REPORTS_DIR
 from cardiotic_ml.rhythm import dataset as rd
@@ -42,6 +42,11 @@ RHYTHM_VERSIONS = {
     # v0.2 targets false AF in ectopy-rich Holter recordings (see RESULTS.md issue 5):
     # ectopy-aware RR features from the beat classifier + MIT-BIH training windows.
     "v0.2": {"ectopy_features": True, "mitdb_train": True, "epochs": 14},
+    # Retry with many AF patients (MIT-BIH AF Database). v0.4: v0.2 + AFDB training patients, whose AF
+    # includes ectopic beats (breaks the "many PVCs = not AF" shortcut). v0.5: ablation without the
+    # ectopy features. Chosen by `select_rhythm` on validation only (rule fixed before AFDB results).
+    "v0.4": {"ectopy_features": True, "mitdb_train": True, "afdb_train": True, "epochs": 14},
+    "v0.5": {"ectopy_features": False, "mitdb_train": True, "afdb_train": True, "epochs": 14},
 }
 # MIT-BIH split for rhythm work. Train: DS1 minus validation. Validation (version choice only):
 # 201 (AF), 215 (PVC-rich, most false AF in DS1), 207, 209, 220. Test: DS2 — unseen by every version.
@@ -77,6 +82,11 @@ def train_rhythm(version: str = "v0.2") -> dict:
     print("building windows (beat detection on every record)…", flush=True)
     tr, va, te = (rd.build(sigs, lab, sp[k], cinc2017.FS, beat_model=bm) for k in ("train", "val", "test"))
     n_mitdb = 0
+    if spec.get("afdb_train"):
+        at = build_afdb(afdb.split()["train"], bm if spec["ectopy_features"] else None, cap=AFDB_TRAIN_CAP)
+        print(f"AFDB training windows: {len(at.y)} {np.bincount(at.y, minlength=4).tolist()}", flush=True)
+        tr = rd.RhythmSet(np.concatenate([tr.x, at.x]), np.concatenate([tr.rr, at.rr]),
+                          np.concatenate([tr.y, at.y]), np.concatenate([tr.group, at.group]))
     if spec["mitdb_train"]:
         mt = rd.build_mitdb(MITDB_RHYTHM_TRAIN, beat_model=bm)
         n_mitdb = len(mt.y)
@@ -106,7 +116,8 @@ def train_rhythm(version: str = "v0.2") -> dict:
         "labels": LABELS, "temperature": temperature,
         "intended_use": "Research use only. Not validated on clinical monitors.",
         "data": "PhysioNet/CinC Challenge 2017 training set (ODC-By 1.0), REFERENCE-v3 labels, stratified 70/10/20 by record"
-                + (f"; plus {n_mitdb} MIT-BIH windows from records {MITDB_RHYTHM_TRAIN}" if n_mitdb else ""),
+                + (f"; plus {n_mitdb} MIT-BIH windows from records {MITDB_RHYTHM_TRAIN}" if n_mitdb else "")
+                + (f"; plus MIT-BIH AF Database training patients {afdb.split()['train']} (ODC-By 1.0)" if spec.get("afdb_train") else ""),
     })
     result = _meta(task="rhythm_classification", version=version, dataset="CinC 2017 (REFERENCE-v3)",
                    split="stratified by record 70/10/20 (no patient IDs published)",
@@ -277,4 +288,137 @@ def calibrate_beats() -> dict:
                    confidence_levels_before=cal.bin_accuracy(raw, te.y), confidence_levels_after=cal.bin_accuracy(calp, te.y))
     _write("beat_calibration", result)
     print(json.dumps({k: result[k] for k in ("temperature", "ece_before", "ece_after")}), flush=True)
+    return result
+
+
+# ---------------------------------------------------------------- MIT-BIH AF Database (many AF patients)
+AFDB_TRAIN_CAP = 250   # max AF and max non-AF windows sampled per training patient
+AFDB_CACHE = REPORTS_DIR.parent / "cache"
+
+
+def _afdb_prepared(rid: str, beat_model) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Beat detection + beat classes on a 10 h record, cached (they do not depend on the rhythm model)."""
+    AFDB_CACHE.mkdir(parents=True, exist_ok=True)
+    path = AFDB_CACHE / f"afdb_{rid}.npz"
+    if path.exists():
+        z = np.load(path)
+        return z["x"], z["beats"], z["ect"]
+    x, beats, ect = rd.prepare(afdb.load_signal(rid), afdb.FS, beat_model if beat_model is not None else _beat_model())
+    np.savez_compressed(path, x=x, beats=beats, ect=ect)
+    return x, beats, ect
+
+
+def _afdb_window_rhythms(rid: str, starts: np.ndarray) -> list[list[str]]:
+    spans, _ = afdb.rhythm_spans(rid)
+    out = []
+    for st in starts:
+        a, b = int(st * afdb.FS), int((st + rd.WIN_S) * afdb.FS)
+        out.append([lab for s0, e0, lab in spans if s0 < b and e0 > a])
+    return out
+
+
+def build_afdb(record_ids: list[str], beat_model=None, cap: int | None = None, seed: int = 0) -> rd.RhythmSet:
+    """Training windows. AF = window entirely (AFIB. Non-AF: (AFL / (J -> other rhythm; (N with >= 3
+    beats the beat classifier calls V/F -> other rhythm, with none -> normal, 1-2 -> skipped. AFDB has
+    no beat-type labels, so the N/O split is a weak label; AF vs non-AF is from the manual annotations."""
+    rng = np.random.default_rng(seed)
+    xs, rs, ys, gs = [], [], [], []
+    for rid in record_ids:
+        x, beats, ect = _afdb_prepared(rid, beat_model)
+        w, r, starts = rd.windows(x, beats, stride_s=rd.WIN_S, ectopic=ect if beat_model is not None else None)
+        labs = []
+        for wi, rh in enumerate(_afdb_window_rhythms(rid, starts)):
+            t0 = starts[wi]
+            n_ect = int(ect[(beats >= t0) & (beats < t0 + rd.WIN_S)].sum())
+            if rh == ["(AFIB"]:
+                labs.append(LABELS.index("A"))
+            elif not rh or "(AFIB" in rh:
+                labs.append(-1)
+            elif any(l in ("(AFL", "(J") for l in rh):
+                labs.append(LABELS.index("O"))
+            else:
+                labs.append(LABELS.index("N") if n_ect == 0 else LABELS.index("O") if n_ect >= 3 else -1)
+        labs = np.array(labs)
+        keep = []
+        for is_af in (True, False):
+            idx = np.flatnonzero((labs == LABELS.index("A")) if is_af else ((labs >= 0) & (labs != LABELS.index("A"))))
+            if cap and len(idx) > cap:
+                idx = rng.choice(idx, cap, replace=False)
+            keep += idx.tolist()
+        keep = np.array(sorted(keep), dtype=int)
+        xs.append(w[keep]); rs.append(r[keep]); ys.append(labs[keep]); gs += [f"afdb{rid}"] * len(keep)
+    return rd.RhythmSet(np.concatenate(xs), np.concatenate(rs), np.concatenate(ys).astype(np.int64), np.asarray(gs))
+
+
+def eval_rhythm_afdb(version: str = "v0.1", split: str = "val") -> dict:
+    """AF vs non-AF on AFDB patients: 30 s non-overlapping windows, AF = window entirely (AFIB, non-AF =
+    no AFIB at all, mixed windows skipped. Reported overall and per patient."""
+    model, temperature, card = load_rhythm_model(version)
+    uses_ect = card.get("recipe", {}).get("ectopy_features")
+    bm = _beat_model()
+    tp = fn = fp = tn = 0
+    per = []
+    for rid in afdb.split()[split]:
+        x, beats, ect = _afdb_prepared(rid, bm)
+        w, r, starts = rd.windows(x, beats, stride_s=rd.WIN_S, ectopic=ect if uses_ect else None)
+        p = cal.softmax(predict_logits(model, (torch.from_numpy(w), torch.from_numpy(r))), temperature)
+        said = p.argmax(1) == LABELS.index("A")
+        rh = _afdb_window_rhythms(rid, starts)
+        is_af = np.array([x_ == ["(AFIB"] for x_ in rh])
+        non_af = np.array([bool(x_) and "(AFIB" not in x_ for x_ in rh])
+        a, b, c, d = int((said & is_af).sum()), int((~said & is_af).sum()), int((said & non_af).sum()), int((~said & non_af).sum())
+        tp += a; fn += b; fp += c; tn += d
+        per.append({"record": rid, "af_windows": a + b, "af_detected": a, "false_af_windows": c, "non_af_windows": c + d,
+                    "af_sensitivity": a / (a + b) if a + b else None})
+        print(f"[{version} afdb-{split}] {rid}: AF {a}/{a + b}, false AF {c}/{c + d}", flush=True)
+    res = {"windows_af": tp + fn, "windows_non_af": fp + tn, "false_af_windows": fp,
+           "af_sensitivity": tp / (tp + fn) if tp + fn else float("nan"),
+           "af_ppv": tp / (tp + fp) if tp + fp else float("nan"),
+           "af_specificity": tn / (tn + fp) if tn + fp else float("nan"), "per_record": per}
+    result = _meta(task="rhythm_afdb_af", version=version, split=split, records=afdb.split()[split],
+                   protocol="30 s non-overlapping windows on AFDB channel 0; AF = window entirely (AFIB; non-AF = no AFIB; mixed skipped",
+                   **res)
+    result["datasets"]["afdb"] = "PhysioNet MIT-BIH Atrial Fibrillation Database 1.0.0 (ODC-By 1.0)"
+    _write(f"rhythm_afdb_{split}_{version}", result)
+    print(json.dumps({k: res[k] for k in ("af_sensitivity", "af_ppv", "af_specificity", "false_af_windows")}), flush=True)
+    return result
+
+
+SELECTION_RULE = ("Adopt a candidate over v0.1 only if, on VALIDATION data: (1) AF sensitivity drops by at most 2 points "
+                  "on AFDB-val and on MIT-BIH-val, and no AFDB-val AF patient's AF sensitivity drops by more than 10 points; "
+                  "(2) CinC val challenge F1 drops by at most 1 point; (3) false-AF windows on AFDB-val + MIT-BIH-val are "
+                  "fewer than v0.1's. Among passing candidates, fewest false-AF windows wins. Fixed before any AFDB result.")
+
+
+def select_rhythm(candidates: tuple[str, ...] = ("v0.4", "v0.5"), baseline: str = "v0.1") -> dict:
+    def load(name):
+        return json.loads((REPORTS_DIR / f"{name}.json").read_text())
+
+    base = {"afdb": load(f"rhythm_afdb_val_{baseline}"), "mitdb": load(f"rhythm_mitdb_val_{baseline}"),
+            "cinc": load(f"rhythm_classification_{baseline}")}
+    base_pat = {p["record"]: p["af_sensitivity"] for p in base["afdb"]["per_record"] if p["af_sensitivity"] is not None}
+    rows, passing = [], []
+    for c in candidates:
+        try:
+            cur = {"afdb": load(f"rhythm_afdb_val_{c}"), "mitdb": load(f"rhythm_mitdb_val_{c}"), "cinc": load(f"rhythm_classification_{c}")}
+        except FileNotFoundError:
+            continue
+        pat_drop = max(base_pat[p["record"]] - p["af_sensitivity"] for p in cur["afdb"]["per_record"] if p["record"] in base_pat)
+        checks = {
+            "afdb_af_se_drop": base["afdb"]["af_sensitivity"] - cur["afdb"]["af_sensitivity"],
+            "mitdb_af_se_drop": base["mitdb"]["af_sensitivity"] - cur["mitdb"]["af_sensitivity"],
+            "worst_patient_af_se_drop": pat_drop,
+            "cinc_val_f1_drop": base["cinc"]["val_challenge_f1"] - cur["cinc"]["val_challenge_f1"],
+            "false_af": cur["afdb"]["false_af_windows"] + cur["mitdb"]["false_af_windows"],
+            "false_af_baseline": base["afdb"]["false_af_windows"] + base["mitdb"]["false_af_windows"],
+        }
+        ok = (checks["afdb_af_se_drop"] <= 0.02 and checks["mitdb_af_se_drop"] <= 0.02 and checks["worst_patient_af_se_drop"] <= 0.10
+              and checks["cinc_val_f1_drop"] <= 0.01 and checks["false_af"] < checks["false_af_baseline"])
+        rows.append({"version": c, "passes": ok, **checks})
+        if ok:
+            passing.append((checks["false_af"], c))
+    chosen = min(passing)[1] if passing else baseline
+    result = _meta(task="rhythm_selection", rule=SELECTION_RULE, baseline=baseline, candidates=rows, chosen=chosen)
+    _write("rhythm_selection", result)
+    print(json.dumps({"chosen": chosen, "candidates": rows}, indent=1, default=float), flush=True)
     return result

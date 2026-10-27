@@ -6,6 +6,8 @@
   quality-real    add CinC 2017 real-data checks to an existing quality report (--version)
   train-rhythm    train + test the rhythm model on CinC 2017 (also fits its calibration)
   eval-rhythm-mitdb  AF test of a rhythm model on MIT-BIH (--version, --split val|test|all)
+  eval-rhythm-afdb   AF test on MIT-BIH AF Database patients (--version, --split val|test)
+  select-rhythm      apply the pre-declared selection rule to candidate rhythm versions (validation only)
   make-rhythm-gate   choose the AF ectopy gate (rhythm v0.3) on MIT-BIH validation records
   rhythm-cinc-val    add CinC validation scores to an older rhythm report (--version)
   calibrate-beats    fit the beat model's calibration temperature on its validation patients
@@ -29,7 +31,9 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("eval-pipeline")
     q = sub.add_parser("train-quality"); q.add_argument("--version", default="v0.3", choices=["v0.1", "v0.2", "v0.3"])
     qr = sub.add_parser("quality-real"); qr.add_argument("--version", default="v0.1")
-    tr = sub.add_parser("train-rhythm"); tr.add_argument("--version", default="v0.2", choices=["v0.1", "v0.2"])
+    tr = sub.add_parser("train-rhythm"); tr.add_argument("--version", default="v0.4", choices=["v0.1", "v0.2", "v0.4", "v0.5"])
+    ea = sub.add_parser("eval-rhythm-afdb"); ea.add_argument("--version", default="v0.1"); ea.add_argument("--split", default="val", choices=["val", "test"])
+    sub.add_parser("select-rhythm")
     er = sub.add_parser("eval-rhythm-mitdb"); er.add_argument("--version", default="v0.2"); er.add_argument("--split", default="test", choices=["val", "test", "all"])
     cv = sub.add_parser("rhythm-cinc-val"); cv.add_argument("--version", default="v0.1")
     sub.add_parser("make-rhythm-gate")
@@ -64,6 +68,12 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "train-rhythm":
         from cardiotic_ml.experiments_rhythm import train_rhythm
         train_rhythm(version=args.version)
+    elif args.cmd == "eval-rhythm-afdb":
+        from cardiotic_ml.experiments_rhythm import eval_rhythm_afdb
+        eval_rhythm_afdb(version=args.version, split=args.split)
+    elif args.cmd == "select-rhythm":
+        from cardiotic_ml.experiments_rhythm import select_rhythm
+        select_rhythm()
     elif args.cmd == "make-rhythm-gate":
         from cardiotic_ml.experiments_rhythm import make_rhythm_gate
         make_rhythm_gate()
