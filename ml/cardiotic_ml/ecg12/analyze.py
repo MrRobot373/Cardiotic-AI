@@ -67,7 +67,7 @@ def statements(signal: np.ndarray, fs: float, models: Models12) -> list[dict]:
     z = run_batched(models.net, x[None].astype(np.float32))[0] / c["temperature"]
     p = 1 / (1 + np.exp(-z))
     out = [{"statement": name, "probability": float(pi), "threshold": c["thresholds"][name],
-            "confidence": cal.confidence_level(float(max(pi, 1 - pi)))}
+            "confidence": cal.confidence_level(float(pi))}  # how sure the finding is present
            for name, pi in zip(c["labels"], p) if pi >= c["thresholds"][name]]
     return sorted(out, key=lambda d: -d["probability"])
 

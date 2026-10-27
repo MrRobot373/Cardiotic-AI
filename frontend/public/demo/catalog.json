@@ -1,0 +1,2553 @@
+{
+ "generated": "2026-10-27T09:30",
+ "engine": {
+  "engine": "cardiotic-engine",
+  "version": "0.1.0",
+  "models_version": "2026.10.1",
+  "intended_use": "Research use only. Not a medical device. Not validated for clinical use.",
+  "models": {
+   "quality": {
+    "model": "quality_net_v0.3",
+    "sha256": "13e938a92e644100df66b4c33ee314b9a884958bc1fc1bc3fe522ece15fd87f2"
+   },
+   "beats": {
+    "model": "beat_net_v0.1",
+    "sha256": "c806440dc023f07bcb1c122cfe5c9718b33aa84ec316a96c29ca7bfcf7f42649"
+   },
+   "rhythm": {
+    "model": "rhythm_net_v0.1",
+    "sha256": "f92cf406a38cc3acf26cadcc622a048653df1508104204400f2599733e70a890"
+   },
+   "ecg12": {
+    "model": "ecg12_net_v0.3",
+    "sha256": "0a7c47c974c686ad608a6a8562a543a56070f709c2969c515f73c0ce240bc68c"
+   }
+  }
+ },
+ "patients": [
+  {
+   "id": "P001",
+   "name": "Ramesh Kulkarni",
+   "mrn": "UH-20400",
+   "age": 75,
+   "age_90_plus": false,
+   "sex": "M",
+   "origin": "PTB-XL"
+  },
+  {
+   "id": "P002",
+   "name": "Sunita Deshpande",
+   "mrn": "UH-20407",
+   "age": 73,
+   "age_90_plus": false,
+   "sex": "F",
+   "origin": "PTB-XL"
+  },
+  {
+   "id": "P003",
+   "name": "Meera Iyer",
+   "mrn": "UH-20414",
+   "age": 71,
+   "age_90_plus": false,
+   "sex": "F",
+   "origin": "PTB-XL"
+  },
+  {
+   "id": "P004",
+   "name": "Arvind Menon",
+   "mrn": "UH-20421",
+   "age": 59,
+   "age_90_plus": false,
+   "sex": "M",
+   "origin": "PTB-XL"
+  },
+  {
+   "id": "P005",
+   "name": "Vikram Patil",
+   "mrn": "UH-20428",
+   "age": 46,
+   "age_90_plus": false,
+   "sex": "M",
+   "origin": "PTB-XL"
+  },
+  {
+   "id": "P006",
+   "name": "Suresh Reddy",
+   "mrn": "UH-20435",
+   "age": 44,
+   "age_90_plus": false,
+   "sex": "M",
+   "origin": "PTB-XL"
+  },
+  {
+   "id": "P007",
+   "name": "Kavita Joshi",
+   "mrn": "UH-20442",
+   "age": 68,
+   "age_90_plus": false,
+   "sex": "F",
+   "origin": "PTB-XL"
+  },
+  {
+   "id": "P008",
+   "name": "Prakash Nair",
+   "mrn": "UH-20449",
+   "age": 69,
+   "age_90_plus": false,
+   "sex": "M",
+   "origin": "PTB-XL"
+  },
+  {
+   "id": "P009",
+   "name": "Anita Sharma",
+   "mrn": "UH-20456",
+   "age": 62,
+   "age_90_plus": false,
+   "sex": "F",
+   "origin": "PTB-XL"
+  },
+  {
+   "id": "P010",
+   "name": "Lata Bhosale",
+   "mrn": "UH-20463",
+   "age": 81,
+   "age_90_plus": false,
+   "sex": "F",
+   "origin": "PTB-XL"
+  },
+  {
+   "id": "P011",
+   "name": "Neha Gupta",
+   "mrn": "UH-20470",
+   "age": 90,
+   "age_90_plus": true,
+   "sex": "F",
+   "origin": "PTB-XL"
+  },
+  {
+   "id": "P012",
+   "name": "Farida Shaikh",
+   "mrn": "UH-20477",
+   "age": 73,
+   "age_90_plus": false,
+   "sex": "F",
+   "origin": "Chapman\u2013Shaoxing"
+  },
+  {
+   "id": "P013",
+   "name": "Pooja Mehta",
+   "mrn": "UH-20484",
+   "age": 66,
+   "age_90_plus": false,
+   "sex": "F",
+   "origin": "Chapman\u2013Shaoxing"
+  },
+  {
+   "id": "P014",
+   "name": "Rekha Nambiar",
+   "mrn": "UH-20491",
+   "age": 59,
+   "age_90_plus": false,
+   "sex": "F",
+   "origin": "Chapman\u2013Shaoxing"
+  },
+  {
+   "id": "P015",
+   "name": "Rajiv Kapoor",
+   "mrn": "UH-20498",
+   "age": 77,
+   "age_90_plus": false,
+   "sex": "M",
+   "origin": "Chapman\u2013Shaoxing"
+  },
+  {
+   "id": "P016",
+   "name": "Manoj Pillai",
+   "mrn": "UH-20505",
+   "age": 83,
+   "age_90_plus": false,
+   "sex": "M",
+   "origin": "MIT-BIH"
+  },
+  {
+   "id": "P017",
+   "name": "Harish Rao",
+   "mrn": "UH-20512",
+   "age": 57,
+   "age_90_plus": false,
+   "sex": "M",
+   "origin": "MIT-BIH"
+  },
+  {
+   "id": "P018",
+   "name": "Sanjay Verma",
+   "mrn": "UH-20519",
+   "age": 69,
+   "age_90_plus": false,
+   "sex": "M",
+   "origin": "MIT-BIH"
+  }
+ ],
+ "ecgs": [
+  {
+   "id": "E0001",
+   "patient_id": "P001",
+   "recorded_at": "2026-10-07T21:03",
+   "location": "ECG room 1",
+   "ordered_by": "Dr. Ananya Rao",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 271,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "ASMI",
+    "ISC_",
+    "LVH",
+    "PAC",
+    "SR",
+    "STD_"
+   ],
+   "statements": [
+    {
+     "statement": "SUPER_STTC",
+     "probability": 0.9552373886108398,
+     "confidence": "high"
+    },
+    {
+     "statement": "ISC_",
+     "probability": 0.8581835031509399,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SR",
+     "probability": 0.8474798202514648,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_HYP",
+     "probability": 0.8410588502883911,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "ASMI",
+     "probability": 0.8151938319206238,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_MI",
+     "probability": 0.8031816482543945,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "LVH",
+     "probability": 0.7633468508720398,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "STD_",
+     "probability": 0.4348873496055603,
+     "confidence": "low"
+    },
+    {
+     "statement": "ABQRS",
+     "probability": 0.2724951505661011,
+     "confidence": "low"
+    },
+    {
+     "statement": "ISCAL",
+     "probability": 0.24819377064704895,
+     "confidence": "low"
+    },
+    {
+     "statement": "INVT",
+     "probability": 0.24714295566082,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 93.98075632132468,
+    "rr_ms": 638.4285714285714,
+    "pr_ms": 148.0,
+    "qrs_ms": 108.0,
+    "qt_ms": 358.0,
+    "qtc_bazett_ms": 448.0503999396767,
+    "qtc_fridericia_ms": 415.76276151557624,
+    "qrs_axis_deg": 32.987159729003906,
+    "t_axis_deg": 160.1543731689453,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "III",
+    "AVL",
+    "AVF"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0002",
+   "patient_id": "P001",
+   "recorded_at": "2026-10-18T10:51",
+   "location": "ECG room 2",
+   "ordered_by": "Dr. Vivek Sharma",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 336,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "AFLT",
+    "ISC_",
+    "LVH",
+    "NST_",
+    "PVC",
+    "SVTAC"
+   ],
+   "statements": [
+    {
+     "statement": "PVC",
+     "probability": 0.9416481852531433,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_STTC",
+     "probability": 0.9402276873588562,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_HYP",
+     "probability": 0.9275603294372559,
+     "confidence": "high"
+    },
+    {
+     "statement": "ISC_",
+     "probability": 0.8947262763977051,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "LVH",
+     "probability": 0.7908976078033447,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "AFIB",
+     "probability": 0.7431429624557495,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_MI",
+     "probability": 0.4824502170085907,
+     "confidence": "low"
+    },
+    {
+     "statement": "ASMI",
+     "probability": 0.447723388671875,
+     "confidence": "low"
+    },
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.34921616315841675,
+     "confidence": "low"
+    },
+    {
+     "statement": "STD_",
+     "probability": 0.33983463048934937,
+     "confidence": "low"
+    },
+    {
+     "statement": "VCLVH",
+     "probability": 0.3207550644874573,
+     "confidence": "low"
+    },
+    {
+     "statement": "IVCD",
+     "probability": 0.30697134137153625,
+     "confidence": "low"
+    },
+    {
+     "statement": "ABQRS",
+     "probability": 0.2329597920179367,
+     "confidence": "low"
+    },
+    {
+     "statement": "NST_",
+     "probability": 0.13873018324375153,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 151.98237885462555,
+    "rr_ms": 394.7826086956522,
+    "pr_ms": null,
+    "qrs_ms": 104.0,
+    "qt_ms": 296.0,
+    "qtc_bazett_ms": 471.09956671824114,
+    "qtc_fridericia_ms": 403.4958201864162,
+    "qrs_axis_deg": -2.7719194889068604,
+    "t_axis_deg": -136.6689453125,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "III",
+    "AVR",
+    "AVL",
+    "AVF",
+    "V2"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0003",
+   "patient_id": "P001",
+   "recorded_at": "2026-10-27T08:30",
+   "location": "Cardiology OPD",
+   "ordered_by": "Dr. Priya Nair",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 347,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "1AVB",
+    "AFLT",
+    "ISC_",
+    "LAO/LAE",
+    "LPR",
+    "LVH",
+    "NST_",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "SUPER_STTC",
+     "probability": 0.9728586673736572,
+     "confidence": "high"
+    },
+    {
+     "statement": "SR",
+     "probability": 0.9636034965515137,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.829985499382019,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_HYP",
+     "probability": 0.7401686906814575,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "1AVB",
+     "probability": 0.72005695104599,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "ISC_",
+     "probability": 0.5828841924667358,
+     "confidence": "low"
+    },
+    {
+     "statement": "ISCAL",
+     "probability": 0.5268760919570923,
+     "confidence": "low"
+    },
+    {
+     "statement": "LVH",
+     "probability": 0.4637729227542877,
+     "confidence": "low"
+    },
+    {
+     "statement": "LAO/LAE",
+     "probability": 0.3504639267921448,
+     "confidence": "low"
+    },
+    {
+     "statement": "ILBBB",
+     "probability": 0.16689765453338623,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 91.44196951934349,
+    "rr_ms": 656.1538461538462,
+    "pr_ms": 200.0,
+    "qrs_ms": 118.0,
+    "qt_ms": 350.0,
+    "qtc_bazett_ms": 432.0810353417434,
+    "qtc_fridericia_ms": 402.7783805419748,
+    "qrs_axis_deg": 15.335002899169922,
+    "t_axis_deg": 156.43154907226562,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [],
+   "notes": []
+  },
+  {
+   "id": "E0004",
+   "patient_id": "P002",
+   "recorded_at": "2026-10-17T10:46",
+   "location": "Ward 4B",
+   "ordered_by": "Dr. Karan Mehta",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 581,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "AFIB",
+    "ASMI",
+    "IVCD",
+    "NST_"
+   ],
+   "statements": [
+    {
+     "statement": "SUPER_MI",
+     "probability": 0.9398787021636963,
+     "confidence": "high"
+    },
+    {
+     "statement": "ASMI",
+     "probability": 0.8782142996788025,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "AFIB",
+     "probability": 0.8742163777351379,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "STD_",
+     "probability": 0.7938454151153564,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_STTC",
+     "probability": 0.7448456883430481,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_HYP",
+     "probability": 0.5554637908935547,
+     "confidence": "low"
+    },
+    {
+     "statement": "ISC_",
+     "probability": 0.5098720192909241,
+     "confidence": "low"
+    },
+    {
+     "statement": "LVH",
+     "probability": 0.46744978427886963,
+     "confidence": "low"
+    },
+    {
+     "statement": "LOWT",
+     "probability": 0.33814921975135803,
+     "confidence": "low"
+    },
+    {
+     "statement": "ABQRS",
+     "probability": 0.22641555964946747,
+     "confidence": "low"
+    },
+    {
+     "statement": "QWAVE",
+     "probability": 0.2035439908504486,
+     "confidence": "low"
+    },
+    {
+     "statement": "IVCD",
+     "probability": 0.20054540038108826,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 41.91895668374476,
+    "rr_ms": 1431.3333333333333,
+    "pr_ms": 116.0,
+    "qrs_ms": 104.0,
+    "qt_ms": 482.0,
+    "qtc_bazett_ms": 402.88086933555434,
+    "qtc_fridericia_ms": 427.6942810711706,
+    "qrs_axis_deg": -32.08977508544922,
+    "t_axis_deg": -17.54214859008789,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "AVR",
+    "AVL"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0005",
+   "patient_id": "P002",
+   "recorded_at": "2026-10-27T06:00",
+   "location": "Emergency",
+   "ordered_by": "Dr. Ananya Rao",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 598,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "AFIB",
+    "CLBBB"
+   ],
+   "statements": [
+    {
+     "statement": "PACE",
+     "probability": 0.9876339435577393,
+     "confidence": "high"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 70.24116132053383,
+    "rr_ms": 854.2,
+    "pr_ms": null,
+    "qrs_ms": 166.0,
+    "qt_ms": 432.0,
+    "qtc_bazett_ms": 467.41641838021525,
+    "qtc_fridericia_ms": 455.2995535459227,
+    "qrs_axis_deg": -59.87815475463867,
+    "t_axis_deg": 111.8333511352539,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "AVR"
+   ],
+   "notes": [
+    "Irregular rhythm: PR interval not reported"
+   ]
+  },
+  {
+   "id": "E0006",
+   "patient_id": "P003",
+   "recorded_at": "2026-10-24T22:15",
+   "location": "CCU",
+   "ordered_by": "Dr. Vivek Sharma",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 8215,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "AFIB"
+   ],
+   "statements": [
+    {
+     "statement": "AFIB",
+     "probability": 0.8818960785865784,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "NST_",
+     "probability": 0.12404567748308182,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 81.11762054979721,
+    "rr_ms": 739.6666666666666,
+    "pr_ms": null,
+    "qrs_ms": 96.0,
+    "qt_ms": 374.0,
+    "qtc_bazett_ms": 434.86412230380336,
+    "qtc_fridericia_ms": 413.5483125192161,
+    "qrs_axis_deg": -1.2073348760604858,
+    "t_axis_deg": -1.6871337890625,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "III",
+    "AVR",
+    "AVL",
+    "AVF"
+   ],
+   "notes": [
+    "Irregular rhythm: PR interval not reported"
+   ]
+  },
+  {
+   "id": "E0007",
+   "patient_id": "P003",
+   "recorded_at": "2026-10-27T03:30",
+   "location": "ECG room 1",
+   "ordered_by": "Dr. Priya Nair",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 8219,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "NORM",
+    "SBRAD"
+   ],
+   "statements": [
+    {
+     "statement": "SUPER_NORM",
+     "probability": 0.9400486946105957,
+     "confidence": "high"
+    },
+    {
+     "statement": "NORM",
+     "probability": 0.939782977104187,
+     "confidence": "high"
+    },
+    {
+     "statement": "SBRAD",
+     "probability": 0.893883228302002,
+     "confidence": "moderate"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 48.53247053385718,
+    "rr_ms": 1236.2857142857142,
+    "pr_ms": 168.0,
+    "qrs_ms": 102.0,
+    "qt_ms": 454.0,
+    "qtc_bazett_ms": 408.31602745415444,
+    "qtc_fridericia_ms": 423.00896265248446,
+    "qrs_axis_deg": 7.49503755569458,
+    "t_axis_deg": 35.547691345214844,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "III",
+    "AVR",
+    "AVL",
+    "AVF"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0008",
+   "patient_id": "P004",
+   "recorded_at": "2026-07-15T00:31",
+   "location": "ECG room 2",
+   "ordered_by": "Dr. Karan Mehta",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 7598,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "1AVB",
+    "IRBBB",
+    "LAO/LAE",
+    "LNGQT",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "IRBBB",
+     "probability": 0.9357314705848694,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.9338251352310181,
+     "confidence": "high"
+    },
+    {
+     "statement": "SR",
+     "probability": 0.8583064079284668,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_STTC",
+     "probability": 0.7229831218719482,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "LNGQT",
+     "probability": 0.3984370827674866,
+     "confidence": "low"
+    },
+    {
+     "statement": "NST_",
+     "probability": 0.13443396985530853,
+     "confidence": "low"
+    },
+    {
+     "statement": "INJIN",
+     "probability": 0.02115323394536972,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 80.25291828793775,
+    "rr_ms": 747.6363636363636,
+    "pr_ms": 200.0,
+    "qrs_ms": 108.0,
+    "qt_ms": 518.0,
+    "qtc_bazett_ms": 599.0796280781129,
+    "qtc_fridericia_ms": 570.732960443535,
+    "qrs_axis_deg": -12.957220077514648,
+    "t_axis_deg": 101.77383422851562,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [],
+   "notes": []
+  },
+  {
+   "id": "E0009",
+   "patient_id": "P004",
+   "recorded_at": "2026-07-29T00:43",
+   "location": "Cardiology OPD",
+   "ordered_by": "Dr. Ananya Rao",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 7700,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "IMI",
+    "IRBBB",
+    "ISC_",
+    "LVH",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "SR",
+     "probability": 0.9381493926048279,
+     "confidence": "high"
+    },
+    {
+     "statement": "IRBBB",
+     "probability": 0.9029482007026672,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_STTC",
+     "probability": 0.8002354502677917,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.7566146850585938,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_MI",
+     "probability": 0.5373994708061218,
+     "confidence": "low"
+    },
+    {
+     "statement": "IMI",
+     "probability": 0.5206413865089417,
+     "confidence": "low"
+    },
+    {
+     "statement": "ISCAS",
+     "probability": 0.29699626564979553,
+     "confidence": "low"
+    },
+    {
+     "statement": "ABQRS",
+     "probability": 0.28126296401023865,
+     "confidence": "low"
+    },
+    {
+     "statement": "ISCAL",
+     "probability": 0.2616870701313019,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 70.19185774450163,
+    "rr_ms": 854.8,
+    "pr_ms": 206.0,
+    "qrs_ms": 104.0,
+    "qt_ms": 552.0,
+    "qtc_bazett_ms": 597.044663630517,
+    "qtc_fridericia_ms": 581.6355011158669,
+    "qrs_axis_deg": -10.16524887084961,
+    "t_axis_deg": 119.73348236083984,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "III",
+    "AVL"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0010",
+   "patient_id": "P004",
+   "recorded_at": "2026-08-27T01:46",
+   "location": "Ward 4B",
+   "ordered_by": "Dr. Vivek Sharma",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 7813,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "IMI",
+    "IRBBB",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "SR",
+     "probability": 0.9471463561058044,
+     "confidence": "high"
+    },
+    {
+     "statement": "IRBBB",
+     "probability": 0.8884645700454712,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_STTC",
+     "probability": 0.8330956101417542,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.6316906213760376,
+     "confidence": "low"
+    },
+    {
+     "statement": "IMI",
+     "probability": 0.4749794900417328,
+     "confidence": "low"
+    },
+    {
+     "statement": "SUPER_MI",
+     "probability": 0.44891345500946045,
+     "confidence": "low"
+    },
+    {
+     "statement": "ISCAS",
+     "probability": 0.44009339809417725,
+     "confidence": "low"
+    },
+    {
+     "statement": "ISCAL",
+     "probability": 0.2582714557647705,
+     "confidence": "low"
+    },
+    {
+     "statement": "NST_",
+     "probability": 0.13397304713726044,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 82.15426745778183,
+    "rr_ms": 730.3333333333334,
+    "pr_ms": 176.0,
+    "qrs_ms": 104.0,
+    "qt_ms": 502.0,
+    "qtc_bazett_ms": 587.4124617965196,
+    "qtc_fridericia_ms": 557.4381352655556,
+    "qrs_axis_deg": -10.710075378417969,
+    "t_axis_deg": 140.24945068359375,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "III",
+    "AVR",
+    "AVL",
+    "AVF"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0011",
+   "patient_id": "P004",
+   "recorded_at": "2026-09-16T01:03",
+   "location": "Emergency",
+   "ordered_by": "Dr. Priya Nair",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 7881,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "IMI",
+    "NDT",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "SR",
+     "probability": 0.8661229014396667,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_STTC",
+     "probability": 0.8380854725837708,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "IRBBB",
+     "probability": 0.7120786905288696,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "LNGQT",
+     "probability": 0.6056831479072571,
+     "confidence": "low"
+    },
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.5750243663787842,
+     "confidence": "low"
+    },
+    {
+     "statement": "NST_",
+     "probability": 0.17259353399276733,
+     "confidence": "low"
+    },
+    {
+     "statement": "EL",
+     "probability": 0.14662860333919525,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 79.7872340425532,
+    "rr_ms": 752.0,
+    "pr_ms": 172.0,
+    "qrs_ms": 104.0,
+    "qt_ms": 524.0,
+    "qtc_bazett_ms": 604.2579412589197,
+    "qtc_fridericia_ms": 576.2248808616519,
+    "qrs_axis_deg": -8.804347038269043,
+    "t_axis_deg": 52.036956787109375,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [],
+   "notes": []
+  },
+  {
+   "id": "E0012",
+   "patient_id": "P004",
+   "recorded_at": "2026-10-27T01:00",
+   "location": "CCU",
+   "ordered_by": "Dr. Karan Mehta",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 8032,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "IMI",
+    "LNGQT",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "SR",
+     "probability": 0.9712682962417603,
+     "confidence": "high"
+    },
+    {
+     "statement": "IMI",
+     "probability": 0.8747460246086121,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_MI",
+     "probability": 0.7721576690673828,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "ABQRS",
+     "probability": 0.6942208409309387,
+     "confidence": "low"
+    },
+    {
+     "statement": "IRBBB",
+     "probability": 0.6076182723045349,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 78.59014050964515,
+    "rr_ms": 763.4545454545455,
+    "pr_ms": 152.0,
+    "qrs_ms": 98.0,
+    "qt_ms": 478.0,
+    "qtc_bazett_ms": 547.061691588279,
+    "qtc_fridericia_ms": 522.9981687737896,
+    "qrs_axis_deg": -10.430065155029297,
+    "t_axis_deg": 52.87453079223633,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "III",
+    "AVR",
+    "AVL",
+    "AVF"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0013",
+   "patient_id": "P005",
+   "recorded_at": "2025-11-03T14:42",
+   "location": "ECG room 1",
+   "ordered_by": "Dr. Ananya Rao",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 3582,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "ABQRS",
+    "ASMI",
+    "CRBBB",
+    "IMI",
+    "STACH"
+   ],
+   "statements": [
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.9817843437194824,
+     "confidence": "high"
+    },
+    {
+     "statement": "STACH",
+     "probability": 0.9718096852302551,
+     "confidence": "high"
+    },
+    {
+     "statement": "CRBBB",
+     "probability": 0.9224513173103333,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_MI",
+     "probability": 0.7765048146247864,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "ABQRS",
+     "probability": 0.6095781326293945,
+     "confidence": "low"
+    },
+    {
+     "statement": "LAFB",
+     "probability": 0.48537954688072205,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 119.68085106382979,
+    "rr_ms": 501.3333333333333,
+    "pr_ms": 134.0,
+    "qrs_ms": 140.0,
+    "qt_ms": 336.0,
+    "qtc_bazett_ms": 474.543453607467,
+    "qtc_fridericia_ms": 422.95784393143583,
+    "qrs_axis_deg": -126.81101989746094,
+    "t_axis_deg": 59.44940948486328,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "AVR",
+    "AVL"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0014",
+   "patient_id": "P005",
+   "recorded_at": "2026-10-26T22:30",
+   "location": "ECG room 2",
+   "ordered_by": "Dr. Vivek Sharma",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 5219,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "ABQRS",
+    "ASMI",
+    "CRBBB",
+    "IMI",
+    "SARRH"
+   ],
+   "statements": [
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.9905684590339661,
+     "confidence": "high"
+    },
+    {
+     "statement": "CRBBB",
+     "probability": 0.9497536420822144,
+     "confidence": "high"
+    },
+    {
+     "statement": "SR",
+     "probability": 0.9457276463508606,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_MI",
+     "probability": 0.8018807768821716,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "ABQRS",
+     "probability": 0.5767927765846252,
+     "confidence": "low"
+    },
+    {
+     "statement": "LAFB",
+     "probability": 0.5728101134300232,
+     "confidence": "low"
+    },
+    {
+     "statement": "ASMI",
+     "probability": 0.4925469160079956,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 83.7598883201489,
+    "rr_ms": 716.3333333333334,
+    "pr_ms": 134.0,
+    "qrs_ms": 164.0,
+    "qt_ms": 464.0,
+    "qtc_bazett_ms": 548.2269742204527,
+    "qtc_fridericia_ms": 518.5766131147253,
+    "qrs_axis_deg": -114.59015655517578,
+    "t_axis_deg": 51.766910552978516,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "AVR",
+    "AVL"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0015",
+   "patient_id": "P006",
+   "recorded_at": "2026-10-09T21:14",
+   "location": "Cardiology OPD",
+   "ordered_by": "Dr. Priya Nair",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 112,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "NORM",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "SUPER_NORM",
+     "probability": 0.9930631518363953,
+     "confidence": "high"
+    },
+    {
+     "statement": "NORM",
+     "probability": 0.9928227066993713,
+     "confidence": "high"
+    },
+    {
+     "statement": "SR",
+     "probability": 0.983578085899353,
+     "confidence": "high"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 71.09004739336493,
+    "rr_ms": 844.0,
+    "pr_ms": 118.0,
+    "qrs_ms": 92.0,
+    "qt_ms": 372.0,
+    "qtc_bazett_ms": 404.9223200912205,
+    "qtc_fridericia_ms": 393.63658703964427,
+    "qrs_axis_deg": -11.203981399536133,
+    "t_axis_deg": 53.69390106201172,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "AVL",
+    "AVF"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0016",
+   "patient_id": "P006",
+   "recorded_at": "2026-10-26T20:00",
+   "location": "Ward 4B",
+   "ordered_by": "Dr. Karan Mehta",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 122,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "NORM",
+    "SARRH"
+   ],
+   "statements": [
+    {
+     "statement": "SUPER_NORM",
+     "probability": 0.996364176273346,
+     "confidence": "high"
+    },
+    {
+     "statement": "NORM",
+     "probability": 0.9962887763977051,
+     "confidence": "high"
+    },
+    {
+     "statement": "SR",
+     "probability": 0.7971973419189453,
+     "confidence": "moderate"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 62.63048016701462,
+    "rr_ms": 958.0,
+    "pr_ms": 122.0,
+    "qrs_ms": 96.0,
+    "qt_ms": 404.0,
+    "qtc_bazett_ms": 412.76095686929693,
+    "qtc_fridericia_ms": 409.81972926871714,
+    "qrs_axis_deg": -7.641552925109863,
+    "t_axis_deg": 40.73823928833008,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "AVL",
+    "AVF"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0017",
+   "patient_id": "P007",
+   "recorded_at": "2026-10-25T16:56",
+   "location": "Emergency",
+   "ordered_by": "Dr. Ananya Rao",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 2587,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "PACE"
+   ],
+   "statements": [
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.8419570326805115,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "CLBBB",
+     "probability": 0.7231574654579163,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_MI",
+     "probability": 0.5892019867897034,
+     "confidence": "low"
+    },
+    {
+     "statement": "ASMI",
+     "probability": 0.4635106325149536,
+     "confidence": "low"
+    },
+    {
+     "statement": "PMI",
+     "probability": 0.022769927978515625,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 70.38948850305022,
+    "rr_ms": 852.4,
+    "pr_ms": null,
+    "qrs_ms": 204.0,
+    "qt_ms": 572.0,
+    "qtc_bazett_ms": 619.5470712058122,
+    "qtc_fridericia_ms": 603.2743797116194,
+    "qrs_axis_deg": -61.30134201049805,
+    "t_axis_deg": -178.37216186523438,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "AVR",
+    "V5",
+    "V6"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0018",
+   "patient_id": "P007",
+   "recorded_at": "2026-10-26T17:30",
+   "location": "CCU",
+   "ordered_by": "Dr. Vivek Sharma",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 2592,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "PACE"
+   ],
+   "statements": [
+    {
+     "statement": "PACE",
+     "probability": 0.7807349562644958,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.7337560057640076,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "CLBBB",
+     "probability": 0.5447573661804199,
+     "confidence": "low"
+    },
+    {
+     "statement": "SUPER_MI",
+     "probability": 0.5280206799507141,
+     "confidence": "low"
+    },
+    {
+     "statement": "ALMI",
+     "probability": 0.3204367160797119,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 70.2576112412178,
+    "rr_ms": 854.0,
+    "pr_ms": null,
+    "qrs_ms": 204.0,
+    "qt_ms": 550.0,
+    "qtc_bazett_ms": 595.160026105982,
+    "qtc_fridericia_ms": 579.7090307984957,
+    "qrs_axis_deg": -66.30392456054688,
+    "t_axis_deg": 165.07623291015625,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "AVR",
+    "AVL",
+    "V6"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0019",
+   "patient_id": "P008",
+   "recorded_at": "2025-09-20T21:13",
+   "location": "ECG room 1",
+   "ordered_by": "Dr. Priya Nair",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 18761,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "NORM",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "SR",
+     "probability": 0.9815967679023743,
+     "confidence": "high"
+    },
+    {
+     "statement": "NORM",
+     "probability": 0.8317581415176392,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_NORM",
+     "probability": 0.8310585618019104,
+     "confidence": "moderate"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 86.80169152014243,
+    "rr_ms": 691.2307692307693,
+    "pr_ms": 162.0,
+    "qrs_ms": 94.0,
+    "qt_ms": 352.0,
+    "qtc_bazett_ms": 423.3807739712903,
+    "qtc_fridericia_ms": 398.10867649681603,
+    "qrs_axis_deg": 42.860897064208984,
+    "t_axis_deg": 39.73493194580078,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "III",
+    "AVF"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0020",
+   "patient_id": "P008",
+   "recorded_at": "2025-10-25T22:43",
+   "location": "ECG room 2",
+   "ordered_by": "Dr. Karan Mehta",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 18914,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "IRBBB",
+    "STACH"
+   ],
+   "statements": [
+    {
+     "statement": "STACH",
+     "probability": 0.9562951922416687,
+     "confidence": "high"
+    },
+    {
+     "statement": "NORM",
+     "probability": 0.6413967609405518,
+     "confidence": "low"
+    },
+    {
+     "statement": "SUPER_NORM",
+     "probability": 0.6371065974235535,
+     "confidence": "low"
+    },
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.3647387623786926,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 126.24584717607974,
+    "rr_ms": 475.2631578947368,
+    "pr_ms": 144.0,
+    "qrs_ms": 104.0,
+    "qt_ms": 304.0,
+    "qtc_bazett_ms": 440.9674253393438,
+    "qtc_fridericia_ms": 389.5490956770351,
+    "qrs_axis_deg": 85.12334442138672,
+    "t_axis_deg": 25.321392059326172,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "III",
+    "AVR",
+    "AVL",
+    "AVF",
+    "V1"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0021",
+   "patient_id": "P008",
+   "recorded_at": "2025-11-09T16:46",
+   "location": "Cardiology OPD",
+   "ordered_by": "Dr. Ananya Rao",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 18982,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "NORM",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "SR",
+     "probability": 0.966402530670166,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_NORM",
+     "probability": 0.5909660458564758,
+     "confidence": "low"
+    },
+    {
+     "statement": "NORM",
+     "probability": 0.5902497172355652,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 64.59948320413437,
+    "rr_ms": 928.8,
+    "pr_ms": 182.0,
+    "qrs_ms": 94.0,
+    "qt_ms": 416.0,
+    "qtc_bazett_ms": 431.6504790795186,
+    "qtc_fridericia_ms": 426.3693018440175,
+    "qrs_axis_deg": 42.50151824951172,
+    "t_axis_deg": 40.49772262573242,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "III",
+    "AVL"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0022",
+   "patient_id": "P008",
+   "recorded_at": "2026-05-21T20:21",
+   "location": "Ward 4B",
+   "ordered_by": "Dr. Vivek Sharma",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 19330,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "SR",
+    "WPW"
+   ],
+   "statements": [
+    {
+     "statement": "SR",
+     "probability": 0.9351313710212708,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_NORM",
+     "probability": 0.9153640866279602,
+     "confidence": "high"
+    },
+    {
+     "statement": "NORM",
+     "probability": 0.913878321647644,
+     "confidence": "high"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 61.443932411674346,
+    "rr_ms": 976.5,
+    "pr_ms": 168.0,
+    "qrs_ms": 102.0,
+    "qt_ms": 410.0,
+    "qtc_bazett_ms": 414.9041061579261,
+    "qtc_fridericia_ms": 413.26292082925,
+    "qrs_axis_deg": 30.791316986083984,
+    "t_axis_deg": 22.91592025756836,
+    "ok": true
+   },
+   "unusable_leads": [
+    "III",
+    "V2"
+   ],
+   "noisy_leads": [
+    "II",
+    "AVL",
+    "AVF",
+    "V1"
+   ],
+   "notes": [
+    "Unusable lead(s): III, V2 \u2014 check electrodes"
+   ]
+  },
+  {
+   "id": "E0023",
+   "patient_id": "P008",
+   "recorded_at": "2026-10-12T17:19",
+   "location": "Emergency",
+   "ordered_by": "Dr. Priya Nair",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 19924,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "NORM",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "SR",
+     "probability": 0.9813011884689331,
+     "confidence": "high"
+    },
+    {
+     "statement": "NORM",
+     "probability": 0.8256336450576782,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_NORM",
+     "probability": 0.821183979511261,
+     "confidence": "moderate"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 86.22754491017963,
+    "rr_ms": 695.8333333333334,
+    "pr_ms": 174.0,
+    "qrs_ms": 80.0,
+    "qt_ms": 356.0,
+    "qtc_bazett_ms": 426.77343973386564,
+    "qtc_fridericia_ms": 401.74294126475644,
+    "qrs_axis_deg": 32.56618118286133,
+    "t_axis_deg": 36.5963020324707,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "III",
+    "AVF"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0024",
+   "patient_id": "P008",
+   "recorded_at": "2026-10-26T15:00",
+   "location": "CCU",
+   "ordered_by": "Dr. Karan Mehta",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 19981,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "NORM",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "SR",
+     "probability": 0.976971447467804,
+     "confidence": "high"
+    },
+    {
+     "statement": "NORM",
+     "probability": 0.9450138211250305,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_NORM",
+     "probability": 0.9443172216415405,
+     "confidence": "high"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 74.58975634012928,
+    "rr_ms": 804.4,
+    "pr_ms": 170.0,
+    "qrs_ms": 98.0,
+    "qt_ms": 384.0,
+    "qtc_bazett_ms": 428.1492557292395,
+    "qtc_fridericia_ms": 412.8958682914978,
+    "qrs_axis_deg": 23.9055233001709,
+    "t_axis_deg": 28.583419799804688,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "III",
+    "AVF"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0025",
+   "patient_id": "P009",
+   "recorded_at": "2026-10-26T12:30",
+   "location": "ECG room 1",
+   "ordered_by": "Dr. Ananya Rao",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 3009,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "AFIB",
+    "DIG",
+    "IMI",
+    "LOWT",
+    "NDT",
+    "QWAVE",
+    "STD_"
+   ],
+   "statements": [
+    {
+     "statement": "IMI",
+     "probability": 0.9552817344665527,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_MI",
+     "probability": 0.9381517767906189,
+     "confidence": "high"
+    },
+    {
+     "statement": "AFIB",
+     "probability": 0.919600248336792,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_STTC",
+     "probability": 0.733396589756012,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "ABQRS",
+     "probability": 0.46170926094055176,
+     "confidence": "low"
+    },
+    {
+     "statement": "NDT",
+     "probability": 0.4413372278213501,
+     "confidence": "low"
+    },
+    {
+     "statement": "LOWT",
+     "probability": 0.37405264377593994,
+     "confidence": "low"
+    },
+    {
+     "statement": "NST_",
+     "probability": 0.18021108210086823,
+     "confidence": "low"
+    },
+    {
+     "statement": "IPMI",
+     "probability": 0.05433138832449913,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 86.02150537634408,
+    "rr_ms": 697.5,
+    "pr_ms": null,
+    "qrs_ms": 82.0,
+    "qt_ms": 360.0,
+    "qtc_bazett_ms": 431.05272486425974,
+    "qtc_fridericia_ms": 405.93306705711956,
+    "qrs_axis_deg": -2.5614941120147705,
+    "t_axis_deg": -156.29962158203125,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "AVR",
+    "AVL",
+    "AVF"
+   ],
+   "notes": [
+    "Irregular rhythm: PR interval not reported"
+   ]
+  },
+  {
+   "id": "E0026",
+   "patient_id": "P010",
+   "recorded_at": "2026-10-26T10:00",
+   "location": "ECG room 2",
+   "ordered_by": "Dr. Vivek Sharma",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 180,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "CLBBB",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.9947269558906555,
+     "confidence": "high"
+    },
+    {
+     "statement": "CLBBB",
+     "probability": 0.9832113981246948,
+     "confidence": "high"
+    },
+    {
+     "statement": "SR",
+     "probability": 0.9774322509765625,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_HYP",
+     "probability": 0.7158064842224121,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "LVH",
+     "probability": 0.36826711893081665,
+     "confidence": "low"
+    },
+    {
+     "statement": "LAO/LAE",
+     "probability": 0.33153975009918213,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 92.7357032457496,
+    "rr_ms": 647.0,
+    "pr_ms": 168.0,
+    "qrs_ms": 206.0,
+    "qt_ms": 410.0,
+    "qtc_bazett_ms": 509.72004923635143,
+    "qtc_fridericia_ms": 474.04084452127125,
+    "qrs_axis_deg": -21.709102630615234,
+    "t_axis_deg": 144.53994750976562,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "II"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0027",
+   "patient_id": "P011",
+   "recorded_at": "2026-10-25T12:26",
+   "location": "Cardiology OPD",
+   "ordered_by": "Dr. Priya Nair",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 3479,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "1AVB",
+    "CLBBB",
+    "PVC",
+    "SR"
+   ],
+   "statements": [
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.9808557629585266,
+     "confidence": "high"
+    },
+    {
+     "statement": "CLBBB",
+     "probability": 0.9638144373893738,
+     "confidence": "high"
+    },
+    {
+     "statement": "PVC",
+     "probability": 0.8796589374542236,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SR",
+     "probability": 0.7865256667137146,
+     "confidence": "moderate"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 71.17437722419929,
+    "rr_ms": 843.0,
+    "pr_ms": null,
+    "qrs_ms": 146.0,
+    "qt_ms": 428.0,
+    "qtc_bazett_ms": 466.154608068999,
+    "qtc_fridericia_ms": 453.07271705852895,
+    "qrs_axis_deg": -42.00175476074219,
+    "t_axis_deg": 137.02249145507812,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "AVR",
+    "AVF"
+   ],
+   "notes": [
+    "Irregular rhythm: PR interval not reported"
+   ]
+  },
+  {
+   "id": "E0028",
+   "patient_id": "P011",
+   "recorded_at": "2026-10-26T07:30",
+   "location": "Ward 4B",
+   "ordered_by": "Dr. Karan Mehta",
+   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "record": 3484,
+    "licence": "CC BY 4.0",
+    "role": "test fold (never used for training)"
+   },
+   "reference_statements": [
+    "CLBBB",
+    "ISCAL",
+    "SBRAD"
+   ],
+   "statements": [
+    {
+     "statement": "SUPER_CD",
+     "probability": 0.9828370809555054,
+     "confidence": "high"
+    },
+    {
+     "statement": "CLBBB",
+     "probability": 0.8483960032463074,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SR",
+     "probability": 0.7665966749191284,
+     "confidence": "moderate"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 56.497175141242934,
+    "rr_ms": 1062.0,
+    "pr_ms": 188.0,
+    "qrs_ms": 144.0,
+    "qt_ms": 468.0,
+    "qtc_bazett_ms": 454.1335575968739,
+    "qtc_fridericia_ms": 458.70944322013327,
+    "qrs_axis_deg": -43.132652282714844,
+    "t_axis_deg": 149.02198791503906,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "AVR"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0029",
+   "patient_id": "P012",
+   "recorded_at": "2026-10-27T03:06",
+   "location": "Emergency",
+   "ordered_by": "Dr. Ananya Rao",
+   "device": "GE MUSE (Chapman\u2013Shaoxing)",
+   "source": {
+    "dataset": "Chapman\u2013Shaoxing",
+    "record": "MUSE_20180112_122850_57000",
+    "licence": "CC0",
+    "role": "held-out test set"
+   },
+   "reference_statements": [
+    "AFLT"
+   ],
+   "statements": [
+    {
+     "statement": "SVTAC",
+     "probability": 0.7432197332382202,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_STTC",
+     "probability": 0.7173652052879333,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "NST_",
+     "probability": 0.594878613948822,
+     "confidence": "low"
+    },
+    {
+     "statement": "PSVT",
+     "probability": 0.5642510056495667,
+     "confidence": "low"
+    },
+    {
+     "statement": "AFIB",
+     "probability": 0.5492686033248901,
+     "confidence": "low"
+    },
+    {
+     "statement": "PMI",
+     "probability": 0.027357302606105804,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 162.67510167193856,
+    "rr_ms": 368.8333333333333,
+    "pr_ms": null,
+    "qrs_ms": 76.0,
+    "qt_ms": 338.0,
+    "qtc_bazett_ms": 556.5467083634123,
+    "qtc_fridericia_ms": 471.30999053777475,
+    "qrs_axis_deg": 87.00709533691406,
+    "t_axis_deg": -80.50591278076172,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "III",
+    "AVR",
+    "AVL",
+    "AVF"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0030",
+   "patient_id": "P013",
+   "recorded_at": "2026-10-27T02:53",
+   "location": "CCU",
+   "ordered_by": "Dr. Vivek Sharma",
+   "device": "GE MUSE (Chapman\u2013Shaoxing)",
+   "source": {
+    "dataset": "Chapman\u2013Shaoxing",
+    "record": "MUSE_20180111_155633_99000",
+    "licence": "CC0",
+    "role": "held-out test set"
+   },
+   "reference_statements": [
+    "SVTAC"
+   ],
+   "statements": [
+    {
+     "statement": "NST_",
+     "probability": 0.7391799688339233,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SUPER_STTC",
+     "probability": 0.7207196950912476,
+     "confidence": "moderate"
+    },
+    {
+     "statement": "SVTAC",
+     "probability": 0.6227931976318359,
+     "confidence": "low"
+    },
+    {
+     "statement": "PSVT",
+     "probability": 0.45162397623062134,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 145.6003376239713,
+    "rr_ms": 412.0869565217391,
+    "pr_ms": null,
+    "qrs_ms": 72.0,
+    "qt_ms": null,
+    "qtc_bazett_ms": null,
+    "qtc_fridericia_ms": null,
+    "qrs_axis_deg": 75.79719543457031,
+    "t_axis_deg": null,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "AVR",
+    "AVL",
+    "V2",
+    "V5",
+    "V6"
+   ],
+   "notes": [
+    "Irregular rhythm: PR interval not reported"
+   ]
+  },
+  {
+   "id": "E0031",
+   "patient_id": "P014",
+   "recorded_at": "2026-10-27T02:40",
+   "location": "ECG room 1",
+   "ordered_by": "Dr. Priya Nair",
+   "device": "GE MUSE (Chapman\u2013Shaoxing)",
+   "source": {
+    "dataset": "Chapman\u2013Shaoxing",
+    "record": "MUSE_20180112_073319_29000",
+    "licence": "CC0",
+    "role": "held-out test set"
+   },
+   "reference_statements": [
+    "SBRAD"
+   ],
+   "statements": [
+    {
+     "statement": "SBRAD",
+     "probability": 0.9986482262611389,
+     "confidence": "high"
+    },
+    {
+     "statement": "SUPER_STTC",
+     "probability": 0.5744509100914001,
+     "confidence": "low"
+    },
+    {
+     "statement": "NDT",
+     "probability": 0.36781397461891174,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 50.59021922428331,
+    "rr_ms": 1186.0,
+    "pr_ms": 126.0,
+    "qrs_ms": 96.0,
+    "qt_ms": 426.0,
+    "qtc_bazett_ms": 391.1715442945298,
+    "qtc_fridericia_ms": 402.45256785562293,
+    "qrs_axis_deg": 78.84440612792969,
+    "t_axis_deg": 40.96308135986328,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "III",
+    "AVR",
+    "AVL"
+   ],
+   "notes": []
+  },
+  {
+   "id": "E0032",
+   "patient_id": "P015",
+   "recorded_at": "2026-10-27T02:27",
+   "location": "ECG room 2",
+   "ordered_by": "Dr. Karan Mehta",
+   "device": "GE MUSE (Chapman\u2013Shaoxing)",
+   "source": {
+    "dataset": "Chapman\u2013Shaoxing",
+    "record": "MUSE_20180113_135023_96000",
+    "licence": "CC0",
+    "role": "held-out test set"
+   },
+   "reference_statements": [
+    "STACH"
+   ],
+   "statements": [
+    {
+     "statement": "STACH",
+     "probability": 0.9974043965339661,
+     "confidence": "high"
+    },
+    {
+     "statement": "NORM",
+     "probability": 0.5419716835021973,
+     "confidence": "low"
+    },
+    {
+     "statement": "SUPER_NORM",
+     "probability": 0.5346413254737854,
+     "confidence": "low"
+    },
+    {
+     "statement": "NDT",
+     "probability": 0.28883615136146545,
+     "confidence": "low"
+    }
+   ],
+   "measurements": {
+    "heart_rate_bpm": 120.34767104969913,
+    "rr_ms": 498.55555555555554,
+    "pr_ms": 148.0,
+    "qrs_ms": 74.0,
+    "qt_ms": 306.0,
+    "qtc_bazett_ms": 433.3757900946481,
+    "qtc_fridericia_ms": 385.9078146272897,
+    "qrs_axis_deg": 45.423858642578125,
+    "t_axis_deg": 35.412025451660156,
+    "ok": true
+   },
+   "unusable_leads": [],
+   "noisy_leads": [
+    "I",
+    "II",
+    "III",
+    "AVR",
+    "AVL",
+    "AVF",
+    "V2",
+    "V6"
+   ],
+   "notes": []
+  }
+ ],
+ "holters": [
+  {
+   "id": "H001",
+   "patient_id": "P016",
+   "recorded_at": "2026-10-26T09:30",
+   "duration_s": 1805.5555555555557,
+   "lead": "MLII",
+   "fs": 360,
+   "source": {
+    "dataset": "MIT-BIH Arrhythmia",
+    "record": 221,
+    "licence": "ODC-By 1.0",
+    "role": "test record (DS2)"
+   },
+   "device": "Holter (MIT-BIH, 1975\u201379)",
+   "ordered_by": "Dr. Ananya Rao",
+   "findings": [
+    "Possible atrial fibrillation in 108 of 120 rhythm windows (highest confidence: high)",
+    "Predominant rhythm: atrial fibrillation (108 of 120 windows)",
+    "Premature ventricular complexes: 386 beat(s)",
+    "Noisy signal in 2 of 722 windows: morphology less reliable there"
+   ],
+   "measurements": {
+    "heart_rate_bpm": 84.37500000001378,
+    "rr_min_s": 0.3694444444444116,
+    "rr_max_s": 1.7555555555555316,
+    "rr_cv": 0.27210708602651473,
+    "beats_analysed": 2419,
+    "usable_fraction": 0.9996923076923077,
+    "beat_counts": {
+     "N": 1966,
+     "S": 67,
+     "V": 386,
+     "F": 0
+    }
+   }
+  },
+  {
+   "id": "H002",
+   "patient_id": "P017",
+   "recorded_at": "2026-10-26T06:30",
+   "duration_s": 1805.5555555555557,
+   "lead": "MLII",
+   "fs": 360,
+   "source": {
+    "dataset": "MIT-BIH Arrhythmia",
+    "record": 233,
+    "licence": "ODC-By 1.0",
+    "role": "test record (DS2)"
+   },
+   "device": "Holter (MIT-BIH, 1975\u201379)",
+   "ordered_by": "Dr. Vivek Sharma",
+   "findings": [
+    "Predominant rhythm: other rhythm (120 of 120 windows)",
+    "Premature ventricular complexes: 768 beat(s)",
+    "Supraventricular ectopic beats: 26 beat(s)",
+    "Fusion beats: 194 beat(s)",
+    "Noisy signal in 51 of 722 windows: morphology less reliable there",
+    "1 of 722 windows not analysable: shown for manual review"
+   ],
+   "measurements": {
+    "heart_rate_bpm": 101.88679245283762,
+    "rr_min_s": 0.29166666666662877,
+    "rr_max_s": 3.0138888888888005,
+    "rr_cv": 0.22467860693570588,
+    "beats_analysed": 3069,
+    "usable_fraction": 0.9983076923076923,
+    "beat_counts": {
+     "N": 2081,
+     "S": 26,
+     "V": 768,
+     "F": 194
+    }
+   }
+  },
+  {
+   "id": "H003",
+   "patient_id": "P018",
+   "recorded_at": "2026-10-26T03:30",
+   "duration_s": 1805.5555555555557,
+   "lead": "MLII",
+   "fs": 360,
+   "source": {
+    "dataset": "MIT-BIH Arrhythmia",
+    "record": 100,
+    "licence": "ODC-By 1.0",
+    "role": "test record (DS2)"
+   },
+   "device": "Holter (MIT-BIH, 1975\u201379)",
+   "ordered_by": "Dr. Priya Nair",
+   "findings": [
+    "Predominant rhythm: sinus rhythm (80 of 120 windows)",
+    "Premature ventricular complexes: 1 beat(s)",
+    "Supraventricular ectopic beats: 35 beat(s)",
+    "Noisy signal in 4 of 722 windows: morphology less reliable there"
+   ],
+   "measurements": {
+    "heart_rate_bpm": 75.26132404181233,
+    "rr_min_s": 0.5222222222222115,
+    "rr_max_s": 1.1333333333334394,
+    "rr_cv": 0.06153661152876385,
+    "beats_analysed": 2271,
+    "usable_fraction": 0.9996923076923077,
+    "beat_counts": {
+     "N": 2235,
+     "S": 35,
+     "V": 1,
+     "F": 0
+    }
+   }
+  }
+ ],
+ "statement_descriptions": {
+  "SUPER_STTC": "SUPER_STTC",
+  "ISC_": "non-specific ischemic",
+  "SR": "sinus rhythm",
+  "SUPER_HYP": "SUPER_HYP",
+  "ASMI": "anteroseptal myocardial infarction",
+  "SUPER_MI": "SUPER_MI",
+  "LVH": "left ventricular hypertrophy",
+  "STD_": "non-specific ST depression",
+  "ABQRS": "abnormal QRS",
+  "ISCAL": "ischemic in anterolateral leads",
+  "INVT": "inverted T-waves",
+  "PAC": "atrial premature complex",
+  "PVC": "ventricular premature complex",
+  "AFIB": "atrial fibrillation",
+  "SUPER_CD": "SUPER_CD",
+  "VCLVH": "voltage criteria (QRS) for left ventricular hypertrophy",
+  "IVCD": "non-specific intraventricular conduction disturbance (block)",
+  "NST_": "non-specific ST changes",
+  "AFLT": "atrial flutter",
+  "SVTAC": "supraventricular tachycardia",
+  "1AVB": "first degree AV block",
+  "LAO/LAE": "left atrial overload/enlargement",
+  "ILBBB": "incomplete left bundle branch block",
+  "LPR": "prolonged PR interval",
+  "LOWT": "low amplitude T-waves",
+  "QWAVE": "Q waves present",
+  "PACE": "normal functioning artificial pacemaker",
+  "CLBBB": "complete left bundle branch block",
+  "SUPER_NORM": "normal ECG",
+  "NORM": "normal ECG",
+  "SBRAD": "sinus bradycardia",
+  "IRBBB": "incomplete right bundle branch block",
+  "LNGQT": "long QT-interval",
+  "INJIN": "subendocardial injury in inferior leads",
+  "IMI": "inferior myocardial infarction",
+  "ISCAS": "ischemic in anteroseptal leads",
+  "EL": "electrolytic disturbance or drug (former EDIS)",
+  "NDT": "non-diagnostic T abnormalities",
+  "STACH": "sinus tachycardia",
+  "CRBBB": "complete right bundle branch block",
+  "LAFB": "left anterior fascicular block",
+  "SARRH": "sinus arrhythmia",
+  "PMI": "posterior myocardial infarction",
+  "ALMI": "anterolateral myocardial infarction",
+  "WPW": "Wolf-Parkinson-White syndrome",
+  "IPMI": "inferoposterior myocardial infarction",
+  "DIG": "digitalis-effect",
+  "PSVT": "paroxysmal supraventricular tachycardia"
+ },
+ "disclaimer": "Demo data. Signals from public research databases (PTB-XL CC BY 4.0, Chapman\u2013Shaoxing CC0, MIT-BIH ODC-By 1.0); patient names, record numbers, doctors and dates are fictitious. AI output is real Cardiotic AI engine output. Research use only \u2014 not a medical device."
+}

@@ -97,13 +97,13 @@
     "statement": "NST_",
     "probability": 0.18021108210086823,
     "threshold": 0.12000000000000001,
-    "confidence": "moderate"
+    "confidence": "low"
    },
    {
     "statement": "IPMI",
     "probability": 0.05433138832449913,
     "threshold": 0.02,
-    "confidence": "high"
+    "confidence": "low"
    }
   ],
   "notes": [

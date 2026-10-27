@@ -14,13 +14,14 @@ For hospitals and medical-equipment manufacturers. On-premise. Markets: India an
 | | |
 |---|---|
 | [docs/AI_ML_ROADMAP.md](docs/AI_ML_ROADMAP.md) | **The AI**: every model, what it learns from, how it is tested, build order |
+| [frontend/](frontend/) | **Clickable demo app** (no backend): worklist, 12-lead review, Holter, monitoring, reports. Real AI output on public ECGs ([how to run](frontend/README.md)) |
 | [engine/](engine/) | **The deployable engine**: ONNX models with integrity checks, HTTP API, on-premise image ([API and deployment](engine/README.md)) |
 | [ml/](ml/) | AI research code: data loaders, signal processing, models, training, evaluation ([how to run](ml/README.md)) |
 | [ml/reports/RESULTS.md](ml/reports/RESULTS.md) | Measured results on patients the models never saw |
 | [docs/PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md) | Review of the original research, product definition, regulatory path, data, AI/ML design, architecture, roadmap, team, risks and **open decisions** (section 14) |
-| [docs/ui-concept/index.html](docs/ui-concept/index.html) | Clickable UI concept. Open it in a browser; switch screens with the bar at the top and switch theme with the moon icon |
+| [docs/ui-concept/index.html](docs/ui-concept/index.html) | Earlier static UI concept (superseded by frontend/). Open it in a browser; switch screens with the bar at the top and switch theme with the moon icon |
 
-![ECG review concept](docs/ui-concept/screenshot-review.png)
+![ECG review — demo app](frontend/screenshots/review-light.png)
 
 ## Product line
 
