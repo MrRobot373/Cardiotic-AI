@@ -89,11 +89,11 @@ Trained on CinC 2017 handheld single-lead ECGs, tested on held-out CinC records 
 
 MIT-BIH split for rhythm work: **validation** records 201, 215, 207, 209, 220 (used only to choose versions); **test** = the 22 DS2 records, never used for training by any version. v0.2 also trains on 17 other DS1 records.
 
-| Version | Recipe | CinC val F1 | CinC test F1 | MIT-BIH val: AF found · false-AF windows | MIT-BIH test: AF Se · false-AF windows · AF PPV · specificity |
-|---|---|---:|---:|---:|---:|
-| v0.1 (adopted) | {'ectopy_features': False, 'mitdb_train': False, 'epochs': 14} | 84.4% | 83.1% | 18/18 · 38 | 96.9% · 106 · 59.8% · 90.6% |
-| v0.2 | {'ectopy_features': True, 'mitdb_train': True, 'epochs': 14} | 85.7% | 83.0% | 18/18 · 3 | 77.3% · 25 · 83.4% · 97.8% |
-| v0.3 | v0.1 + ectopy gate {'pvc_min': 0.02, 'tau': 0.16, 'leads': ['MLII', 'II']} (CinC = v0.1: gate off for lead I) | 84.4% | 83.1% | 18/18 · 6 | 65.0% · 71 · 59.9% · 93.7% |
+| Version | Recipe | CinC val F1 | CinC test F1 | MIT-BIH val: AF found · false-AF windows | MIT-BIH test (DS2): AF Se · false-AF windows · AF PPV · specificity | AFDB val: AF Se · false-AF windows | AFDB test: AF Se · false-AF windows · AF PPV · specificity |
+|---|---|---:|---:|---:|---:|---:|---:|
+| v0.1 (adopted) | {'ectopy_features': False, 'mitdb_train': False, 'epochs': 14} | 84.4% | 83.1% | 18/18 · 38 | 96.9% · 106 · 59.8% · 90.6% | — | — |
+| v0.2 | {'ectopy_features': True, 'mitdb_train': True, 'epochs': 14} | 85.7% | 83.0% | 18/18 · 3 | 77.3% · 25 · 83.4% · 97.8% | — | — |
+| v0.3 | v0.1 + ectopy gate {'pvc_min': 0.02, 'tau': 0.16, 'leads': ['MLII', 'II']} (CinC = v0.1: gate off for lead I) | 84.4% | 83.1% | 18/18 · 6 | 65.0% · 71 · 59.9% · 93.7% | — | — |
 
 **What happened with the AF false-alarm fix (issue 5):**
 

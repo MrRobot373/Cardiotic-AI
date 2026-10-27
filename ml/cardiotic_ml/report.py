@@ -104,7 +104,7 @@ def write_results() -> str:
                 "N = normal or bundle-branch beats · S = supraventricular ectopic · V = ventricular ectopic · F = fusion. "
                 "In this protocol S and F are known to be hard (few training examples, S beats often look normal). "
                 "Accuracy is dominated by N and is not the number to judge the model by: read Se and +P for S and V.", ""]
-    rvers = [(v, _load(f"rhythm_classification_{v}")) for v in ("v0.1", "v0.2")]
+    rvers = [(v, _load(f"rhythm_classification_{v}")) for v in ("v0.1", "v0.2", "v0.4", "v0.5")]
     rvers = [(v, r) for v, r in rvers if r]
     rh = None
     if rvers:
@@ -117,8 +117,8 @@ def write_results() -> str:
                 "83% on their hidden test set (not directly comparable).", "",
                 "MIT-BIH split for rhythm work: **validation** records 201, 215, 207, 209, 220 (used only to choose versions); "
                 "**test** = the 22 DS2 records, never used for training by any version. v0.2 also trains on 17 other DS1 records.", "",
-                "| Version | Recipe | CinC val F1 | CinC test F1 | MIT-BIH val: AF found · false-AF windows | MIT-BIH test: AF Se · false-AF windows · AF PPV · specificity |",
-                "|---|---|---:|---:|---:|---:|"]
+                "| Version | Recipe | CinC val F1 | CinC test F1 | MIT-BIH val: AF found · false-AF windows | MIT-BIH test (DS2): AF Se · false-AF windows · AF PPV · specificity | AFDB val: AF Se · false-AF windows | AFDB test: AF Se · false-AF windows · AF PPV · specificity |",
+                "|---|---|---:|---:|---:|---:|---:|---:|"]
         g = _load("rhythm_gate_v0.3")
         rows = list(rvers)
         if g and _load("rhythm_mitdb_test_v0.3"):
@@ -130,8 +130,12 @@ def write_results() -> str:
             mv_s = f"{int(mv['windows_af'] * mv['af_sensitivity'] + 0.5)}/{int(mv['windows_af'])} · {int(mv['false_af_windows'])}" if mv else "—"
             mt_s = (f"{_pct(mt['af_sensitivity'])} · {int(mt['false_af_windows'])} · {_pct(mt['af_ppv'])} · {_pct(mt['af_specificity'])}"
                     if mt else "—")
+            av, at = _load(f"rhythm_afdb_val_{v}"), _load(f"rhythm_afdb_test_{v}")
+            av_s = f"{_pct(av['af_sensitivity'])} · {int(av['false_af_windows']):,}" if av else "—"
+            at_s = (f"{_pct(at['af_sensitivity'])} · {int(at['false_af_windows']):,} · {_pct(at['af_ppv'])} · {_pct(at['af_specificity'])}"
+                    if at else "—")
             out.append(f"| {v}{' (adopted)' if v == adopted_r else ''} | {r['model_card'].get('recipe', {})} | "
-                       f"{_pct(r.get('val_challenge_f1'))} | {_pct(r['test_challenge_f1'])} | {mv_s} | {mt_s} |")
+                       f"{_pct(r.get('val_challenge_f1'))} | {_pct(r['test_challenge_f1'])} | {mv_s} | {mt_s} | {av_s} | {at_s} |")
         out += ["", "**What happened with the AF false-alarm fix (issue 5):**", "",
                 "- **v0.2** (ectopy-aware features + MIT-BIH training windows) passed every validation check (false-AF windows "
                 "38 → 3, no AF lost), and on the unseen DS2 patients cut false-AF windows 106 → 25. But it found AF in only 77% of "
@@ -147,6 +151,24 @@ def write_results() -> str:
                 "- **Lessons:** the validation set had a single AF patient, too few to choose anything that trades AF sensitivity; "
                 "and DS2 has now informed two decisions, so it is no longer an unbiased final test. Both are fixed by an AF validation "
                 "set with many AF patients (MIT-BIH AF Database, 23 patients) and a fresh external test set.", ""]
+        sel = _load("rhythm_selection")
+        if sel:
+            out += ["**Retry with the MIT-BIH AF Database** (23 Holter patients, ~10 h each): patients ranked by AF burden "
+                    "and dealt into train 8 / validation 8 / test 7. The AFDB test patients were not used for any decision.", "",
+                    f"Selection rule (fixed before any AFDB result): {sel['rule']}", "",
+                    "| Candidate | Passes | AFDB-val AF Se drop | MIT-BIH-val AF Se drop | Worst AFDB-val patient drop | CinC val F1 drop | False-AF windows (val) vs v0.1 |",
+                    "|---|---|---:|---:|---:|---:|---:|"]
+            for c in sel["candidates"]:
+                out.append(f"| {c['version']} | {'yes' if c['passes'] else 'no'} | {_pct(c['afdb_af_se_drop'])} | {_pct(c['mitdb_af_se_drop'])} | "
+                           f"{_pct(c['worst_patient_af_se_drop'])} | {_pct(c['cinc_val_f1_drop'])} | {c['false_af']} vs {c['false_af_baseline']} |")
+            out += ["", f"**Chosen by the rule: {sel['chosen']}.**", ""]
+            at = _load(f"rhythm_afdb_test_{adopted_r}")
+            if at:
+                out += [f"AFDB test patients, {adopted_r} (fresh data):", "",
+                        "| Patient | AF windows | AF detected | Non-AF windows | False AF windows |", "|---|---:|---:|---:|---:|"]
+                out += [f"| {p['record']} | {p['af_windows']} | {p['af_detected']} | {p['non_af_windows']} | {p['false_af_windows']} |"
+                        for p in at["per_record"]]
+                out.append("")
         v, rh = next((v, r) for v, r in rvers if v == adopted_r)
         rep = rh["test"]
         out += [f"**Adopted: {v}.** CinC test detail:", ""]
