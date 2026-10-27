@@ -18,6 +18,10 @@ models from here (see [docs/AI_ML_ROADMAP.md](../docs/AI_ML_ROADMAP.md)).
 | `rhythm/`, `data/cinc2017.py` | **M3 rhythm classifier**: normal / AF / other rhythm / too noisy, per 30 s window (CinC 2017) |
 | `data/afdb.py`, `rhythm/gate.py` | MIT-BIH AF Database loader and patient split; ectopy gate (tried, not adopted) |
 | `calibration.py` | **M5**: temperature scaling, expected calibration error, confidence levels |
+| `data/ptbxl.py` | PTB-XL 12-lead loader (official patient-wise folds), SCP statements, PTB-XL+ reference measurements (GE 12SL, Uni-G) |
+| `ecg12/measure.py` | **M4 measurements**: median beat, QRS onset/offset (spatial velocity), T end, P wave → HR, PR, QRS, QT/QTc, axes |
+| `ecg12/model.py`, `experiments_ecg12.py` | **M4 statements**: 12-lead 1D ResNet, 71 SCP statements + 5 superclasses; measurement tuning and agreement |
+| `ecg12/analyze.py` | 12-lead end to end: per-lead quality → measurements → calibrated statements |
 | `pipeline.py` | End to end: quality gate → beats → classification → rhythm → measurements → findings (JSON + plot) |
 | `experiments_rhythm.py` | Rhythm training, cross-dataset AF test on MIT-BIH, beat calibration |
 | `experiments.py`, `report.py` | Reproducible experiments → `reports/*.json` → `reports/RESULTS.md` |
@@ -42,6 +46,11 @@ cd ml
 ../.venv/bin/python -m cardiotic_ml.cli eval-rhythm-afdb --version v0.1 --split val
 ../.venv/bin/python -m cardiotic_ml.cli train-rhythm --version v0.4    # or v0.5
 ../.venv/bin/python -m cardiotic_ml.cli select-rhythm                  # fixed rule, validation data only
+# PTB-XL 1.0.3 (https://physionet.org/content/ptb-xl/1.0.3/) unzipped into data/raw/ptbxl/, and PTB-XL+ 1.0.1
+# features/{12sl,unig}_features.csv (https://physionet.org/content/ptb-xl-plus/1.0.1/) into data/raw/ptbxl_plus/features/:
+../.venv/bin/python -m cardiotic_ml.cli tune-ecg12-measure --version v0.2            # training folds only
+../.venv/bin/python -m cardiotic_ml.cli eval-ecg12-measure --version v0.2 --split val
+../.venv/bin/python -m cardiotic_ml.cli train-ecg12 --version v0.1                    # CPU, ~2 h
 ../.venv/bin/python -m cardiotic_ml.cli report          # writes reports/RESULTS.md
 ../.venv/bin/python -m cardiotic_ml.cli analyze --record 233 --start 600 --seconds 60 --plot strip.png
 ../.venv/bin/pytest -q                                   # fast tests, no download needed
@@ -56,6 +65,12 @@ MIT-BIH Arrhythmia, MIT-BIH Noise Stress Test, MIT-BIH Atrial Fibrillation and P
 PhysioNet, Open Data Commons Attribution License v1.0. For CinC 2017 also cite: Clifford GD et al.
 *AF Classification from a Short Single Lead ECG Recording: the PhysioNet/Computing in Cardiology
 Challenge 2017.* Computing in Cardiology 44 (2017). For the AF Database: Moody GB, Mark RG. *A new method
-for detecting atrial fibrillation using R-R intervals.* Computers in Cardiology 10:227-230 (1983). Cite: Moody GB, Mark RG. *The impact of the MIT-BIH Arrhythmia
+for detecting atrial fibrillation using R-R intervals.* Computers in Cardiology 10:227-230 (1983).
+
+PTB-XL and PTB-XL+: Creative Commons Attribution 4.0. Cite: Wagner P et al. *PTB-XL, a large publicly
+available electrocardiography dataset.* Scientific Data 7:154 (2020), and Strodthoff N et al. *PTB-XL+, a
+comprehensive electrocardiographic feature dataset.* Scientific Data 10:279 (2023).
+
+For all PhysioNet data, cite: Moody GB, Mark RG. *The impact of the MIT-BIH Arrhythmia
 Database.* IEEE Eng in Med and Biol 20(3):45-50 (2001), and Goldberger AL et al. *PhysioBank,
 PhysioToolkit, and PhysioNet.* Circulation 101(23):e215-e220 (2000).

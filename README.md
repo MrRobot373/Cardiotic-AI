@@ -3,8 +3,9 @@
 AI-assisted ECG analysis and cardiac monitoring for hospitals, ICUs and operation theatres.
 For hospitals and medical-equipment manufacturers. On-premise. Markets: India and USA first, then EU.
 
-> **Status: early AI research.** The first two AI models (signal quality and beat classification)
-> and a heartbeat-detection benchmark are built and measured on public data. See
+> **Status: early AI research.** Signal quality, heartbeat detection, beat classification, rhythm (AF),
+> calibration and 12-lead analysis (interval measurements and 71 diagnostic statements) are built and
+> measured on public data, on patients the models never saw. See
 > [ml/reports/RESULTS.md](ml/reports/RESULTS.md). Nothing is validated for clinical use. Everything in
 > the UI concept is synthetic.
 

@@ -20,7 +20,7 @@ how it is measured, and the order we build them. Measured results live in
 | — | **Beat detection** | "Where is every heartbeat?" | Pan-Tompkins + R-peak refinement (4 detectors benchmarked EC57-style) | **Se 99.5%, +P 99.3%** on all 48 MIT-BIH records |
 | M2 | **Beat classifier** | "Is this beat normal, supraventricular (S), ventricular (V) or fusion (F)?" | 1D-CNN on beat shape + MLP on RR timing | **v0.1**: end to end V Se 87.0% / +P 95.7%; S and F weak (inter-patient MIT-BIH) |
 | M3 | **Rhythm classifier** | "What rhythm is this stretch?" normal / AF / other / too noisy (later: flutter, blocks, VT…) | 1D ResNet over 30 s + RR-irregularity features | **v0.1**: CinC 2017 challenge F1 83.1%; fresh AF Database patients: AF Se 97.4%, PPV 95.5%; ectopy-rich MIT-BIH: PPV ~60% |
-| M4 | **12-lead statements + measurements** | PR, QRS, QT/QTc, axis; MI, LVH, bundle-branch blocks… | Multi-label 1D ResNet + delineation | After M3: PTB-XL, CODE-15%, MIMIC-IV-ECG |
+| M4 | **12-lead statements + measurements** | PR, QRS, QT/QTc, axis; MI, LVH, bundle-branch blocks… | Multi-label 1D ResNet (71 statements + 5 superclasses) + median-beat delineation | **Statements v0.1** (PTB-XL test fold): superclass macro-AUC 0.925, rhythm 0.957, all 71 statements 0.914. **Measurements v0.2** vs GE 12SL: QRS +0.3 ± 11.2 ms, QT −2.0 ± 22.7 ms, PR −6.4 ± 15.9 ms. Rare statements weak; next CODE-15%, MIMIC-IV-ECG |
 | M5 | **Calibration and "not sure"** | "How sure am I, and is this input unlike anything I trained on?" | Temperature scaling (done) + out-of-distribution detection (next) | **Rhythm**: ECE 3.1% → 1.6%. **Beats**: does not transfer across patients yet |
 | M6 | **Multi-signal (OT/ICU)** | "Is this monitor alarm real, given the pulse and BP?" "What changed together?" | Multi-input model over ECG + ABP/PPG | Product B/C: CinC 2015, VitalDB |
 | M7 | **ECG image digitiser** | "Turn a photo or scan of a paper ECG into a signal" | Segmentation + trace extraction | Later; PhysioNet Challenge 2024 as benchmark |
@@ -42,7 +42,7 @@ how it is measured, and the order we build them. Measured results live in
 
 **Priorities after the 27 Oct 2026 decisions** (hospitals + equipment manufacturers, India + USA,
 on-premise):
-1. **M4 — 12-lead measurements and statements.** Both buyers need it: hospital ECG reading rooms read
+1. **M4 — 12-lead measurements and statements.** First versions done (statements v0.1, measurements v0.2). Both buyers need it: hospital ECG reading rooms read
    12-lead ECGs, and ECG-cart makers embed 12-lead interpretation. It is also what the UI concept shows.
 2. **Engine packaging (step 6 below) moves up:** manufacturers integrate an engine, not an app, so the
    exported, deterministic, versioned engine with its own test reports is needed early.
@@ -60,7 +60,9 @@ on-premise):
 | 3c | AF validation set with many AF patients + fresh external test set; retry 3b | + MIT-BIH AF Database (23 patients: 8 train / 8 val / 7 test) | **Done, nothing adopted**: v0.4 halved validation false AF but lost AF in one patient (−16 points); the pre-declared rule caught it on validation. v0.1 on fresh AFDB test: AF Se 97.4%, PPV 95.5% |
 | 3d | Next AF options: AF-probability operating point per use case (chosen on validation); Long-Term AF Database (84 patients); beat labels inside AF | + LTAFDB | Same rule as 3c |
 | 4 | M5 calibration; confidence levels in the pipeline output | Held-out calibration sets | **Done for rhythm**; beats need a larger, more varied calibration set |
-| 5 | M4 12-lead statements and interval measurements | PTB-XL (+PTB-XL+), CODE-15% | AUROC per statement on official test fold; interval error vs reference |
+| 5 | M4 12-lead statements and interval measurements | PTB-XL (+PTB-XL+), CODE-15% | **Done (statements v0.1, measurements v0.2)** on the PTB-XL official test fold; numbers, subgroups and open issues in RESULTS.md §7–8 |
+| 5c | Rare statements (WPW, long QT, flutter, anterior MI), sex gap, 12-lead signal quality | + CODE-15%, MIMIC-IV-ECG; PTB-XL noise annotations | Per-statement sensitivity at a validation-chosen operating point; subgroup gap closed or explained |
+| 5b | Measurement accuracy against a referee, not another algorithm | CSE database (licensed) | IEC 60601-2-25 tolerances met on CSE |
 | 6 | Export to ONNX; deterministic `ecg-engine` service with model registry | — | Same outputs from ONNX and PyTorch; engine API used by the app |
 | 7 | Partner-hospital retrospective validation | Partner ECGs, ≥2 cardiologists per label | Pre-agreed acceptance targets met |
 | 8 | M6 multi-signal false-alarm model (silent mode) | CinC 2015, VitalDB, partner OT data | Zero missed true alarms at the chosen operating point |

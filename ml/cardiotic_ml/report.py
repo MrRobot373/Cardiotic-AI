@@ -316,28 +316,50 @@ def write_results() -> str:
             "3. **False beat at the start of every recording.** Pan-Tompkins' thresholds are still settling in the first moments "
             "(record 221: detection at 0.32 s, first real beat at 0.61 s). Detections in the first 0.4 s are now dropped. Test added.",
             "4. **'Supraventricular ectopic beats' reported during AF.** Premature atrial beats are not defined in AF; that finding "
-            "is now suppressed when AF is the predominant rhythm.", "",
+            "is now suppressed when AF is the predominant rhythm.",
+            "5. **Resampling mixed up the leads of a 12-lead ECG.** The resampling helper worked along the first array axis, so "
+            "a (12 leads × samples) ECG was resampled across leads instead of over time. Found by the first 12-lead end-to-end run "
+            "(training was not affected: it uses the database's own 100 Hz files). It now always works along time; single-lead "
+            "results are unchanged (demo record 233 reproduced exactly). Test added.",
+            "6. **12-lead measurements were reported for pure noise.** When every lead is rated unusable, measurements and "
+            "statements are now both withheld. Test added.",
+            "7. **12-lead measurement v0.1 had large misses** (wide QRS, low P waves, flat T waves; section 7.2). Fixed in v0.2.", "",
             "### Open (next work)",
-            "5. **AF over-called in ectopy-rich recordings — four candidates tried, none adopted** (section 4). Every candidate "
+            "8. **AF over-called in ectopy-rich recordings — four candidates tried, none adopted** (section 4). Every candidate "
             "cut false AF substantially but lost real AF in some patient. With the MIT-BIH AF Database (8 validation AF patients) "
             "the pre-declared rule now catches this on validation. On fresh AFDB test patients, v0.1 itself finds 97.4% of AF "
             "windows with 95.5% positive predictivity, so the false-alarm problem is concentrated in non-AF patients with frequent "
             "ectopy (MIT-BIH DS2: PPV ~60%). Next options: (a) an explicit AF-probability operating point chosen on validation per "
             "use case (screening vs. review) — a transparent sensitivity/false-alarm trade-off; (b) more AF data (Long-Term AF "
             "Database, 84 patients); (c) beat labels inside AF for a beat classifier that is reliable during AF.",
-            "5b. **The beat classifier labels some AF beats as ventricular**, on handheld lead I especially (a quarter of CinC AF "
+            "8b. **The beat classifier labels some AF beats as ventricular**, on handheld lead I especially (a quarter of CinC AF "
             "windows had ≥10% 'PVCs'). Anything built on its PVC labels must be restricted to leads where it is validated.",
-            "6. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). The v0.2 augmentation recipe scored lower "
+            "9. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). The v0.2 augmentation recipe scored lower "
             "on validation and was not adopted. Next: more S/F data (INCART, long-term AF database), patient-adaptive RR features.",
-            "7. **Beat-model calibration does not transfer across patients.** A temperature fitted on the 4 validation patients "
+            "10. **Beat-model calibration does not transfer across patients.** A temperature fitted on the 4 validation patients "
             "made test ECE worse (slightly under-confident). The rhythm model's calibration did improve on test. Next: calibrate "
             "beats on a larger, more varied patient set; until then beat confidence levels must not be shown as calibrated in any UI.",
-            "8. **Proxy and weak labels.** Synthetic quality labels come from known noise levels; CinC 'too noisy' labels are per "
+            "11. **Proxy and weak labels.** Synthetic quality labels come from known noise levels; CinC 'too noisy' labels are per "
             "recording, not per window. Clinician-labelled windows are needed.",
-            "9. **Public data only.** MIT-BIH (1970s Holter, MLII) and CinC 2017 (handheld, lead I). Performance on modern 12-lead "
+            "12. **Public data only.** MIT-BIH (1970s Holter, MLII) and CinC 2017 (handheld, lead I). Performance on modern 12-lead "
             "carts and OT/ICU monitors is unknown until tested on partner-hospital data.",
-            "10. **CinC split is by record, not patient** (no patient IDs are published), so some test records may share a patient "
-            "with training records. The cross-dataset MIT-BIH result is the stronger generalisation evidence.", ""]
+            "13. **CinC split is by record, not patient** (no patient IDs are published), so some test records may share a patient "
+            "with training records. The cross-dataset MIT-BIH result is the stronger generalisation evidence.",
+            "14. **Rare 12-lead statements are weak.** Wolff-Parkinson-White (8 test ECGs), long QT (11), atrial flutter (7) and "
+            "anterior MI (35) have low sensitivity at thresholds chosen from very few validation examples. Next: more 12-lead data "
+            "(CODE-15%, MIMIC-IV-ECG; licences in PRODUCT_PLAN §7) and, for long QT, a rule on our own measured QTc instead of "
+            "the learned statement.",
+            "15. **Sex gap in the 12-lead model.** Superclass macro-AUC is 0.914 for women and 0.935 for men on the test fold. "
+            "Needs investigation (sex-specific criteria such as LVH voltage, class balance) before any claim; subgroup results "
+            "must be part of every future model card.",
+            "16. **12-lead measurements are checked against other algorithms, not a referee.** IEC 60601-2-25 requires the CSE "
+            "database (licensed). PR is not measured beyond 300 ms (very long first-degree AV block) and paced ECGs are not "
+            "handled specially.",
+            "17. **The signal-quality model was trained on Holter lead II, not 12-lead ECGs.** On clean PTB-XL validation ECGs "
+            "it rates 0.35% of leads unusable (about 1 ECG in 25 gets an 'unusable lead' note) and 20% noisy. Next: train it on "
+            "12-lead data, e.g. using PTB-XL's own noise and electrode annotations.",
+            "18. **PTB-XL is one manufacturer and one country** (Schiller devices, Germany, 1989–1996). Performance on today's ECG "
+            "carts in Indian and US hospitals is unknown until tested on partner data.", ""]
     path = REPORTS_DIR / "RESULTS.md"
     path.write_text("\n".join(out))
     return str(path)

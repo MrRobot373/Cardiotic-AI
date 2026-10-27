@@ -17,6 +17,7 @@
   train-ecg12     train + test the 12-lead statement model on PTB-XL (folds 1-8 / 9 / 10)
   tune-ecg12-measure  choose 12-lead measurement thresholds on PTB-XL training folds (vs GE 12SL)
   eval-ecg12-measure  12-lead interval agreement vs GE 12SL and Uni-G (--version, --split val|test)
+  analyze-12lead  run the 12-lead pipeline on one PTB-XL ECG (--ecg-id) and save JSON (+ optional plot)
   report          regenerate ml/reports/RESULTS.md from the JSON results
 """
 
@@ -51,6 +52,8 @@ def main(argv: list[str] | None = None) -> None:
     e12 = sub.add_parser("train-ecg12"); e12.add_argument("--version", default="v0.1")
     tm = sub.add_parser("tune-ecg12-measure"); tm.add_argument("--version", default="v0.2")
     em = sub.add_parser("eval-ecg12-measure"); em.add_argument("--version", default="v0.2"); em.add_argument("--split", default="val", choices=["val", "test"])
+    a12 = sub.add_parser("analyze-12lead"); a12.add_argument("--ecg-id", type=int, required=True)
+    a12.add_argument("--out", default="analysis_12lead.json"); a12.add_argument("--plot", default=None)
     sub.add_parser("report")
     args = ap.parse_args(argv)
 
@@ -119,6 +122,20 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "eval-ecg12-measure":
         from cardiotic_ml.experiments_ecg12 import eval_measurements
         eval_measurements(args.version, args.split)
+    elif args.cmd == "analyze-12lead":
+        from cardiotic_ml.data import ptbxl
+        from cardiotic_ml.ecg12.analyze import Models12, analyze_12lead, plot_12lead
+        rec = next(r for r in ptbxl.records() if r.ecg_id == args.ecg_id)
+        sig = ptbxl.load_signal(rec, hr=True)
+        res = analyze_12lead(sig, 500, Models12())
+        res["source"] = {"dataset": "PTB-XL 1.0.3", "ecg_id": rec.ecg_id, "fold": rec.fold,
+                         "cardiologist_statements": rec.codes}
+        with open(args.out, "w") as f:
+            json.dump(res, f, indent=2, default=float)
+        if args.plot:
+            plot_12lead(sig, 500, res, args.plot, title=f"(PTB-XL ECG {rec.ecg_id}, test fold)" if rec.fold == 10 else f"(PTB-XL ECG {rec.ecg_id})")
+        print(json.dumps({"measurements": {k: v for k, v in res["measurements"].items() if k.endswith(("ms", "bpm", "deg"))},
+                          "statements": [s["statement"] for s in res["statements"]], "notes": res["notes"]}, default=float))
     elif args.cmd == "report":
         from cardiotic_ml.report import write_results
         print(write_results())

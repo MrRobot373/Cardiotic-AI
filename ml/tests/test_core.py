@@ -265,3 +265,25 @@ def test_ecg12_model_and_targets():
     assert macro_auc(y, p) == 1.0
     th = f1_thresholds(y, p)
     assert ((p >= th) == y).all()
+
+
+def test_resample_and_bandpass_work_along_time_for_12_leads():
+    x = np.random.default_rng(0).normal(size=(12, 5000)).astype(np.float32)
+    y = dsp.resample(x, 500, 100)
+    assert y.shape == (12, 1000)
+    assert np.allclose(y[3], dsp.resample(x[3], 500, 100), atol=1e-5)
+    assert dsp.bandpass(x, 500, "diagnostic").shape == x.shape
+
+
+def test_analyze_12lead_end_to_end_with_shipped_models():
+    from cardiotic_ml.data.ptbxl import LEADS
+    from cardiotic_ml.ecg12.analyze import Models12, analyze_12lead
+
+    out = analyze_12lead(_synthetic_12lead(), 500, Models12())
+    assert set(out["lead_quality"]) == set(LEADS)
+    assert out["measurements"]["ok"] and abs(out["measurements"]["heart_rate_bpm"] - 70) < 2
+    for s in out["statements"]:
+        assert s["probability"] >= s["threshold"]
+    for junk in (np.zeros((12, 5000), dtype=np.float32), np.random.default_rng(0).normal(0, 1, (12, 5000)).astype(np.float32)):
+        o = analyze_12lead(junk, 500, Models12())
+        assert not o["measurements"]["ok"] and o["statements"] == []

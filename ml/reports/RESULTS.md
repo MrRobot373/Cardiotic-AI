@@ -189,6 +189,53 @@ Quality gate `quality_net_v0.3` → `pantompkins1985` detection → R-peak refin
 
 PTB-XL: 21,799 ten-second 12-lead ECGs from 18,869 patients, statements by up to two cardiologists. Official patient-wise folds: 1–8 train, 9 validation, 10 test (2,198 ECGs). Every choice was made on folds 1–9; fold 10 was scored once per version.
 
+### 7.1 Diagnostic statements (ML)
+
+| Task | Statements | Test macro-AUC | 95% CI (bootstrap) | Validation macro-AUC |
+|---|---:|---:|---|---:|
+| superclass | 5 | 0.925 | 0.917–0.931 | 0.930 |
+| diagnostic | 44 | 0.925 | 0.913–0.936 | 0.936 |
+| form | 19 | 0.856 | 0.841–0.878 | 0.882 |
+| rhythm | 12 | 0.957 | 0.945–0.967 | 0.967 |
+| all | 71 | 0.914 | 0.906–0.923 | 0.928 |
+
+Reference: Published PTB-XL benchmark (Strodthoff et al. 2021, separate model per task): macro-AUC all 0.925, diagnostic 0.937, form 0.896, rhythm 0.957, superclass 0.930 (best models). Ours is one model for all tasks.
+
+Selected statements at the threshold chosen on validation (maximum F1):
+
+| Statement | Meaning | Test ECGs with it | AUC | Sensitivity | Specificity | PPV |
+|---|---|---:|---:|---:|---:|---:|
+| SUPER_NORM | normal ECG (superclass) | 963 | 0.948 | 88.0% | 86.5% | 83.5% |
+| SUPER_MI | myocardial infarction (superclass) | 550 | 0.929 | 70.7% | 92.4% | 75.7% |
+| SUPER_STTC | ST/T change (superclass) | 521 | 0.938 | 75.4% | 93.3% | 77.8% |
+| SUPER_CD | conduction disturbance (superclass) | 496 | 0.909 | 71.2% | 94.1% | 77.8% |
+| SUPER_HYP | hypertrophy (superclass) | 262 | 0.901 | 72.1% | 89.8% | 48.8% |
+| NORM | normal ECG | 963 | 0.948 | 94.7% | 79.8% | 78.6% |
+| IMI | inferior myocardial infarction | 267 | 0.927 | 63.7% | 93.9% | 59.2% |
+| ASMI | anteroseptal myocardial infarction | 234 | 0.963 | 74.8% | 96.0% | 69.2% |
+| AMI | anterior myocardial infarction | 35 | 0.925 | 17.1% | 99.4% | 31.6% |
+| LVH | left ventricular hypertrophy | 214 | 0.949 | 70.1% | 95.4% | 62.2% |
+| CLBBB | complete left bundle branch block | 54 | 0.998 | 88.9% | 99.5% | 81.4% |
+| CRBBB | complete right bundle branch block | 54 | 0.998 | 100.0% | 99.0% | 72.0% |
+| IRBBB | incomplete right bundle branch block | 112 | 0.957 | 67.9% | 97.4% | 58.0% |
+| LAFB | left anterior fascicular block | 162 | 0.985 | 83.3% | 97.8% | 75.4% |
+| 1AVB | first degree AV block | 79 | 0.967 | 62.0% | 98.0% | 53.3% |
+| WPW | Wolf-Parkinson-White syndrome | 8 | 0.731 | 25.0% | 100.0% | 66.7% |
+| NDT | non-diagnostic T abnormalities | 182 | 0.928 | 63.7% | 95.3% | 55.0% |
+| ISCAL | ischemic in anterolateral leads | 66 | 0.941 | 51.5% | 96.5% | 31.5% |
+| LNGQT | long QT-interval | 11 | 0.848 | 9.1% | 99.9% | 25.0% |
+| AFIB | atrial fibrillation | 152 | 0.984 | 82.2% | 99.0% | 86.2% |
+| AFLT | atrial flutter | 7 | 0.981 | 42.9% | 100.0% | 100.0% |
+| STACH | sinus tachycardia | 82 | 0.993 | 84.1% | 99.5% | 86.2% |
+| SBRAD | sinus bradycardia | 64 | 0.966 | 62.5% | 98.8% | 60.6% |
+| SARRH | sinus arrhythmia | 77 | 0.900 | 37.7% | 97.8% | 38.7% |
+| PVC | ventricular premature complex | 114 | 0.991 | 87.7% | 98.3% | 74.1% |
+| PACE | normal functioning artificial pacemaker | 28 | 0.956 | 71.4% | 99.7% | 76.9% |
+
+Calibration (one temperature, fitted on validation): T = 1.20; test ECE 0.7% → 0.3% (all statements pooled).
+
+Subgroups (test fold, superclass macro-AUC): female 0.914 (n=1066); male 0.935 (n=1132); age <40 0.920 (n=284); age 40–65 0.915 (n=916); age >65 0.915 (n=964).
+
 ### 7.2 Interval measurements (signal processing) — adopted version v0.2
 
 Median beat per lead → QRS onset/offset from the 12-lead spatial velocity (QRS core, then out to a threshold or the first velocity minimum) → T end where the 12-lead RMS returns to baseline (capped 30 ms after the tangent-method T end) → P wave searched up to 300 ms before the QRS. Thresholds tuned on 1,000 training-fold ECGs against GE 12SL. Test fold: 2,198 ECGs, 0 not measurable, 11 ms per ECG on one CPU core.
@@ -226,12 +273,20 @@ The v0.1 test result prompted the work on v0.2; its causes were diagnosed on tra
 2. **Quality gate hid arrhythmic, low-amplitude signal.** With quality v0.1, record 222 (R amplitude 0.68 mV against a 1.45 mV median; flutter, AF and nodal-rhythm episodes) had ~half its windows rated unusable, and 8–16% of clean expert-labelled handheld ECG windows were rated unusable. v0.2 (AF/other-rhythm windows as good, low-amplitude examples) fixed that but became lenient on real noisy recordings; v0.3 adds real noisy windows. Chosen on validation: beats hidden in unusable segments across the 22 test patients fell from 1,839 to about 250, record 222 from 1,173 to about 70.
 3. **False beat at the start of every recording.** Pan-Tompkins' thresholds are still settling in the first moments (record 221: detection at 0.32 s, first real beat at 0.61 s). Detections in the first 0.4 s are now dropped. Test added.
 4. **'Supraventricular ectopic beats' reported during AF.** Premature atrial beats are not defined in AF; that finding is now suppressed when AF is the predominant rhythm.
+5. **Resampling mixed up the leads of a 12-lead ECG.** The resampling helper worked along the first array axis, so a (12 leads × samples) ECG was resampled across leads instead of over time. Found by the first 12-lead end-to-end run (training was not affected: it uses the database's own 100 Hz files). It now always works along time; single-lead results are unchanged (demo record 233 reproduced exactly). Test added.
+6. **12-lead measurements were reported for pure noise.** When every lead is rated unusable, measurements and statements are now both withheld. Test added.
+7. **12-lead measurement v0.1 had large misses** (wide QRS, low P waves, flat T waves; section 7.2). Fixed in v0.2.
 
 ### Open (next work)
-5. **AF over-called in ectopy-rich recordings — four candidates tried, none adopted** (section 4). Every candidate cut false AF substantially but lost real AF in some patient. With the MIT-BIH AF Database (8 validation AF patients) the pre-declared rule now catches this on validation. On fresh AFDB test patients, v0.1 itself finds 97.4% of AF windows with 95.5% positive predictivity, so the false-alarm problem is concentrated in non-AF patients with frequent ectopy (MIT-BIH DS2: PPV ~60%). Next options: (a) an explicit AF-probability operating point chosen on validation per use case (screening vs. review) — a transparent sensitivity/false-alarm trade-off; (b) more AF data (Long-Term AF Database, 84 patients); (c) beat labels inside AF for a beat classifier that is reliable during AF.
-5b. **The beat classifier labels some AF beats as ventricular**, on handheld lead I especially (a quarter of CinC AF windows had ≥10% 'PVCs'). Anything built on its PVC labels must be restricted to leads where it is validated.
-6. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). The v0.2 augmentation recipe scored lower on validation and was not adopted. Next: more S/F data (INCART, long-term AF database), patient-adaptive RR features.
-7. **Beat-model calibration does not transfer across patients.** A temperature fitted on the 4 validation patients made test ECE worse (slightly under-confident). The rhythm model's calibration did improve on test. Next: calibrate beats on a larger, more varied patient set; until then beat confidence levels must not be shown as calibrated in any UI.
-8. **Proxy and weak labels.** Synthetic quality labels come from known noise levels; CinC 'too noisy' labels are per recording, not per window. Clinician-labelled windows are needed.
-9. **Public data only.** MIT-BIH (1970s Holter, MLII) and CinC 2017 (handheld, lead I). Performance on modern 12-lead carts and OT/ICU monitors is unknown until tested on partner-hospital data.
-10. **CinC split is by record, not patient** (no patient IDs are published), so some test records may share a patient with training records. The cross-dataset MIT-BIH result is the stronger generalisation evidence.
+8. **AF over-called in ectopy-rich recordings — four candidates tried, none adopted** (section 4). Every candidate cut false AF substantially but lost real AF in some patient. With the MIT-BIH AF Database (8 validation AF patients) the pre-declared rule now catches this on validation. On fresh AFDB test patients, v0.1 itself finds 97.4% of AF windows with 95.5% positive predictivity, so the false-alarm problem is concentrated in non-AF patients with frequent ectopy (MIT-BIH DS2: PPV ~60%). Next options: (a) an explicit AF-probability operating point chosen on validation per use case (screening vs. review) — a transparent sensitivity/false-alarm trade-off; (b) more AF data (Long-Term AF Database, 84 patients); (c) beat labels inside AF for a beat classifier that is reliable during AF.
+8b. **The beat classifier labels some AF beats as ventricular**, on handheld lead I especially (a quarter of CinC AF windows had ≥10% 'PVCs'). Anything built on its PVC labels must be restricted to leads where it is validated.
+9. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). The v0.2 augmentation recipe scored lower on validation and was not adopted. Next: more S/F data (INCART, long-term AF database), patient-adaptive RR features.
+10. **Beat-model calibration does not transfer across patients.** A temperature fitted on the 4 validation patients made test ECE worse (slightly under-confident). The rhythm model's calibration did improve on test. Next: calibrate beats on a larger, more varied patient set; until then beat confidence levels must not be shown as calibrated in any UI.
+11. **Proxy and weak labels.** Synthetic quality labels come from known noise levels; CinC 'too noisy' labels are per recording, not per window. Clinician-labelled windows are needed.
+12. **Public data only.** MIT-BIH (1970s Holter, MLII) and CinC 2017 (handheld, lead I). Performance on modern 12-lead carts and OT/ICU monitors is unknown until tested on partner-hospital data.
+13. **CinC split is by record, not patient** (no patient IDs are published), so some test records may share a patient with training records. The cross-dataset MIT-BIH result is the stronger generalisation evidence.
+14. **Rare 12-lead statements are weak.** Wolff-Parkinson-White (8 test ECGs), long QT (11), atrial flutter (7) and anterior MI (35) have low sensitivity at thresholds chosen from very few validation examples. Next: more 12-lead data (CODE-15%, MIMIC-IV-ECG; licences in PRODUCT_PLAN §7) and, for long QT, a rule on our own measured QTc instead of the learned statement.
+15. **Sex gap in the 12-lead model.** Superclass macro-AUC is 0.914 for women and 0.935 for men on the test fold. Needs investigation (sex-specific criteria such as LVH voltage, class balance) before any claim; subgroup results must be part of every future model card.
+16. **12-lead measurements are checked against other algorithms, not a referee.** IEC 60601-2-25 requires the CSE database (licensed). PR is not measured beyond 300 ms (very long first-degree AV block) and paced ECGs are not handled specially.
+17. **The signal-quality model was trained on Holter lead II, not 12-lead ECGs.** On clean PTB-XL validation ECGs it rates 0.35% of leads unusable (about 1 ECG in 25 gets an 'unusable lead' note) and 20% noisy. Next: train it on 12-lead data, e.g. using PTB-XL's own noise and electrode annotations.
+18. **PTB-XL is one manufacturer and one country** (Schiller devices, Germany, 1989–1996). Performance on today's ECG carts in Indian and US hospitals is unknown until tested on partner data.

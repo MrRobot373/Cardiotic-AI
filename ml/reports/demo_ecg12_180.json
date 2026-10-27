@@ -1,0 +1,108 @@
+{
+  "engine": {
+    "name": "cardiotic-ml research pipeline (12-lead)",
+    "version": "0.1.0",
+    "use": "research use only",
+    "models": {
+      "ecg12_net_v0.1": {
+        "sha256": "a5dae07773ef",
+        "temperature": 1.1985052824020386
+      },
+      "quality_net_v0.3": {
+        "sha256": "a07d9ae9563e"
+      }
+    }
+  },
+  "lead_quality": {
+    "I": "good",
+    "II": "noisy",
+    "III": "good",
+    "AVR": "good",
+    "AVL": "good",
+    "AVF": "good",
+    "V1": "good",
+    "V2": "good",
+    "V3": "good",
+    "V4": "good",
+    "V5": "good",
+    "V6": "good"
+  },
+  "measurements": {
+    "heart_rate_bpm": 92.7357032457496,
+    "rr_ms": 647.0,
+    "pr_ms": 168.0,
+    "qrs_ms": 206.0,
+    "qt_ms": 410.0,
+    "qtc_bazett_ms": 509.72004923635143,
+    "qtc_fridericia_ms": 474.04084452127125,
+    "qrs_axis_deg": -21.709102630615234,
+    "t_axis_deg": 144.53994750976562,
+    "fiducials": {
+      "p_on": 109,
+      "qrs_on": 193,
+      "r": 225,
+      "qrs_off": 296,
+      "t_peak": 336,
+      "t_end": 398,
+      "fs": 500
+    },
+    "ok": true,
+    "beats_detected": 15,
+    "beats_in_median": 14,
+    "detection_lead": "V2",
+    "rr_irregular": false,
+    "params": {
+      "qrs_on": 0.03,
+      "qrs_off": 0.08,
+      "gap_ms": 12.0,
+      "qrs_core": 0.1,
+      "p_frac": 0.2,
+      "p_min_mv": 0.02,
+      "p_search_ms": 300.0,
+      "t_frac": 0.03,
+      "t_cap_ms": 30.0
+    }
+  },
+  "statements": [
+    {
+      "statement": "SUPER_CD",
+      "probability": 0.9960275888442993,
+      "threshold": 0.38,
+      "confidence": "high"
+    },
+    {
+      "statement": "CLBBB",
+      "probability": 0.9911709427833557,
+      "threshold": 0.36000000000000004,
+      "confidence": "high"
+    },
+    {
+      "statement": "SR",
+      "probability": 0.9746213555335999,
+      "threshold": 0.4,
+      "confidence": "high"
+    },
+    {
+      "statement": "SUPER_HYP",
+      "probability": 0.293356716632843,
+      "threshold": 0.12000000000000001,
+      "confidence": "moderate"
+    },
+    {
+      "statement": "LAO/LAE",
+      "probability": 0.08633410185575485,
+      "threshold": 0.06,
+      "confidence": "high"
+    }
+  ],
+  "notes": [],
+  "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "ecg_id": 180,
+    "fold": 10,
+    "cardiologist_statements": {
+      "CLBBB": 100.0,
+      "SR": 0.0
+    }
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "engine": {
+    "name": "cardiotic-ml research pipeline (12-lead)",
+    "version": "0.1.0",
+    "use": "research use only",
+    "models": {
+      "ecg12_net_v0.1": {
+        "sha256": "a5dae07773ef",
+        "temperature": 1.1985052824020386
+      },
+      "quality_net_v0.3": {
+        "sha256": "a07d9ae9563e"
+      }
+    }
+  },
+  "lead_quality": {
+    "I": "noisy",
+    "II": "noisy",
+    "III": "good",
+    "AVR": "noisy",
+    "AVL": "noisy",
+    "AVF": "noisy",
+    "V1": "good",
+    "V2": "good",
+    "V3": "good",
+    "V4": "good",
+    "V5": "good",
+    "V6": "good"
+  },
+  "measurements": {
+    "heart_rate_bpm": 86.02150537634408,
+    "rr_ms": 697.5,
+    "pr_ms": null,
+    "qrs_ms": 82.0,
+    "qt_ms": 360.0,
+    "qtc_bazett_ms": 431.05272486425974,
+    "qtc_fridericia_ms": 405.93306705711956,
+    "qrs_axis_deg": -2.5614941120147705,
+    "t_axis_deg": -156.29962158203125,
+    "fiducials": {
+      "p_on": null,
+      "qrs_on": 207,
+      "r": 225,
+      "qrs_off": 248,
+      "t_peak": 338,
+      "t_end": 387,
+      "fs": 500
+    },
+    "ok": true,
+    "beats_detected": 13,
+    "beats_in_median": 9,
+    "detection_lead": "V4",
+    "rr_irregular": true,
+    "params": {
+      "qrs_on": 0.03,
+      "qrs_off": 0.08,
+      "gap_ms": 12.0,
+      "qrs_core": 0.1,
+      "p_frac": 0.2,
+      "p_min_mv": 0.02,
+      "p_search_ms": 300.0,
+      "t_frac": 0.03,
+      "t_cap_ms": 30.0
+    }
+  },
+  "statements": [
+    {
+      "statement": "SUPER_MI",
+      "probability": 0.9434213042259216,
+      "threshold": 0.6,
+      "confidence": "high"
+    },
+    {
+      "statement": "IMI",
+      "probability": 0.9420620203018188,
+      "threshold": 0.4,
+      "confidence": "high"
+    },
+    {
+      "statement": "AFIB",
+      "probability": 0.8035663962364197,
+      "threshold": 0.52,
+      "confidence": "moderate"
+    },
+    {
+      "statement": "SUPER_STTC",
+      "probability": 0.7524477243423462,
+      "threshold": 0.44,
+      "confidence": "moderate"
+    },
+    {
+      "statement": "QWAVE",
+      "probability": 0.499240905046463,
+      "threshold": 0.38,
+      "confidence": "low"
+    },
+    {
+      "statement": "LOWT",
+      "probability": 0.44367215037345886,
+      "threshold": 0.28,
+      "confidence": "low"
+    },
+    {
+      "statement": "STD_",
+      "probability": 0.4114440977573395,
+      "threshold": 0.32,
+      "confidence": "low"
+    },
+    {
+      "statement": "NST_",
+      "probability": 0.16303634643554688,
+      "threshold": 0.13999999999999999,
+      "confidence": "moderate"
+    }
+  ],
+  "notes": [
+    "Irregular rhythm: PR interval not reported"
+  ],
+  "source": {
+    "dataset": "PTB-XL 1.0.3",
+    "ecg_id": 3009,
+    "fold": 10,
+    "cardiologist_statements": {
+      "IMI": 50.0,
+      "NDT": 100.0,
+      "DIG": 50.0,
+      "QWAVE": 0.0,
+      "LOWT": 0.0,
+      "STD_": 0.0,
+      "AFIB": 0.0
+    }
+  }
+}
