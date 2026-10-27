@@ -1,0 +1,94 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T04:50:47+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "rhythm_mitdb_af",
+  "version": "v0.2",
+  "split": "test",
+  "records": [
+    100,
+    103,
+    105,
+    111,
+    113,
+    117,
+    121,
+    123,
+    200,
+    202,
+    210,
+    212,
+    213,
+    214,
+    219,
+    221,
+    222,
+    228,
+    231,
+    232,
+    233,
+    234
+  ],
+  "protocol": "30 s non-overlapping windows; AF = window entirely inside an (AFIB episode; mixed windows skipped",
+  "windows_af": 163,
+  "windows_non_af": 1122,
+  "false_af_windows": 25,
+  "af_sensitivity": 0.7730061349693251,
+  "af_ppv": 0.8344370860927153,
+  "af_specificity": 0.9777183600713012,
+  "predictions_on_non_af_windows": {
+    "N": 498,
+    "O": 598,
+    "~": 1,
+    "A": 25
+  },
+  "per_record": [
+    {
+      "record": 202,
+      "af_windows": 17,
+      "af_detected": 17,
+      "false_af_windows": 1
+    },
+    {
+      "record": 210,
+      "af_windows": 54,
+      "af_detected": 50,
+      "false_af_windows": 0
+    },
+    {
+      "record": 219,
+      "af_windows": 42,
+      "af_detected": 41,
+      "false_af_windows": 0
+    },
+    {
+      "record": 221,
+      "af_windows": 50,
+      "af_detected": 18,
+      "false_af_windows": 0
+    },
+    {
+      "record": 222,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 7
+    },
+    {
+      "record": 228,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 4
+    },
+    {
+      "record": 232,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 13
+    }
+  ]
+}

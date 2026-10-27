@@ -175,3 +175,18 @@ def test_ectopy_features_remove_pvc_irregularity():
     assert f[2] > 0.2                 # all-beat RR CV: looks irregular
     assert f[N_RRF + 1] < 0.05        # CV without PVC-adjacent intervals: regular again
     assert abs(f[N_RRF] - 0.25) < 0.02
+
+
+def test_ectopy_gate_only_on_validated_leads_and_only_regular_ectopic_windows():
+    from cardiotic_ml.rhythm import gate
+    from cardiotic_ml.rhythm.dataset import N_RRF, N_RRF_ECTOPY
+
+    g = {"pvc_min": 0.02, "tau": 0.16, "leads": ["MLII", "II"]}
+    assert gate.applies(g, "MLII") and gate.applies(g, "ii") and not gate.applies(g, "I") and not gate.applies(g, None)
+    probs = np.array([[0.1, 0.8, 0.1, 0.0], [0.1, 0.8, 0.1, 0.0], [0.7, 0.2, 0.1, 0.0]])
+    feats = np.zeros((3, N_RRF_ECTOPY))
+    feats[:, N_RRF] = [0.2, 0.0, 0.2]       # PVC share
+    feats[:, N_RRF + 1] = [0.05, 0.05, 0.05]  # regular once PVCs are removed
+    out, gated = gate.apply(probs, feats, g)
+    assert gated.tolist() == [True, False, False]  # no PVCs -> untouched; not called AF -> untouched
+    assert out[0].argmax() == 2 and abs(out[0].sum() - 1) < 1e-9

@@ -121,10 +121,67 @@ def train_rhythm(version: str = "v0.2") -> dict:
 
 
 def load_rhythm_model(version: str = "v0.1") -> tuple[RhythmNet, float, dict]:
+    """Versions with a `base_model` (v0.3) reuse that model's weights and add an ectopy gate."""
     card = json.loads((ARTIFACTS_DIR / f"rhythm_net_{version}.card.json").read_text())
-    m = RhythmNet(len(LABELS), n_rrf=card.get("n_rrf", rd.N_RRF))
-    m.load_state_dict(torch.load(ARTIFACTS_DIR / f"rhythm_net_{version}.pt", weights_only=True))
-    return m.eval(), card["temperature"], card
+    base = json.loads((ARTIFACTS_DIR / f"{card['base_model']}.card.json").read_text()) if "base_model" in card else card
+    m = RhythmNet(len(LABELS), n_rrf=base.get("n_rrf", rd.N_RRF))
+    m.load_state_dict(torch.load(ARTIFACTS_DIR / base["file"], weights_only=True))
+    return m.eval(), base["temperature"], card | {"recipe": base.get("recipe", {}), "temperature": base["temperature"]}
+
+
+GATE_LEADS = ["MLII", "II"]
+GATE_GRID = {"pvc_min": (0.02, 0.05, 0.1, 0.15), "tau": tuple(round(t, 2) for t in np.arange(0.04, 0.20, 0.01))}
+
+
+def make_rhythm_gate() -> dict:
+    """Choose the ectopy gate's thresholds on MIT-BIH VALIDATION records only (the lead the beat
+    classifier is validated on). Rule, fixed in advance: minimise false-AF windows, subject to
+    losing at most 2 points of AF sensitivity; ties -> smaller tau (gentler gate)."""
+    from cardiotic_ml.rhythm import gate as rgate
+
+    bm = _beat_model()
+    model, t, _ = load_rhythm_model("v0.1")
+    rows = []
+    for rid in MITDB_RHYTHM_VAL:
+        rec = mitdb.load_record(rid)
+        x, beats, ect = rd.prepare(rec.signal, rec.fs, bm)
+        wb, rb, st = rd.windows(x, beats, stride_s=rd.WIN_S)
+        _, re_, _ = rd.windows(x, beats, stride_s=rd.WIN_S, ectopic=ect)
+        p = cal.softmax(predict_logits(model, (torch.from_numpy(wb), torch.from_numpy(rb))), t)
+        spans = rd.mitdb_rhythm_spans(rid, len(rec.signal))
+        for s0, pr, f in zip(st, p, re_):
+            a, b = int(s0 * rec.fs), int((s0 + rd.WIN_S) * rec.fs)
+            ov = [l for x0, x1, l in spans if x0 < b and x1 > a]
+            if ov != ["(AFIB"] and "(AFIB" in ov:
+                continue
+            rows.append((ov == ["(AFIB"], pr, f))
+    is_af = np.array([r[0] for r in rows]); P = np.stack([r[1] for r in rows]); F = np.stack([r[2] for r in rows])
+    base_af = P.argmax(1) == rgate.A
+    grid, best = [], None
+    for pmin in GATE_GRID["pvc_min"]:
+        for tau in GATE_GRID["tau"]:
+            _, g = rgate.apply(P, F, {"pvc_min": pmin, "tau": tau})
+            se0 = (base_af & is_af).sum() / is_af.sum(); se1 = (base_af & ~g & is_af).sum() / is_af.sum()
+            fa = int((base_af & ~g & ~is_af).sum())
+            grid.append({"pvc_min": pmin, "tau": tau, "af_sensitivity": float(se1), "false_af_windows": fa})
+            if se0 - se1 <= 0.02 and (best is None or fa < best["false_af_windows"] or (fa == best["false_af_windows"] and tau < best["tau"])):
+                best = grid[-1]
+    gate = {"pvc_min": best["pvc_min"], "tau": best["tau"], "leads": GATE_LEADS}
+    card = {"name": "rhythm_net", "version": "v0.3", "base_model": "rhythm_net_v0.1", "gate": gate,
+            "task": "rhythm_net v0.1 + ectopy gate for AF calls (rhythm/gate.py)",
+            "intended_use": "Research use only. Gate active only for leads " + ", ".join(GATE_LEADS) + "; otherwise identical to v0.1.",
+            "selection": "thresholds chosen on MIT-BIH validation records " + str(MITDB_RHYTHM_VAL)
+                         + " only: minimise false-AF windows, AF sensitivity loss <= 2 points"}
+    (ARTIFACTS_DIR / "rhythm_net_v0.3.card.json").write_text(json.dumps(card, indent=2, default=float))
+    result = _meta(task="rhythm_gate_selection", version="v0.3", base_model="rhythm_net_v0.1", chosen=gate,
+                   validation_records=MITDB_RHYTHM_VAL, validation_af_windows=int(is_af.sum()),
+                   baseline_false_af_windows=int((base_af & ~is_af).sum()), grid=grid,
+                   why_lead_restricted="On CinC 2017 validation (handheld lead I) the beat classifier labels many AF beats as "
+                                       "ventricular (75th percentile PVC share 10.8% in true-AF windows), so any gate setting lost "
+                                       "more than 2 points of AF sensitivity there.")
+    _write("rhythm_gate_v0.3", result)
+    print(json.dumps({"chosen": gate, "val_false_af": [result["baseline_false_af_windows"], best["false_af_windows"]]}), flush=True)
+    return result
 
 
 def cinc_val_for(version: str) -> None:
@@ -150,16 +207,25 @@ def eval_rhythm_mitdb(version: str = "v0.1", split: str = "test") -> dict:
     """AF detection on MIT-BIH Holter MLII. 30 s non-overlapping windows; AF if the whole window is
     annotated (AFIB, non-AF if no AFIB at all; windows straddling an AF boundary are skipped.
     Split 'test' (DS2) is unseen by every version; 'val' is used to choose versions."""
+    from cardiotic_ml.rhythm import gate as rgate
+
     model, temperature, card = load_rhythm_model(version)
-    bm = _beat_model() if card.get("recipe", {}).get("ectopy_features") else None
+    gate = card.get("gate") if card.get("gate") and rgate.applies(card["gate"], "MLII") else None
+    bm = _beat_model() if card.get("recipe", {}).get("ectopy_features") or gate else None
+    n_gated = 0
     rows, tp, fn, fp, tn = [], 0, 0, 0, 0
     pred_on_nonaf = Counter()
     for rid in MITDB_SPLITS[split]:
         rec = mitdb.load_record(rid)
         x, beats, ect = rd.prepare(rec.signal, rec.fs, bm)
-        w, r, starts = rd.windows(x, beats, stride_s=rd.WIN_S, ectopic=ect)
+        uses_ect = card.get("recipe", {}).get("ectopy_features")
+        w, r, starts = rd.windows(x, beats, stride_s=rd.WIN_S, ectopic=ect if uses_ect else None)
         spans = rd.mitdb_rhythm_spans(rid, len(rec.signal))
         p = cal.softmax(predict_logits(model, (torch.from_numpy(w), torch.from_numpy(r))), temperature)
+        if gate:
+            _, r_ect, _ = rd.windows(x, beats, stride_s=rd.WIN_S, ectopic=ect)
+            p, gated = rgate.apply(p, r_ect, gate)
+            n_gated += int(gated.sum())
         rec_tp = rec_fn = rec_fp = rec_tn = 0
         for st, prob in zip(starts, p):
             a, b = int(st * rec.fs), int((st + rd.WIN_S) * rec.fs)
@@ -178,7 +244,7 @@ def eval_rhythm_mitdb(version: str = "v0.1", split: str = "test") -> dict:
         if rec_tp + rec_fn or rec_fp:
             rows.append({"record": rid, "af_windows": rec_tp + rec_fn, "af_detected": rec_tp, "false_af_windows": rec_fp})
         print(f"[{version} {split}] record {rid}: AF windows {rec_tp + rec_fn}, detected {rec_tp}, false AF {rec_fp}", flush=True)
-    res = {"windows_af": tp + fn, "windows_non_af": fp + tn, "false_af_windows": fp,
+    res = {"windows_af": tp + fn, "windows_non_af": fp + tn, "false_af_windows": fp, "gated_windows": n_gated,
            "af_sensitivity": tp / (tp + fn) if tp + fn else float("nan"),
            "af_ppv": tp / (tp + fp) if tp + fp else float("nan"),
            "af_specificity": tn / (tn + fp) if tn + fp else float("nan"),

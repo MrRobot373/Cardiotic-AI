@@ -46,7 +46,8 @@ how it is measured, and the order we build them. Measured results live in
 | 1b | Fix the quality gate over-rejecting low-amplitude arrhythmic recordings (record 222) | + CinC 2017 | **Done (quality v0.3)**: beats hidden in unusable segments 1,839 → 248 across the 22 test patients |
 | 2 | Improve M2 on S/F beats (augmentation, patient-adaptive features, more data from INCART / LTAF) | + INCART, LTAF | S-beat Se and +P both improve on DS2 |
 | 3 | M3 rhythm classifier (AF first) | CinC 2017; tested on MIT-BIH | **Done (v0.1)**: reported on CinC test and cross-dataset on MIT-BIH |
-| 3b | Stop AF being over-called in ectopy-rich recordings: RR irregularity on normal-to-normal intervals (from M2), ectopy-rich non-AF training examples | + MIT-BIH AF, INCART | Cross-dataset AF PPV rises without losing sensitivity |
+| 3b | Stop AF being over-called in ectopy-rich recordings | CinC 2017, MIT-BIH | **Tried twice, not adopted**: ectopy-aware model (v0.2) and ectopy gate (v0.3) both cut false AF but lost real AF on unseen patients (RESULTS.md §4). |
+| 3c | AF validation set with many AF patients + fresh external test set; retry 3b, including atrial premature beats | + MIT-BIH AF Database (23 AF patients), Long-Term AF, INCART | AF PPV rises with AF sensitivity within 2 points of v0.1 on the new test set |
 | 4 | M5 calibration; confidence levels in the pipeline output | Held-out calibration sets | **Done for rhythm**; beats need a larger, more varied calibration set |
 | 5 | M4 12-lead statements and interval measurements | PTB-XL (+PTB-XL+), CODE-15% | AUROC per statement on official test fold; interval error vs reference |
 | 6 | Export to ONNX; deterministic `ecg-engine` service with model registry | — | Same outputs from ONNX and PyTorch; engine API used by the app |

@@ -6,6 +6,7 @@
   quality-real    add CinC 2017 real-data checks to an existing quality report (--version)
   train-rhythm    train + test the rhythm model on CinC 2017 (also fits its calibration)
   eval-rhythm-mitdb  AF test of a rhythm model on MIT-BIH (--version, --split val|test|all)
+  make-rhythm-gate   choose the AF ectopy gate (rhythm v0.3) on MIT-BIH validation records
   rhythm-cinc-val    add CinC validation scores to an older rhythm report (--version)
   calibrate-beats    fit the beat model's calibration temperature on its validation patients
   train-beats     train + test the beat classifier (inter-patient DS1 -> DS2)
@@ -31,6 +32,7 @@ def main(argv: list[str] | None = None) -> None:
     tr = sub.add_parser("train-rhythm"); tr.add_argument("--version", default="v0.2", choices=["v0.1", "v0.2"])
     er = sub.add_parser("eval-rhythm-mitdb"); er.add_argument("--version", default="v0.2"); er.add_argument("--split", default="test", choices=["val", "test", "all"])
     cv = sub.add_parser("rhythm-cinc-val"); cv.add_argument("--version", default="v0.1")
+    sub.add_parser("make-rhythm-gate")
     sub.add_parser("calibrate-beats")
     b = sub.add_parser("train-beats"); b.add_argument("--version", default="v0.2", choices=["v0.1", "v0.2"])
     a = sub.add_parser("analyze")
@@ -62,6 +64,9 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "train-rhythm":
         from cardiotic_ml.experiments_rhythm import train_rhythm
         train_rhythm(version=args.version)
+    elif args.cmd == "make-rhythm-gate":
+        from cardiotic_ml.experiments_rhythm import make_rhythm_gate
+        make_rhythm_gate()
     elif args.cmd == "rhythm-cinc-val":
         from cardiotic_ml.experiments_rhythm import cinc_val_for
         cinc_val_for(args.version)

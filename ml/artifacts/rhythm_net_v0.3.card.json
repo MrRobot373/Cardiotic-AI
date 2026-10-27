@@ -1,0 +1,16 @@
+{
+  "name": "rhythm_net",
+  "version": "v0.3",
+  "base_model": "rhythm_net_v0.1",
+  "gate": {
+    "pvc_min": 0.02,
+    "tau": 0.16,
+    "leads": [
+      "MLII",
+      "II"
+    ]
+  },
+  "task": "rhythm_net v0.1 + ectopy gate for AF calls (rhythm/gate.py)",
+  "intended_use": "Research use only. Gate active only for leads MLII, II; otherwise identical to v0.1.",
+  "selection": "thresholds chosen on MIT-BIH validation records [201, 215, 207, 209, 220] only: minimise false-AF windows, AF sensitivity loss <= 2 points"
+}

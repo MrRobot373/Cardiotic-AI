@@ -119,16 +119,37 @@ def write_results() -> str:
                 "**test** = the 22 DS2 records, never used for training by any version. v0.2 also trains on 17 other DS1 records.", "",
                 "| Version | Recipe | CinC val F1 | CinC test F1 | MIT-BIH val: AF found · false-AF windows | MIT-BIH test: AF Se · false-AF windows · AF PPV · specificity |",
                 "|---|---|---:|---:|---:|---:|"]
-        for v, r in rvers:
+        g = _load("rhythm_gate_v0.3")
+        rows = list(rvers)
+        if g and _load("rhythm_mitdb_test_v0.3"):
+            base = dict(rvers)["v0.1"]
+            rows.append(("v0.3", {"model_card": {"recipe": f"v0.1 + ectopy gate {g['chosen']} (CinC = v0.1: gate off for lead I)"},
+                                  "val_challenge_f1": base.get("val_challenge_f1"), "test_challenge_f1": base["test_challenge_f1"]}))
+        for v, r in rows:
             mv, mt = _load(f"rhythm_mitdb_val_{v}"), _load(f"rhythm_mitdb_test_{v}")
             mv_s = f"{int(mv['windows_af'] * mv['af_sensitivity'] + 0.5)}/{int(mv['windows_af'])} · {int(mv['false_af_windows'])}" if mv else "—"
             mt_s = (f"{_pct(mt['af_sensitivity'])} · {int(mt['false_af_windows'])} · {_pct(mt['af_ppv'])} · {_pct(mt['af_specificity'])}"
                     if mt else "—")
             out.append(f"| {v}{' (adopted)' if v == adopted_r else ''} | {r['model_card'].get('recipe', {})} | "
                        f"{_pct(r.get('val_challenge_f1'))} | {_pct(r['test_challenge_f1'])} | {mv_s} | {mt_s} |")
+        out += ["", "**What happened with the AF false-alarm fix (issue 5):**", "",
+                "- **v0.2** (ectopy-aware features + MIT-BIH training windows) passed every validation check (false-AF windows "
+                "38 → 3, no AF lost), and on the unseen DS2 patients cut false-AF windows 106 → 25. But it found AF in only 77% of "
+                "AF windows (v0.1: 97%), missing most of record 221 (AF with frequent PVCs: 18 of 50 windows). It learned a shortcut, "
+                "\"many PVCs means not AF\", from 624 PVC-rich training windows that contained no AF. **Not adopted.**",
+                "- **v0.3** (v0.1 + an ectopy gate: an AF call is withdrawn when the rhythm becomes regular once PVC-adjacent beats "
+                "are removed; gate only on lead MLII/II, where the beat classifier is validated) cut validation false AF 38 → 6 with no "
+                "AF lost, but on DS2 found AF in only 65% of AF windows. AF irregularity varies a lot between patients (PVC-free RR "
+                "variation median 0.22 in validation patient 201, 0.14 in test patient 210), and a threshold chosen on one AF patient "
+                "does not transfer. **Not adopted.**",
+                "- **Pipeline keeps v0.1**: it catches ~97% of AF but raises more false alarms, which go to a reader for review. "
+                "Missing AF is the more harmful error for this product.",
+                "- **Lessons:** the validation set had a single AF patient, too few to choose anything that trades AF sensitivity; "
+                "and DS2 has now informed two decisions, so it is no longer an unbiased final test. Both are fixed by an AF validation "
+                "set with many AF patients (MIT-BIH AF Database, 23 patients) and a fresh external test set.", ""]
         v, rh = next((v, r) for v, r in rvers if v == adopted_r)
         rep = rh["test"]
-        out += ["", f"**Adopted: {v}.** CinC test detail:", ""]
+        out += [f"**Adopted: {v}.** CinC test detail:", ""]
         out += _class_table(rep) + [""] + _confusion(rep) + ["", "N normal sinus · A atrial fibrillation · O other rhythm · ~ too noisy to classify.", ""]
         x = _load(f"rhythm_mitdb_test_{v}")
         if x:
@@ -184,10 +205,12 @@ def write_results() -> str:
             "4. **'Supraventricular ectopic beats' reported during AF.** Premature atrial beats are not defined in AF; that finding "
             "is now suppressed when AF is the predominant rhythm.", "",
             "### Open (next work)",
-            "5. **AF over-called in ectopy-rich recordings.** Cross-dataset AF sensitivity is high, but most false AF windows come "
-            "from a few MIT-BIH records with frequent premature beats (232, 215, 228, 200): extra beats make RR irregular. Next: "
-            "compute RR irregularity on normal-to-normal intervals only, using the beat classifier's labels, and train on "
-            "ectopy-rich non-AF examples.",
+            "5. **AF over-called in ectopy-rich recordings — two fixes tried, neither adopted** (section 4). Both cut false AF a "
+            "lot but lost real AF on unseen patients. Next: an AF validation set with many AF patients (MIT-BIH AF Database), "
+            "an ectopy approach that also covers atrial premature beats (record 232's false AF is APC-driven), and a fresh "
+            "external test set, because DS2 has now informed two rhythm decisions.",
+            "5b. **The beat classifier labels some AF beats as ventricular**, on handheld lead I especially (a quarter of CinC AF "
+            "windows had ≥10% 'PVCs'). Anything built on its PVC labels must be restricted to leads where it is validated.",
             "6. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). The v0.2 augmentation recipe scored lower "
             "on validation and was not adopted. Next: more S/F data (INCART, long-term AF database), patient-adaptive RR features.",
             "7. **Beat-model calibration does not transfer across patients.** A temperature fitted on the 4 validation patients "

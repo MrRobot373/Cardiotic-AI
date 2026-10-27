@@ -28,7 +28,7 @@ QRS_METHOD = "pantompkins1985"
 # Model versions used by the pipeline — each chosen on validation data, never on the test set.
 QUALITY_MODEL = "quality_net_v0.3"  # v0.1 over-rejects clean recordings, v0.2 too lenient on real noise (validation)
 BEAT_MODEL = "beat_net_v0.1"  # v0.2 (augmentation) scored lower on validation patients
-RHYTHM_MODEL = "rhythm_net_v0.1"
+RHYTHM_MODEL = "rhythm_net_v0.1"  # v0.2 passed validation but missed AF with frequent PVCs on test (RESULTS.md)
 RHYTHM_LABELS = ["N", "A", "O", "~"]
 RHYTHM_NAMES = {"N": "sinus rhythm", "A": "atrial fibrillation", "O": "other rhythm", "~": "too noisy for rhythm"}
 
