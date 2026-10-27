@@ -219,3 +219,49 @@ def test_select_rhythm_rule(tmp_path, monkeypatch):
     res = er.select_rhythm()
     assert res["chosen"] == "v0.5"
     assert [c["passes"] for c in res["candidates"]] == [False, True]
+
+
+def _synthetic_12lead(fs=500, hr=70, qrs_axis=60.0, seconds=10, seed=0):
+    """Hann-shaped P, Q, R, S, T waves with known boundaries; limb leads projected from a frontal
+    vector so the true QRS axis is `qrs_axis`. Truth: PR 140 ms, QRS 90 ms, QT 380 ms."""
+    from cardiotic_ml.data.ptbxl import LEADS
+
+    angles = {"I": 0, "II": 60, "III": 120, "AVR": -150, "AVL": -30, "AVF": 90}
+    rng = np.random.default_rng(seed)
+    n = int(seconds * fs)
+    x = np.zeros((12, n), dtype=np.float32)
+    waves = [(-0.18, 0.10, 0.15, 60), (-0.04, 0.02, -0.1, qrs_axis), (-0.02, 0.04, 1.2, qrs_axis),
+             (0.02, 0.03, -0.3, qrs_axis), (0.18, 0.16, 0.3, 40)]  # (start s rel. R, width s, amplitude mV, angle)
+    for r in np.arange(0.6, seconds - 0.6, 60 / hr):
+        for st, w, a, ang in waves:
+            i0, m = int((r + st) * fs), int(w * fs)
+            bump = a * np.hanning(m + 2)[1:-1]
+            for li, lead in enumerate(LEADS):
+                gain = np.cos(np.radians(ang - angles[lead])) if lead in angles else 0.6 + 0.1 * li
+                x[li, i0:i0 + m] += gain * bump
+    return x + rng.normal(0, 0.005, x.shape).astype(np.float32)
+
+
+def test_ecg12_measurements_on_synthetic_ecg():
+    from cardiotic_ml.ecg12 import measure
+
+    m = measure.measure(_synthetic_12lead(), 500)
+    assert m["ok"] and abs(m["heart_rate_bpm"] - 70) < 2
+    assert abs(m["qrs_ms"] - 90) <= 15
+    assert m["pr_ms"] is not None and abs(m["pr_ms"] - 140) <= 20
+    assert abs(m["qt_ms"] - 380) <= 20
+    assert abs(m["qrs_axis_deg"] - 60) <= 10
+    assert abs(measure.measure(_synthetic_12lead(qrs_axis=-45), 500)["qrs_axis_deg"] + 45) <= 10
+
+
+def test_ecg12_model_and_targets():
+    from cardiotic_ml.ecg12.model import ECG12Net
+    from cardiotic_ml.experiments_ecg12 import f1_thresholds, macro_auc
+
+    assert ECG12Net(76)(torch.zeros(2, 12, 1000)).shape == (2, 76)
+    assert ECG12Net(76)(torch.zeros(2, 12, 900)).shape == (2, 76)  # crops of any length
+    y = np.array([[1, 0], [0, 1], [1, 1], [0, 0]])
+    p = np.array([[0.9, 0.2], [0.1, 0.8], [0.8, 0.7], [0.2, 0.1]])
+    assert macro_auc(y, p) == 1.0
+    th = f1_thresholds(y, p)
+    assert ((p >= th) == y).all()

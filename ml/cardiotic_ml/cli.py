@@ -14,6 +14,9 @@
   train-beats     train + test the beat classifier (inter-patient DS1 -> DS2)
   eval-pipeline   run the full pipeline on all 22 DS2 test records and score it end to end
   analyze         run the full pipeline on one MIT-BIH record and save JSON (+ optional plot)
+  train-ecg12     train + test the 12-lead statement model on PTB-XL (folds 1-8 / 9 / 10)
+  tune-ecg12-measure  choose 12-lead measurement thresholds on PTB-XL training folds (vs GE 12SL)
+  eval-ecg12-measure  12-lead interval agreement vs GE 12SL and Uni-G (--version, --split val|test)
   report          regenerate ml/reports/RESULTS.md from the JSON results
 """
 
@@ -45,6 +48,9 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("--seconds", type=float, default=60.0)
     a.add_argument("--out", default="analysis.json")
     a.add_argument("--plot", default=None)
+    e12 = sub.add_parser("train-ecg12"); e12.add_argument("--version", default="v0.1")
+    tm = sub.add_parser("tune-ecg12-measure"); tm.add_argument("--version", default="v0.2")
+    em = sub.add_parser("eval-ecg12-measure"); em.add_argument("--version", default="v0.2"); em.add_argument("--split", default="val", choices=["val", "test"])
     sub.add_parser("report")
     args = ap.parse_args(argv)
 
@@ -104,6 +110,15 @@ def main(argv: list[str] | None = None) -> None:
             "findings": result["findings"]}, indent=2))
         if args.plot:
             pipeline.plot_strip(sig, rec.fs, result, 0.0, min(10.0, args.seconds), args.plot)
+    elif args.cmd == "train-ecg12":
+        from cardiotic_ml.experiments_ecg12 import train_ecg12
+        train_ecg12(args.version)
+    elif args.cmd == "tune-ecg12-measure":
+        from cardiotic_ml.experiments_ecg12 import tune_measurements
+        tune_measurements(args.version)
+    elif args.cmd == "eval-ecg12-measure":
+        from cardiotic_ml.experiments_ecg12 import eval_measurements
+        eval_measurements(args.version, args.split)
     elif args.cmd == "report":
         from cardiotic_ml.report import write_results
         print(write_results())

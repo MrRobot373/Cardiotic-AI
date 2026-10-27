@@ -185,7 +185,41 @@ Quality gate `quality_net_v0.3` → `pantompkins1985` detection → R-peak refin
 | V | 3,184 | 87.0% | 95.7% | 91.1% |
 | F | 386 | 0.3% | 0.4% | 0.3% |
 
-## 7. Issues found while testing
+## 7. 12-lead ECG (AI model #4) — PTB-XL
+
+PTB-XL: 21,799 ten-second 12-lead ECGs from 18,869 patients, statements by up to two cardiologists. Official patient-wise folds: 1–8 train, 9 validation, 10 test (2,198 ECGs). Every choice was made on folds 1–9; fold 10 was scored once per version.
+
+### 7.2 Interval measurements (signal processing) — adopted version v0.2
+
+Median beat per lead → QRS onset/offset from the 12-lead spatial velocity (QRS core, then out to a threshold or the first velocity minimum) → T end where the 12-lead RMS returns to baseline (capped 30 ms after the tangent-method T end) → P wave searched up to 300 ms before the QRS. Thresholds tuned on 1,000 training-fold ECGs against GE 12SL. Test fold: 2,198 ECGs, 0 not measurable, 11 ms per ECG on one CPU core.
+
+**No ground truth exists here.** PTB-XL+ supplies the measurements of two commercial algorithms (GE 12SL, Uni-G). The useful yardstick is how closely the two commercial algorithms agree with each other.
+
+| Measurement | Ours − 12SL: mean ± SD | Ours − Uni-G: mean ± SD | 12SL − Uni-G: mean ± SD | Ours within tolerance of 12SL | 12SL within tolerance of Uni-G | n |
+|---|---|---|---|---:|---:|---:|
+| Heart rate (±5 bpm) | +0.0 ± 2.3 bpm | +0.5 ± 2.4 bpm | +0.5 ± 1.3 bpm | 97.4% | 99.0% | 2,198 |
+| PR interval (±10 ms) | -6.4 ± 15.9 ms | -2.3 ± 22.1 ms | +3.6 ± 14.1 ms | 59.4% | 80.6% | 1,876 |
+| QRS duration (±10 ms) | +0.3 ± 11.2 ms | -1.4 ± 13.5 ms | -1.7 ± 8.9 ms | 85.7% | 92.5% | 2,198 |
+| QT interval (±20 ms) | -2.0 ± 22.7 ms | -1.8 ± 25.9 ms | +0.2 ± 17.4 ms | 90.0% | 92.5% | 2,175 |
+| QTc (Bazett) (±20 ms) | -1.0 ± 26.3 ms | +0.2 ± 29.5 ms | +1.3 ± 20.3 ms | 85.0% | 90.0% | 2,175 |
+| QRS axis (±30 °) | -2.1 ± 15.0 ° | -2.4 ± 16.0 ° | -0.4 ± 8.9 ° | 96.8% | 99.3% | 2,198 |
+| T axis (±30 °) | +0.6 ± 20.6 ° | +0.5 ± 21.2 ° | +0.3 ± 17.9 ° | 92.5% | 95.2% | 2,175 |
+
+For orientation only, IEC 60601-2-25 accepts mean difference / SD up to PR interval ±10 / 10 ms, QRS duration ±6 / 10 ms, QT interval ±12 / 30 ms — but against the CSE referee on the CSE database, which we do not have yet (it must be licensed).
+PR is reported only when a P wave is found and the rhythm is regular: 1,876 test ECGs.
+
+Versions (ours − 12SL, mean ± SD; v0.2 was chosen over v0.1 on validation fold 9, then scored on test once):
+
+| Version | Fold | QRS (ms) | PR (ms) | QT (ms) |
+|---|---|---|---|---|
+| v0.1 | val | +4.6 ± 21.9 | +11.8 ± 35.2 | +9.7 ± 36.6 |
+| v0.1 | test | +4.5 ± 21.6 | +11.9 ± 36.3 | +8.2 ± 34.0 |
+| v0.2 | val | +0.1 ± 12.1 | -6.5 ± 14.6 | -0.7 ± 25.9 |
+| v0.2 | test | +0.3 ± 11.2 | -6.4 ± 15.9 | -2.0 ± 22.7 |
+
+The v0.1 test result prompted the work on v0.2; its causes were diagnosed on training ECGs and the fix chosen on validation. v0.1 had large misses in wide-QRS ECGs (QRS end ran into the ST segment), low or slowly rising P waves (P onset too early) and flat T waves (T end drifted late); v0.2 adds a rule for each.
+
+## 8. Issues found while testing
 
 ### Fixed
 1. **Beat positions ~40 ms late.** Pan-Tompkins marks beats after the R peak; the classifier is trained on R-peak positions. The first end-to-end run agreed with the cardiologists on only 42% of beats in a test minute. Every detection is now refined to the R peak (`qrs.refine_peaks`): 92% on the same minute. Regression test added.

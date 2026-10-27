@@ -31,6 +31,90 @@ def _confusion(rep: dict) -> list[str]:
     return rows
 
 
+def _num(v, unit: str = "", nd: int = 1) -> str:
+    return "—" if v is None or v != v else f"{v:.{nd}f}{unit}"
+
+
+ECG12_MEASURE_NAMES = {"heart_rate_bpm": ("Heart rate", "bpm"), "pr_ms": ("PR interval", "ms"), "qrs_ms": ("QRS duration", "ms"),
+                       "qt_ms": ("QT interval", "ms"), "qtc_bazett_ms": ("QTc (Bazett)", "ms"),
+                       "qrs_axis_deg": ("QRS axis", "°"), "t_axis_deg": ("T axis", "°")}
+
+
+def _ecg12_section() -> list[str]:
+    out = []
+    st = _load("ecg12_statements_v0.1")
+    from cardiotic_ml.experiments_ecg12 import ADOPTED_MEASURE
+    me = _load(f"ecg12_measurements_test_{ADOPTED_MEASURE}")
+    tu = _load(f"ecg12_measurement_tuning_{ADOPTED_MEASURE}")
+    if not (st or me):
+        return out
+    out += ["## 7. 12-lead ECG (AI model #4) — PTB-XL", "",
+            "PTB-XL: 21,799 ten-second 12-lead ECGs from 18,869 patients, statements by up to two cardiologists. "
+            "Official patient-wise folds: 1–8 train, 9 validation, 10 test (2,198 ECGs). Every choice was made on folds 1–9; "
+            "fold 10 was scored once per version.", ""]
+    if st:
+        t = st["test"]
+        out += ["### 7.1 Diagnostic statements (ML)", "",
+                "| Task | Statements | Test macro-AUC | 95% CI (bootstrap) | Validation macro-AUC |", "|---|---:|---:|---|---:|"]
+        for k in ("superclass", "diagnostic", "form", "rhythm", "all"):
+            out.append(f"| {k} | {t[k]['n_labels']} | {t[k]['macro_auc']:.3f} | {t[k]['ci95'][0]:.3f}–{t[k]['ci95'][1]:.3f} | {st['val'][k]:.3f} |")
+        out += ["", f"Reference: {st['benchmark_note']} Ours is one model for all tasks.", "",
+                "Selected statements at the threshold chosen on validation (maximum F1):", "",
+                "| Statement | Meaning | Test ECGs with it | AUC | Sensitivity | Specificity | PPV |", "|---|---|---:|---:|---:|---:|---:|"]
+        from cardiotic_ml.experiments_ecg12 import KEY_STATEMENTS
+        names = [f"SUPER_{c}" for c in ("NORM", "MI", "STTC", "CD", "HYP")] + KEY_STATEMENTS
+        for n in names:
+            m = st["per_label"].get(n)
+            if m:
+                desc = {"SUPER_NORM": "normal ECG (superclass)", "SUPER_MI": "myocardial infarction (superclass)",
+                        "SUPER_STTC": "ST/T change (superclass)", "SUPER_CD": "conduction disturbance (superclass)",
+                        "SUPER_HYP": "hypertrophy (superclass)"}.get(n, m["description"])
+                out.append(f"| {n} | {desc} | {m['support']} | {_num(m['auc'], nd=3)} | {_pct(m['sensitivity'])} | "
+                           f"{_pct(m['specificity'])} | {_pct(m['ppv'])} |")
+        c = st["calibration"]
+        out += ["", f"Calibration (one temperature, fitted on validation): T = {c['temperature']:.2f}; test ECE "
+                f"{_pct(c['ece_before'])} → {_pct(c['ece_after'])} (all statements pooled).", "",
+                "Subgroups (test fold, superclass macro-AUC): " + "; ".join(
+                    f"{g} {v['superclass_macro_auc']:.3f} (n={v['n']})" for g, v in st["subgroups"].items()) + ".", ""]
+    if me:
+        out += [f"### 7.2 Interval measurements (signal processing) — adopted version {ADOPTED_MEASURE}", "",
+                "Median beat per lead → QRS onset/offset from the 12-lead spatial velocity (QRS core, then out to a threshold "
+                "or the first velocity minimum) → T end where the 12-lead RMS returns to baseline (capped 30 ms after the "
+                "tangent-method T end) → P wave searched up to 300 ms before the QRS. Thresholds tuned on "
+                + (f"{tu['n_records']:,} training-fold ECGs" if tu else "training folds") + " against GE 12SL. "
+                f"Test fold: {me['n_records']:,} ECGs, {me['failed']} not measurable, {1000 * me['seconds_per_ecg']:.0f} ms per ECG on one CPU core.", "",
+                "**No ground truth exists here.** PTB-XL+ supplies the measurements of two commercial algorithms (GE 12SL, Uni-G). "
+                "The useful yardstick is how closely the two commercial algorithms agree with each other.", "",
+                "| Measurement | Ours − 12SL: mean ± SD | Ours − Uni-G: mean ± SD | 12SL − Uni-G: mean ± SD | Ours within tolerance of 12SL | 12SL within tolerance of Uni-G | n |",
+                "|---|---|---|---|---:|---:|---:|"]
+        ag = me["agreement"]
+        for k, (name, unit) in ECG12_MEASURE_NAMES.items():
+            a, b, c = ag["vs_12sl"].get(k), ag["vs_unig"].get(k), ag["12sl_vs_unig"].get(k)
+            if not a:
+                continue
+            f = lambda m: "—" if not m else f"{m['mean_diff']:+.1f} ± {m['sd_diff']:.1f} {unit}"  # noqa: E731
+            tol = f" (±{a['within']} {unit})"
+            out.append(f"| {name}{tol} | {f(a)} | {f(b)} | {f(c)} | {_pct(a['share_within'])} | "
+                       f"{_pct(c['share_within']) if c else '—'} | {a['n']:,} |")
+        iec = me["iec_orientation_ms"]
+        out += ["", "For orientation only, IEC 60601-2-25 accepts mean difference / SD up to "
+                + ", ".join(f"{ECG12_MEASURE_NAMES[k][0]} ±{v[0]} / {v[1]} ms" for k, v in iec.items())
+                + " — but against the CSE referee on the CSE database, which we do not have yet (it must be licensed).",
+                f"PR is reported only when a P wave is found and the rhythm is regular: {me['pr_reported_where_12sl_reports']:,} test ECGs.", "",
+                "Versions (ours − 12SL, mean ± SD; v0.2 was chosen over v0.1 on validation fold 9, then scored on test once):", "",
+                "| Version | Fold | QRS (ms) | PR (ms) | QT (ms) |", "|---|---|---|---|---|"]
+        for v in ("v0.1", "v0.2"):
+            for split in ("val", "test"):
+                r = _load(f"ecg12_measurements_{split}_{v}")
+                if r:
+                    a = r["agreement"]["vs_12sl"]
+                    out.append(f"| {v} | {split} | " + " | ".join(f"{a[k]['mean_diff']:+.1f} ± {a[k]['sd_diff']:.1f}" for k in ("qrs_ms", "pr_ms", "qt_ms")) + " |")
+        out += ["", "The v0.1 test result prompted the work on v0.2; its causes were diagnosed on training ECGs and the "
+                "fix chosen on validation. v0.1 had large misses in wide-QRS ECGs (QRS end ran into the ST segment), low or slowly rising P waves "
+                "(P onset too early) and flat T waves (T end drifted late); v0.2 adds a rule for each.", ""]
+    return out
+
+
 def write_results() -> str:
     out = ["# Cardiotic AI — research results", "",
            "Generated by `python -m cardiotic_ml.cli report` from the JSON files in this folder.",
@@ -218,7 +302,8 @@ def write_results() -> str:
                 f"extra detections with no reference beat: {t['unmatched_detections']:,}",
                 f"- Classification of matched beats: accuracy **{_pct(rep['accuracy'])}**, macro-F1 **{_pct(rep['macro_f1'])}**", ""]
         out += _class_table(rep) + [""]
-    out += ["## 7. Issues found while testing", "",
+    out += _ecg12_section()
+    out += ["## 8. Issues found while testing", "",
             "### Fixed",
             "1. **Beat positions ~40 ms late.** Pan-Tompkins marks beats after the R peak; the classifier is trained on "
             "R-peak positions. The first end-to-end run agreed with the cardiologists on only 42% of beats in a test minute. "

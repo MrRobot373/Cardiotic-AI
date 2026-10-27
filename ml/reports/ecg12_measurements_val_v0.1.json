@@ -1,0 +1,219 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T09:54:37+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "ptbxl": "PhysioNet PTB-XL 1.0.3 (CC BY 4.0)",
+    "ptbxl_plus": "PhysioNet PTB-XL+ 1.0.1 (CC BY 4.0): GE 12SL and Uni-G measurements"
+  },
+  "task": "ecg12_measurements",
+  "version": "v0.1",
+  "split": "val",
+  "params": {
+    "qrs_on": 0.03,
+    "qrs_off": 0.05,
+    "gap_ms": 12.0,
+    "qrs_core": null,
+    "p_frac": 0.1,
+    "p_min_mv": 0.02,
+    "p_search_ms": 400.0,
+    "t_frac": 0.03,
+    "t_cap_ms": null
+  },
+  "n_records": 2183,
+  "failed": 0,
+  "seconds_per_ecg": 0.010472089939580508,
+  "agreement": {
+    "vs_12sl": {
+      "heart_rate_bpm": {
+        "n": 2183,
+        "mean_diff": -0.04544358233318978,
+        "sd_diff": 2.2255600982702908,
+        "median_abs": 0.33397037744863667,
+        "within": 5,
+        "share_within": 0.9757214841960604
+      },
+      "pr_ms": {
+        "n": 1851,
+        "mean_diff": 11.784981091301999,
+        "sd_diff": 35.2182239309806,
+        "median_abs": 6.0,
+        "within": 10,
+        "share_within": 0.6628849270664505
+      },
+      "qrs_ms": {
+        "n": 2183,
+        "mean_diff": 4.56252863032524,
+        "sd_diff": 21.86575891938028,
+        "median_abs": 4.0,
+        "within": 10,
+        "share_within": 0.8497480531378836
+      },
+      "qt_ms": {
+        "n": 2150,
+        "mean_diff": 9.747906976744186,
+        "sd_diff": 36.61802431756224,
+        "median_abs": 10.0,
+        "within": 20,
+        "share_within": 0.753953488372093
+      },
+      "qtc_bazett_ms": {
+        "n": 2150,
+        "mean_diff": 12.094057725747911,
+        "sd_diff": 42.23520906189818,
+        "median_abs": 11.361660568608954,
+        "within": 20,
+        "share_within": 0.707906976744186
+      },
+      "qrs_axis_deg": {
+        "n": 2183,
+        "mean_diff": -0.7343922507464101,
+        "sd_diff": 21.37522075037561,
+        "median_abs": 5.078926086425781,
+        "within": 30,
+        "share_within": 0.9500687127805771
+      },
+      "t_axis_deg": {
+        "n": 2150,
+        "mean_diff": -0.4547956082172865,
+        "sd_diff": 24.060202815885955,
+        "median_abs": 6.137331008911133,
+        "within": 30,
+        "share_within": 0.9288372093023256
+      }
+    },
+    "vs_unig": {
+      "heart_rate_bpm": {
+        "n": 2183,
+        "mean_diff": 0.4983035546342861,
+        "sd_diff": 2.4190416301573205,
+        "median_abs": 0.5056947608200346,
+        "within": 5,
+        "share_within": 0.961978928080623
+      },
+      "pr_ms": {
+        "n": 1893,
+        "mean_diff": 17.66191230850502,
+        "sd_diff": 41.33120078601471,
+        "median_abs": 8.0,
+        "within": 10,
+        "share_within": 0.6048600105652404
+      },
+      "qrs_ms": {
+        "n": 2183,
+        "mean_diff": 2.80439761795694,
+        "sd_diff": 22.512819962372728,
+        "median_abs": 4.0,
+        "within": 10,
+        "share_within": 0.8460833715071003
+      },
+      "qt_ms": {
+        "n": 2150,
+        "mean_diff": 9.386046511627907,
+        "sd_diff": 37.09526128700706,
+        "median_abs": 12.0,
+        "within": 20,
+        "share_within": 0.7288372093023255
+      },
+      "qtc_bazett_ms": {
+        "n": 2150,
+        "mean_diff": 12.826150749003725,
+        "sd_diff": 43.150700288469,
+        "median_abs": 12.374551582479086,
+        "within": 20,
+        "share_within": 0.6823255813953488
+      },
+      "qrs_axis_deg": {
+        "n": 2183,
+        "mean_diff": -1.34318748666029,
+        "sd_diff": 21.32034082041943,
+        "median_abs": 4.760646820068359,
+        "within": 30,
+        "share_within": 0.9519010535959689
+      },
+      "t_axis_deg": {
+        "n": 2150,
+        "mean_diff": 0.20287881038736466,
+        "sd_diff": 22.70771782311053,
+        "median_abs": 5.444540023803711,
+        "within": 30,
+        "share_within": 0.9367441860465117
+      }
+    },
+    "12sl_vs_unig": {
+      "heart_rate_bpm": {
+        "n": 2183,
+        "mean_diff": 0.5437471369674759,
+        "sd_diff": 1.3909550347064332,
+        "median_abs": 0.0,
+        "within": 5,
+        "share_within": 0.9903802107191938
+      },
+      "pr_ms": {
+        "n": 1979,
+        "mean_diff": 3.801920161697827,
+        "sd_diff": 13.879040597779017,
+        "median_abs": 4.0,
+        "within": 10,
+        "share_within": 0.7897928246589186
+      },
+      "qrs_ms": {
+        "n": 2183,
+        "mean_diff": -1.7581310123683005,
+        "sd_diff": 8.559893622282718,
+        "median_abs": 4.0,
+        "within": 10,
+        "share_within": 0.9285387081997252
+      },
+      "qt_ms": {
+        "n": 2183,
+        "mean_diff": -0.24370132844709116,
+        "sd_diff": 18.373514952635894,
+        "median_abs": 6.0,
+        "within": 20,
+        "share_within": 0.9262482821804856
+      },
+      "qtc_bazett_ms": {
+        "n": 2183,
+        "mean_diff": 0.9047182775996335,
+        "sd_diff": 21.22505737686658,
+        "median_abs": 6.0,
+        "within": 20,
+        "share_within": 0.8960146587265231
+      },
+      "qrs_axis_deg": {
+        "n": 2183,
+        "mean_diff": -0.27897388914338067,
+        "sd_diff": 8.463472886133983,
+        "median_abs": 2.0,
+        "within": 30,
+        "share_within": 0.9926706367384334
+      },
+      "t_axis_deg": {
+        "n": 2183,
+        "mean_diff": 0.08291342189647274,
+        "sd_diff": 17.883908124309244,
+        "median_abs": 4.0,
+        "within": 30,
+        "share_within": 0.956939990838296
+      }
+    }
+  },
+  "iec_orientation_ms": {
+    "pr_ms": [
+      10,
+      10
+    ],
+    "qrs_ms": [
+      6,
+      10
+    ],
+    "qt_ms": [
+      12,
+      30
+    ]
+  },
+  "pr_reported_where_12sl_reports": 1851,
+  "note": "12SL and Uni-G are commercial algorithms, not ground truth. IEC 60601-2-25 tolerances are defined against the CSE referee on the CSE database; shown for orientation only."
+}
