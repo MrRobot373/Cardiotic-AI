@@ -26,7 +26,7 @@ FS = 360
 # Best detector on the MIT-BIH benchmark (reports/qrs_detection.json).
 QRS_METHOD = "pantompkins1985"
 # Model versions used by the pipeline — each chosen on validation data, never on the test set.
-QUALITY_MODEL = "quality_net_v0.1"
+QUALITY_MODEL = "quality_net_v0.3"  # v0.1 over-rejects clean recordings, v0.2 too lenient on real noise (validation)
 BEAT_MODEL = "beat_net_v0.1"  # v0.2 (augmentation) scored lower on validation patients
 RHYTHM_MODEL = "rhythm_net_v0.1"
 RHYTHM_LABELS = ["N", "A", "O", "~"]
@@ -125,6 +125,7 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
     }
     counts = {c: int((cls == i).sum()) for i, c in enumerate(beat_data.CLASSES)}
     findings = []
+    af_predominant = False
     if rhythm:
         tally = {l: [s for s in rhythm if s["rhythm"] == l] for l in RHYTHM_LABELS}
         if tally["A"]:
@@ -133,9 +134,10 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
                             f"(highest confidence: {confidence_level(best)})")
         main = max(RHYTHM_LABELS, key=lambda l: len(tally[l]))
         findings.append(f"Predominant rhythm: {RHYTHM_NAMES[main]} ({len(tally[main])} of {len(rhythm)} windows)")
+        af_predominant = main == "A"
     if counts["V"]:
         findings.append(f"Premature ventricular complexes: {counts['V']} beat(s)")
-    if counts["S"]:
+    if counts["S"] and not af_predominant:  # premature atrial beats are not defined during AF
         findings.append(f"Supraventricular ectopic beats: {counts['S']} beat(s)")
     if counts["F"]:
         findings.append(f"Fusion beats: {counts['F']} beat(s)")

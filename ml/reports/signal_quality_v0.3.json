@@ -1,0 +1,344 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T04:18:45+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "signal_quality",
+  "version": "v0.3",
+  "sizes": {
+    "train": 30000,
+    "val": 5000,
+    "test": 10000
+  },
+  "test": {
+    "accuracy": 0.8648,
+    "macro_f1": 0.8658977365415462,
+    "per_class": {
+      "good": {
+        "support": 3964,
+        "sensitivity": 0.8314833501513622,
+        "ppv": 0.8569942797711908,
+        "f1": 0.8440460947503201
+      },
+      "noisy": {
+        "support": 2985,
+        "sensitivity": 0.7845896147403685,
+        "ppv": 0.7726822830748927,
+        "f1": 0.7785904255319148
+      },
+      "unusable": {
+        "support": 3051,
+        "sensitivity": 0.98656178302196,
+        "ppv": 0.9638168427793788,
+        "f1": 0.9750566893424035
+      }
+    },
+    "confusion": [
+      [
+        3296,
+        650,
+        18
+      ],
+      [
+        548,
+        2342,
+        95
+      ],
+      [
+        2,
+        39,
+        3010
+      ]
+    ],
+    "labels": [
+      "good",
+      "noisy",
+      "unusable"
+    ]
+  },
+  "val": {
+    "accuracy": 0.9048,
+    "macro_f1": 0.9073752674018851,
+    "per_class": {
+      "good": {
+        "support": 2011,
+        "sensitivity": 0.895574341123819,
+        "ppv": 0.8880670611439843,
+        "f1": 0.8918049022035156
+      },
+      "noisy": {
+        "support": 1529,
+        "sensitivity": 0.8410725964682799,
+        "ppv": 0.8477257745550428,
+        "f1": 0.8443860801050558
+      },
+      "unusable": {
+        "support": 1460,
+        "sensitivity": 0.9842465753424657,
+        "ppv": 0.9876288659793815,
+        "f1": 0.985934819897084
+      }
+    },
+    "confusion": [
+      [
+        1801,
+        209,
+        1
+      ],
+      [
+        226,
+        1286,
+        17
+      ],
+      [
+        1,
+        22,
+        1437
+      ]
+    ],
+    "labels": [
+      "good",
+      "noisy",
+      "unusable"
+    ]
+  },
+  "test_accuracy_by_generator": {
+    "bw@high-snr": 0.8006644518272426,
+    "bw@mid-snr": 0.6853823814133592,
+    "clean": 0.8550430816016219,
+    "em@high-snr": 0.8147058823529412,
+    "em@low-snr": 0.9545454545454546,
+    "em@mid-snr": 0.8051391862955032,
+    "flatline": 1.0,
+    "lead-off": 0.9984350547730829,
+    "ma@high-snr": 0.8081805359661495,
+    "ma@low-snr": 0.9614243323442137,
+    "ma@mid-snr": 0.8664047151277013,
+    "noise-only": 0.9814814814814815,
+    "saturation": 0.9966044142614601
+  },
+  "training": {
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.5237507575829824,
+        "val_macro_f1": 0.8301475098729298,
+        "val_accuracy": 0.826,
+        "seconds": 5.0
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.3637716501712799,
+        "val_macro_f1": 0.44059079003800417,
+        "val_accuracy": 0.5086,
+        "seconds": 4.1
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.34180994992256164,
+        "val_macro_f1": 0.866372197379945,
+        "val_accuracy": 0.8594,
+        "seconds": 4.0
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.30104610775311785,
+        "val_macro_f1": 0.8710731933427208,
+        "val_accuracy": 0.8734,
+        "seconds": 4.3
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.2763825625101725,
+        "val_macro_f1": 0.898412082250453,
+        "val_accuracy": 0.8938,
+        "seconds": 4.2
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.25059781069755555,
+        "val_macro_f1": 0.8952320793271684,
+        "val_accuracy": 0.891,
+        "seconds": 3.9
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.23559925768375398,
+        "val_macro_f1": 0.9073752674018851,
+        "val_accuracy": 0.9048,
+        "seconds": 3.9
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.21608358374436695,
+        "val_macro_f1": 0.8891098921764273,
+        "val_accuracy": 0.8834,
+        "seconds": 4.3
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.200250940879186,
+        "val_macro_f1": 0.8880667408168789,
+        "val_accuracy": 0.8822,
+        "seconds": 3.9
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.19113629945119223,
+        "val_macro_f1": 0.8946123258765799,
+        "val_accuracy": 0.8894,
+        "seconds": 3.8
+      }
+    ],
+    "best_val_macro_f1": 0.9073752674018851
+  },
+  "model_card": {
+    "name": "quality_net",
+    "version": "v0.3",
+    "recipe": {
+      "extra_p": 0.3,
+      "low_amp_p": 0.3,
+      "real_noisy_p": 0.1,
+      "epochs": 10
+    },
+    "task": "single-lead 2.5 s window signal quality: good / noisy / unusable",
+    "input": "900 samples @ 360 Hz, millivolts, median removed",
+    "labels": [
+      "good",
+      "noisy",
+      "unusable"
+    ],
+    "intended_use": "Research use only. Gate for downstream analysis; not validated on clinical data.",
+    "train_patients": [
+      101,
+      108,
+      109,
+      112,
+      114,
+      115,
+      116,
+      119,
+      122,
+      124,
+      201,
+      203,
+      205,
+      208,
+      209,
+      215,
+      223,
+      230
+    ],
+    "val_patients": [
+      106,
+      118,
+      207,
+      220
+    ],
+    "test_patients": [
+      100,
+      103,
+      105,
+      111,
+      113,
+      117,
+      121,
+      123,
+      200,
+      202,
+      210,
+      212,
+      213,
+      214,
+      219,
+      221,
+      222,
+      228,
+      231,
+      232,
+      233,
+      234
+    ],
+    "noise_split": "NSTDB bw/em/ma: first 60% of each recording train, last 40% test",
+    "label_source": "proxy labels from known injected SNR and synthetic failure modes (see quality/dataset.py); extra good bases from CinC 2017 train-split AF / other-rhythm records; real noisy windows from CinC 2017 train-split 'too noisy' records",
+    "file": "quality_net_v0.3.pt",
+    "sha256": "a07d9ae9563e970cf2549f2ae7da87bc104a939137a6d7bd1e3ec6690f16cfcf",
+    "parameters": 66435
+  },
+  "real_data_val": {
+    "cinc_N": {
+      "good": 0.8391391856324508,
+      "noisy": 0.1602415234556433,
+      "unusable": 0.0006192909119058678,
+      "windows": 6459
+    },
+    "cinc_A": {
+      "good": 0.8923512747875354,
+      "noisy": 0.10764872521246459,
+      "unusable": 0.0,
+      "windows": 1059
+    },
+    "cinc_O": {
+      "good": 0.8650839606253619,
+      "noisy": 0.1343370005790388,
+      "unusable": 0.0005790387955993051,
+      "windows": 3454
+    },
+    "cinc_~": {
+      "good": 0.19791666666666666,
+      "noisy": 0.7881944444444444,
+      "unusable": 0.013888888888888888,
+      "windows": 288
+    }
+  },
+  "real_data_test": {
+    "cinc_N": {
+      "good": 0.8434020374318881,
+      "noisy": 0.1560451709705441,
+      "unusable": 0.000552791597567717,
+      "windows": 12663
+    },
+    "cinc_A": {
+      "good": 0.8809523809523809,
+      "noisy": 0.11904761904761904,
+      "unusable": 0.0,
+      "windows": 1932
+    },
+    "cinc_O": {
+      "good": 0.877851711026616,
+      "noisy": 0.12183143219264893,
+      "unusable": 0.0003168567807351077,
+      "windows": 6312
+    },
+    "cinc_~": {
+      "good": 0.25,
+      "noisy": 0.7427007299270073,
+      "unusable": 0.0072992700729927005,
+      "windows": 548
+    },
+    "mitdb_210": {
+      "good": 0.9501385041551247,
+      "noisy": 0.04986149584487535,
+      "unusable": 0.0
+    },
+    "mitdb_219": {
+      "good": 0.8642659279778393,
+      "noisy": 0.13573407202216067,
+      "unusable": 0.0
+    },
+    "mitdb_221": {
+      "good": 0.997229916897507,
+      "noisy": 0.002770083102493075,
+      "unusable": 0.0
+    },
+    "mitdb_222": {
+      "good": 0.2756232686980609,
+      "noisy": 0.6952908587257618,
+      "unusable": 0.029085872576177285
+    }
+  }
+}

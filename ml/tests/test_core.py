@@ -140,3 +140,9 @@ def test_rhythm_model_forward_shape():
     from cardiotic_ml.rhythm.model import RhythmNet
 
     assert RhythmNet()(torch.zeros(2, WIN), torch.zeros(2, N_RRF)).shape == (2, 4)
+
+
+def test_detect_beats_ignores_startup_transient():
+    fs = 360
+    x = nk.ecg_simulate(duration=20, sampling_rate=fs, heart_rate=70, random_state=4).astype(np.float32)
+    assert qrs.detect_beats(x, fs).min() >= int(qrs.STARTUP_S * fs)

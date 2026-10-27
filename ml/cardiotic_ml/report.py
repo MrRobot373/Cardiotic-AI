@@ -51,7 +51,7 @@ def write_results() -> str:
         out += ["", f"Hardest records for `{best[0]}`: " + ", ".join(
             f"{r['record']} (Se {_pct(r['sensitivity'])}, +P {_pct(r['ppv'])})" for r in worst), ""]
 
-    qvers = [(v, _load(f"signal_quality_{v}")) for v in ("v0.1", "v0.2")]
+    qvers = [(v, _load(f"signal_quality_{v}")) for v in ("v0.1", "v0.2", "v0.3")]
     qvers = [(v, r) for v, r in qvers if r]
     if qvers:
         from cardiotic_ml.pipeline import QUALITY_MODEL
@@ -117,12 +117,12 @@ def write_results() -> str:
     if x:
         out += ["### Cross-dataset test: same model on MIT-BIH (never seen in training)", "",
                 f"Different device (Holter vs handheld), lead (MLII vs lead I), sampling rate and decade. {x['protocol']}.", "",
-                f"- AF windows: {x['windows_af']:,} · non-AF windows: {x['windows_non_af']:,}",
+                f"- AF windows: {int(x['windows_af']):,} · non-AF windows: {int(x['windows_non_af']):,}",
                 f"- **AF sensitivity {_pct(x['af_sensitivity'])}**, **AF positive predictivity {_pct(x['af_ppv'])}**, "
                 f"specificity {_pct(x['af_specificity'])}",
-                f"- What the model said on non-AF windows: {x['predictions_on_non_af_windows']}", "",
+                "- What the model said on non-AF windows: " + ", ".join(f"{k} {int(v):,}" for k, v in x["predictions_on_non_af_windows"].items()), "",
                 "| Record | AF windows | AF detected | False AF windows |", "|---|---:|---:|---:|"]
-        out += [f"| {r['record']} | {r['af_windows']} | {r['af_detected']} | {r['false_af_windows']} |" for r in x["per_record"]]
+        out += [f"| {r['record']} | {int(r['af_windows'])} | {int(r['af_detected'])} | {int(r['false_af_windows'])} |" for r in x["per_record"]]
         out.append("")
     cb = _load("beat_calibration")
     if rh or cb:
@@ -155,23 +155,36 @@ def write_results() -> str:
                 f"extra detections with no reference beat: {t['unmatched_detections']:,}",
                 f"- Classification of matched beats: accuracy **{_pct(rep['accuracy'])}**, macro-F1 **{_pct(rep['macro_f1'])}**", ""]
         out += _class_table(rep) + [""]
-    out += ["## 7. Known issues (found while testing — next work)", "",
-            "1. **Pan-Tompkins places beats ~40 ms late.** The beat classifier is trained on R-peak positions, so the "
-            "first end-to-end run agreed with the cardiologists on only 42% of beats in a test minute. Fixed by refining every "
-            "detection to the R peak (`qrs.refine_peaks`): agreement on the same minute rose to 92%, and end-to-end accuracy now "
-            "matches the classifier's own test score. A regression test covers it.",
-            "2. **The quality gate rejects too much of some arrhythmic, low-amplitude recordings.** Record 222 (R amplitude "
-            "0.68 mV against a 1.45 mV median, with atrial flutter, AF and nodal-rhythm episodes) had about half its windows "
-            "marked unusable, including most flutter windows. An arrhythmia must never be hidden as 'not analysable'. Next: "
-            "train the quality model with arrhythmia-rich windows (MIT-BIH AF database) labelled good, and make it robust to "
-            "low amplitude. Product requirement: every 'not analysable' segment must be shown to the reader for manual review, never silently dropped.",
-            "3. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). A first augmentation recipe "
-            "(v0.2) scored lower on the validation patients, so it was not adopted. Next: more S/F training data (INCART, "
-            "long-term AF), patient-adaptive RR features, and a rhythm-level model (AF) that does not rely on single-beat labels.",
-            "4. **Quality labels are proxies** built from known noise levels, and some 'clean' MIT-BIH windows contain real "
-            "noise (part of the good/noisy confusion). Clinician-labelled windows are needed.",
-            "5. **Single dataset, single lead.** Everything here is MIT-BIH MLII at 360 Hz from 1975–79 Holter recorders. "
-            "Performance on modern 12-lead carts and OT monitors is unknown until tested on that data.", ""]
+    out += ["## 7. Issues found while testing", "",
+            "### Fixed",
+            "1. **Beat positions ~40 ms late.** Pan-Tompkins marks beats after the R peak; the classifier is trained on "
+            "R-peak positions. The first end-to-end run agreed with the cardiologists on only 42% of beats in a test minute. "
+            "Every detection is now refined to the R peak (`qrs.refine_peaks`): 92% on the same minute. Regression test added.",
+            "2. **Quality gate hid arrhythmic, low-amplitude signal.** With quality v0.1, record 222 (R amplitude 0.68 mV against a "
+            "1.45 mV median; flutter, AF and nodal-rhythm episodes) had ~half its windows rated unusable, and 8–16% of clean "
+            "expert-labelled handheld ECG windows were rated unusable. v0.2 (AF/other-rhythm windows as good, low-amplitude "
+            "examples) fixed that but became lenient on real noisy recordings; v0.3 adds real noisy windows. Chosen on validation: "
+            "beats hidden in unusable segments across the 22 test patients fell from 1,839 to about 250, record 222 from 1,173 to about 70.",
+            "3. **False beat at the start of every recording.** Pan-Tompkins' thresholds are still settling in the first moments "
+            "(record 221: detection at 0.32 s, first real beat at 0.61 s). Detections in the first 0.4 s are now dropped. Test added.",
+            "4. **'Supraventricular ectopic beats' reported during AF.** Premature atrial beats are not defined in AF; that finding "
+            "is now suppressed when AF is the predominant rhythm.", "",
+            "### Open (next work)",
+            "5. **AF over-called in ectopy-rich recordings.** Cross-dataset AF sensitivity is high, but most false AF windows come "
+            "from a few MIT-BIH records with frequent premature beats (232, 215, 228, 200): extra beats make RR irregular. Next: "
+            "compute RR irregularity on normal-to-normal intervals only, using the beat classifier's labels, and train on "
+            "ectopy-rich non-AF examples.",
+            "6. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). The v0.2 augmentation recipe scored lower "
+            "on validation and was not adopted. Next: more S/F data (INCART, long-term AF database), patient-adaptive RR features.",
+            "7. **Beat-model calibration does not transfer across patients.** A temperature fitted on the 4 validation patients "
+            "made test ECE worse (slightly under-confident). The rhythm model's calibration did improve on test. Next: calibrate "
+            "beats on a larger, more varied patient set; until then beat confidence levels must not be shown as calibrated in any UI.",
+            "8. **Proxy and weak labels.** Synthetic quality labels come from known noise levels; CinC 'too noisy' labels are per "
+            "recording, not per window. Clinician-labelled windows are needed.",
+            "9. **Public data only.** MIT-BIH (1970s Holter, MLII) and CinC 2017 (handheld, lead I). Performance on modern 12-lead "
+            "carts and OT/ICU monitors is unknown until tested on partner-hospital data.",
+            "10. **CinC split is by record, not patient** (no patient IDs are published), so some test records may share a patient "
+            "with training records. The cross-dataset MIT-BIH result is the stronger generalisation evidence.", ""]
     path = REPORTS_DIR / "RESULTS.md"
     path.write_text("\n".join(out))
     return str(path)

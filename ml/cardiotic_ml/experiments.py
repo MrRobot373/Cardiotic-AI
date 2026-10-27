@@ -86,6 +86,9 @@ QUALITY_VERSIONS = {
     # v0.2 targets the record-222 finding: real AF / other-rhythm windows (CinC 2017) as "good"
     # bases, and low-amplitude versions of clean windows.
     "v0.2": {"extra_p": 0.3, "low_amp_p": 0.3, "epochs": 10},
+    # v0.3: v0.2 became lenient on real noisy handheld recordings (validation), so it also sees
+    # windows from CinC train-split recordings labelled "too noisy" as noisy examples.
+    "v0.3": {"extra_p": 0.3, "low_amp_p": 0.3, "real_noisy_p": 0.1, "epochs": 10},
 }
 QUALITY_VAL_PATIENTS = [106, 118, 207, 220]
 
@@ -135,8 +138,12 @@ def train_quality(version: str = "v0.2", n_train: int = 30000, n_val: int = 5000
         signals = cinc2017.load_all()
         ref = dict(cinc2017.reference())
         extra = _cinc_quality_bases([r for r in cinc2017.split()["train"] if ref[r] in ("A", "O")], signals)
+    real_noisy = None
+    if spec.get("real_noisy_p"):
+        real_noisy = _cinc_quality_bases([r for r in cinc2017.split()["train"] if ref[r] == "~"], signals)
     print(f"building quality datasets… ({version}: {spec})", flush=True)
-    tr = q_data.build(train_ids, pool_train, n_train, seed=1, extra_clean=extra, extra_p=spec["extra_p"], low_amp_p=spec["low_amp_p"])
+    tr = q_data.build(train_ids, pool_train, n_train, seed=1, extra_clean=extra, extra_p=spec["extra_p"], low_amp_p=spec["low_amp_p"],
+                      real_noisy=real_noisy, real_noisy_p=spec.get("real_noisy_p", 0.0))
     va = q_data.build(val_ids, pool_train, n_val, seed=2)
     te = q_data.build(mitdb.DS2, pool_test, n_test, seed=3)
     model = QualityNet(len(q_data.LABELS))
@@ -155,7 +162,8 @@ def train_quality(version: str = "v0.2", n_train: int = 30000, n_val: int = 5000
         "train_patients": train_ids, "val_patients": val_ids, "test_patients": mitdb.DS2,
         "noise_split": "NSTDB bw/em/ma: first 60% of each recording train, last 40% test",
         "label_source": "proxy labels from known injected SNR and synthetic failure modes (see quality/dataset.py)"
-                        + ("; extra good bases from CinC 2017 train-split AF / other-rhythm records" if extra is not None else ""),
+                        + ("; extra good bases from CinC 2017 train-split AF / other-rhythm records" if extra is not None else "")
+                        + ("; real noisy windows from CinC 2017 train-split 'too noisy' records" if real_noisy is not None else ""),
     })
     print("real-data checks…", flush=True)
     result = _meta(task="signal_quality", version=version, sizes={"train": len(tr.y), "val": len(va.y), "test": len(te.y)},

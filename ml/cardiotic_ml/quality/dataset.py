@@ -91,14 +91,20 @@ def make_example(clean: np.ndarray, pool: dict[str, np.ndarray], rng: np.random.
 
 
 def build(record_ids: list[int], pool: dict[str, np.ndarray], n: int, seed: int,
-          extra_clean: np.ndarray | None = None, extra_p: float = 0.0, low_amp_p: float = 0.0) -> QualitySet:
+          extra_clean: np.ndarray | None = None, extra_p: float = 0.0, low_amp_p: float = 0.0,
+          real_noisy: np.ndarray | None = None, real_noisy_p: float = 0.0) -> QualitySet:
     """`extra_clean`: additional clean base windows (e.g. AF / other-rhythm windows from another
     dataset) used with probability `extra_p`; `low_amp_p`: share of base windows scaled down to
-    0.3–0.8x so small-amplitude ECGs are not learned as "no signal"."""
+    0.3–0.8x so small-amplitude ECGs are not learned as "no signal". `real_noisy`: windows from
+    recordings experts labelled too noisy to interpret, used as-is with label "noisy" (weak,
+    recording-level labels) with probability `real_noisy_p`."""
     rng = np.random.default_rng(seed)
     cleans = clean_windows(record_ids)
     xs, ys, kinds = [], [], []
     for _ in range(n):
+        if real_noisy is not None and rng.random() < real_noisy_p:
+            xs.append(np.clip(real_noisy[rng.integers(len(real_noisy))], -10, 10)); ys.append(1); kinds.append("real-noisy")
+            continue
         use_extra = extra_clean is not None and rng.random() < extra_p
         base = extra_clean[rng.integers(len(extra_clean))] if use_extra else cleans[rng.integers(len(cleans))]
         low = rng.random() < low_amp_p

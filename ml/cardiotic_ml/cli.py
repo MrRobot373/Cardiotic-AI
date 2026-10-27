@@ -25,7 +25,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("download")
     sub.add_parser("eval-qrs")
     sub.add_parser("eval-pipeline")
-    q = sub.add_parser("train-quality"); q.add_argument("--version", default="v0.2", choices=["v0.1", "v0.2"])
+    q = sub.add_parser("train-quality"); q.add_argument("--version", default="v0.3", choices=["v0.1", "v0.2", "v0.3"])
     qr = sub.add_parser("quality-real"); qr.add_argument("--version", default="v0.1")
     tr = sub.add_parser("train-rhythm"); tr.add_argument("--epochs", type=int, default=16)
     sub.add_parser("eval-rhythm-mitdb")

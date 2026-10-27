@@ -19,39 +19,42 @@ Hardest records for `pantompkins1985`: 108 (Se 82.1%, +P 75.4%), 207 (Se 100.0%,
 
 ## 2. Signal-quality model (AI model #1)
 
-Test set: 10,000 windows from the 22 DS2 patients, with noise taken from a part of the noise recordings never used in training. Accuracy **85.1%**, macro-F1 **85.1%**.
+Synthetic test: 10,000 windows from the 22 DS2 patients, noise from a part of the noise recordings never used in training. Real-data check: CinC 2017 recordings labelled by experts (normal, AF, other rhythm, and 'too noisy to classify'), plus MIT-BIH DS2 records with AF or flutter.
+
+| Version | Recipe | Synthetic test accuracy | Unusable caught (Se) | CinC AF windows rated unusable | CinC 'too noisy' windows rated noisy or unusable | MIT-BIH 222 windows rated unusable |
+|---|---|---:|---:|---:|---:|---:|
+| v0.1 | {'extra_p': 0.0, 'low_amp_p': 0.0, 'epochs': 10} | 85.1% | 99.0% | 14.3% | 66.4% | 48.8% |
+| v0.2 | {'extra_p': 0.3, 'low_amp_p': 0.3, 'epochs': 10} | 86.4% | 99.6% | 0.4% | 37.0% | 12.7% |
+| v0.3 (adopted) | {'extra_p': 0.3, 'low_amp_p': 0.3, 'real_noisy_p': 0.1, 'epochs': 10} | 86.5% | 98.7% | 0.0% | 75.0% | 2.9% |
+
+**Adopted: v0.3.** Synthetic-test detail:
 
 | Class | Test beats/windows | Sensitivity (Se) | Positive predictivity (+P) | F1 |
 |---|---:|---:|---:|---:|
-| good | 3,902 | 80.5% | 85.8% | 83.1% |
-| noisy | 3,027 | 76.9% | 78.1% | 77.5% |
-| unusable | 3,071 | 99.0% | 90.6% | 94.6% |
+| good | 3,964 | 83.1% | 85.7% | 84.4% |
+| noisy | 2,985 | 78.5% | 77.3% | 77.9% |
+| unusable | 3,051 | 98.7% | 96.4% | 97.5% |
 
 | true ↓ / predicted → | good | noisy | unusable |
 |---|---:|---:|---:|
-| **good** | 3,143 | 624 | 135 |
-| **noisy** | 520 | 2,328 | 179 |
-| **unusable** | 2 | 28 | 3,041 |
+| **good** | 3,296 | 650 | 18 |
+| **noisy** | 548 | 2,342 | 95 |
+| **unusable** | 2 | 39 | 3,010 |
 
-Accuracy by how the test window was made:
+Real-data check (test split), share of 2.5 s windows rated:
 
-| Generator | Accuracy |
-|---|---:|
-| bw@high-snr | 80.6% |
-| bw@mid-snr | 73.6% |
-| clean | 82.0% |
-| em@high-snr | 76.4% |
-| em@low-snr | 96.1% |
-| em@mid-snr | 73.8% |
-| flatline | 100.0% |
-| lead-off | 100.0% |
-| ma@high-snr | 80.4% |
-| ma@low-snr | 94.5% |
-| ma@mid-snr | 83.1% |
-| noise-only | 100.0% |
-| saturation | 99.8% |
+| Recording type | Windows | good | noisy | unusable |
+|---|---:|---:|---:|---:|
+| cinc_N | 12663 | 84.3% | 15.6% | 0.1% |
+| cinc_A | 1932 | 88.1% | 11.9% | 0.0% |
+| cinc_O | 6312 | 87.8% | 12.2% | 0.0% |
+| cinc_~ | 548 | 25.0% | 74.3% | 0.7% |
+| mitdb_210 | — | 95.0% | 5.0% | 0.0% |
+| mitdb_219 | — | 86.4% | 13.6% | 0.0% |
+| mitdb_221 | — | 99.7% | 0.3% | 0.0% |
+| mitdb_222 | — | 27.6% | 69.5% | 2.9% |
 
-Labels are proxies derived from the injected noise level (see `quality/dataset.py`). Clinician-labelled windows are needed before any claim about real-world quality detection.
+Synthetic labels are proxies derived from the injected noise level (see `quality/dataset.py`). The CinC 'too noisy' label is for the whole recording, so not every window in such a recording is bad.
 
 ## 3. Beat classifier (AI model #2)
 
@@ -80,24 +83,90 @@ Inter-patient protocol (de Chazal): trained on DS1, model selected on 4 held-out
 
 N = normal or bundle-branch beats · S = supraventricular ectopic · V = ventricular ectopic · F = fusion. In this protocol S and F are known to be hard (few training examples, S beats often look normal). Accuracy is dominated by N and is not the number to judge the model by: read Se and +P for S and V.
 
-## 4. End to end — the whole pipeline on 22 unseen patients
+## 4. Rhythm classifier (AI model #3)
 
-Quality gate → `pantompkins1985` detection → R-peak refinement → `beat_net_v0.1`, run on the full 30-minute DS2 recordings and scored against the cardiologists' annotations. This is what a user would get.
-
-- Reference beats: 49,705 · matched to a detection: 47,683 (95.9%) · missed by the detector: 183 · inside segments the quality gate marked unusable: 1,839 · extra detections with no reference beat: 154
-- Classification of matched beats: accuracy **91.7%**, macro-F1 **53.4%**
+Trained on CinC 2017 handheld single-lead ECGs (5,968 records), tested on 1,707 held-out records (stratified split by record; the dataset has no patient IDs). Record-level result (average of 30 s windows). **Challenge F1 (mean of N, A, O): 83.1%**. For context, the best 2017 challenge entries scored about 83% on the hidden test set (not directly comparable).
 
 | Class | Test beats/windows | Sensitivity (Se) | Positive predictivity (+P) | F1 |
 |---|---:|---:|---:|---:|
-| N | 42,357 | 95.4% | 95.5% | 95.5% |
-| S | 1,767 | 29.9% | 22.9% | 25.9% |
-| V | 3,173 | 86.7% | 97.2% | 91.7% |
+| N | 1,016 | 91.6% | 90.4% | 91.0% |
+| A | 152 | 88.8% | 73.8% | 80.6% |
+| O | 483 | 73.1% | 82.7% | 77.6% |
+| ~ | 56 | 71.4% | 59.7% | 65.0% |
+
+| true ↓ / predicted → | N | A | O | ~ |
+|---|---:|---:|---:|---:|
+| **N** | 931 | 11 | 58 | 16 |
+| **A** | 3 | 135 | 10 | 4 |
+| **O** | 89 | 34 | 353 | 7 |
+| **~** | 7 | 3 | 6 | 40 |
+
+N normal sinus · A atrial fibrillation · O other rhythm · ~ too noisy to classify.
+
+### Cross-dataset test: same model on MIT-BIH (never seen in training)
+
+Different device (Holter vs handheld), lead (MLII vs lead I), sampling rate and decade. 30 s non-overlapping windows; AF = window entirely inside an (AFIB episode; mixed windows skipped.
+
+- AF windows: 214 · non-AF windows: 2,388
+- **AF sensitivity 97.7%**, **AF positive predictivity 56.8%**, specificity 93.3%
+- What the model said on non-AF windows: O 1,193, N 1,027, ~ 9, A 159
+
+| Record | AF windows | AF detected | False AF windows |
+|---|---:|---:|---:|
+| 118 | 0 | 0 | 2 |
+| 200 | 0 | 0 | 16 |
+| 201 | 18 | 18 | 0 |
+| 202 | 17 | 17 | 1 |
+| 203 | 33 | 33 | 9 |
+| 207 | 0 | 0 | 1 |
+| 208 | 0 | 0 | 1 |
+| 209 | 0 | 0 | 3 |
+| 210 | 54 | 54 | 0 |
+| 214 | 0 | 0 | 2 |
+| 215 | 0 | 0 | 33 |
+| 219 | 42 | 42 | 4 |
+| 220 | 0 | 0 | 1 |
+| 221 | 50 | 45 | 0 |
+| 222 | 0 | 0 | 6 |
+| 223 | 0 | 0 | 3 |
+| 228 | 0 | 0 | 23 |
+| 232 | 0 | 0 | 54 |
+
+## 5. Confidence calibration (M5)
+
+Temperature scaling fitted on validation data only. ECE = expected calibration error (gap between stated confidence and observed accuracy; lower is better).
+
+| Model | Temperature | Test ECE before | Test ECE after | 'High' share / accuracy | 'Moderate' share / accuracy | 'Low' share / accuracy |
+|---|---:|---:|---:|---:|---:|---:|
+| rhythm_net v0.1 (records) | 1.20 | 3.1% | 1.6% | 53.0% / 95.4% | 30.1% / 83.2% | 17.0% / 58.6% |
+| beat_net_v0.1 (beats) | 1.71 | 3.2% | 4.7% | 55.3% / 96.7% | 34.8% / 91.9% | 10.0% / 64.6% |
+
+## 6. End to end — the whole pipeline on 22 unseen patients
+
+Quality gate `quality_net_v0.3` → `pantompkins1985` detection → R-peak refinement → `beat_net_v0.1`, run on the full 30-minute DS2 recordings and scored against the cardiologists' annotations. This is what a user would get.
+
+- Reference beats: 49,705 · matched to a detection: 49,260 (99.1%) · missed by the detector: 197 · inside segments the quality gate marked unusable: 248 · extra detections with no reference beat: 178
+- Classification of matched beats: accuracy **91.9%**, macro-F1 **53.8%**
+
+| Class | Test beats/windows | Sensitivity (Se) | Positive predictivity (+P) | F1 |
+|---|---:|---:|---:|---:|
+| N | 43,866 | 95.5% | 95.7% | 95.6% |
+| S | 1,824 | 32.0% | 25.0% | 28.0% |
+| V | 3,184 | 87.0% | 95.7% | 91.1% |
 | F | 386 | 0.3% | 0.4% | 0.3% |
 
-## 5. Known issues (found while testing — next work)
+## 7. Issues found while testing
 
-1. **Pan-Tompkins places beats ~40 ms late.** The beat classifier is trained on R-peak positions, so the first end-to-end run agreed with the cardiologists on only 42% of beats in a test minute. Fixed by refining every detection to the R peak (`qrs.refine_peaks`): agreement on the same minute rose to 92%, and end-to-end accuracy now matches the classifier's own test score. A regression test covers it.
-2. **The quality gate rejects too much of some arrhythmic, low-amplitude recordings.** Record 222 (R amplitude 0.68 mV against a 1.45 mV median, with atrial flutter, AF and nodal-rhythm episodes) had about half its windows marked unusable, including most flutter windows. An arrhythmia must never be hidden as 'not analysable'. Next: train the quality model with arrhythmia-rich windows (MIT-BIH AF database) labelled good, and make it robust to low amplitude. Product requirement: every 'not analysable' segment must be shown to the reader for manual review, never silently dropped.
-3. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). A first augmentation recipe (v0.2) scored lower on the validation patients, so it was not adopted. Next: more S/F training data (INCART, long-term AF), patient-adaptive RR features, and a rhythm-level model (AF) that does not rely on single-beat labels.
-4. **Quality labels are proxies** built from known noise levels, and some 'clean' MIT-BIH windows contain real noise (part of the good/noisy confusion). Clinician-labelled windows are needed.
-5. **Single dataset, single lead.** Everything here is MIT-BIH MLII at 360 Hz from 1975–79 Holter recorders. Performance on modern 12-lead carts and OT monitors is unknown until tested on that data.
+### Fixed
+1. **Beat positions ~40 ms late.** Pan-Tompkins marks beats after the R peak; the classifier is trained on R-peak positions. The first end-to-end run agreed with the cardiologists on only 42% of beats in a test minute. Every detection is now refined to the R peak (`qrs.refine_peaks`): 92% on the same minute. Regression test added.
+2. **Quality gate hid arrhythmic, low-amplitude signal.** With quality v0.1, record 222 (R amplitude 0.68 mV against a 1.45 mV median; flutter, AF and nodal-rhythm episodes) had ~half its windows rated unusable, and 8–16% of clean expert-labelled handheld ECG windows were rated unusable. v0.2 (AF/other-rhythm windows as good, low-amplitude examples) fixed that but became lenient on real noisy recordings; v0.3 adds real noisy windows. Chosen on validation: beats hidden in unusable segments across the 22 test patients fell from 1,839 to about 250, record 222 from 1,173 to about 70.
+3. **False beat at the start of every recording.** Pan-Tompkins' thresholds are still settling in the first moments (record 221: detection at 0.32 s, first real beat at 0.61 s). Detections in the first 0.4 s are now dropped. Test added.
+4. **'Supraventricular ectopic beats' reported during AF.** Premature atrial beats are not defined in AF; that finding is now suppressed when AF is the predominant rhythm.
+
+### Open (next work)
+5. **AF over-called in ectopy-rich recordings.** Cross-dataset AF sensitivity is high, but most false AF windows come from a few MIT-BIH records with frequent premature beats (232, 215, 228, 200): extra beats make RR irregular. Next: compute RR irregularity on normal-to-normal intervals only, using the beat classifier's labels, and train on ectopy-rich non-AF examples.
+6. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). The v0.2 augmentation recipe scored lower on validation and was not adopted. Next: more S/F data (INCART, long-term AF database), patient-adaptive RR features.
+7. **Beat-model calibration does not transfer across patients.** A temperature fitted on the 4 validation patients made test ECE worse (slightly under-confident). The rhythm model's calibration did improve on test. Next: calibrate beats on a larger, more varied patient set; until then beat confidence levels must not be shown as calibrated in any UI.
+8. **Proxy and weak labels.** Synthetic quality labels come from known noise levels; CinC 'too noisy' labels are per recording, not per window. Clinician-labelled windows are needed.
+9. **Public data only.** MIT-BIH (1970s Holter, MLII) and CinC 2017 (handheld, lead I). Performance on modern 12-lead carts and OT/ICU monitors is unknown until tested on partner-hospital data.
+10. **CinC split is by record, not patient** (no patient IDs are published), so some test records may share a patient with training records. The cross-dataset MIT-BIH result is the stronger generalisation evidence.

@@ -36,9 +36,15 @@ def refine_peaks(x: np.ndarray, fs: int, peaks: np.ndarray, before_s: float = 0.
     return np.unique(np.asarray(out, dtype=np.int64))
 
 
+STARTUP_S = 0.4
+
+
 def detect_beats(x: np.ndarray, fs: int, method: str = "pantompkins1985") -> np.ndarray:
-    """Detection (best-benchmarked detector) followed by R-peak refinement."""
-    return refine_peaks(x, fs, detect_qrs(x, fs, method))
+    """Detection (best-benchmarked detector) followed by R-peak refinement. Detections in the first
+    0.4 s are dropped: Pan-Tompkins' adaptive thresholds are still settling there and it marks
+    false beats (seen on MIT-BIH 221: a detection at 0.32 s, first real beat at 0.61 s)."""
+    peaks = refine_peaks(x, fs, detect_qrs(x, fs, method))
+    return peaks[peaks >= int(STARTUP_S * fs)]
 
 
 @dataclass

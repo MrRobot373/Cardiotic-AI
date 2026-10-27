@@ -16,12 +16,12 @@ how it is measured, and the order we build them. Measured results live in
 
 | # | Model | Question it answers | Type | Status |
 |---|---|---|---|---|
-| M1 | **Signal quality** | "Can this 2.5 s of signal be trusted?" good / noisy / unusable | 1D-CNN + amplitude statistics | **v0.1**: 85.1% accuracy; unusable caught 99.0% (unseen patients + unseen noise) |
+| M1 | **Signal quality** | "Can this 2.5 s of signal be trusted?" good / noisy / unusable | 1D-CNN + amplitude statistics | **v0.3**: unusable caught 98.4% (val); clean expert-labelled ECGs rated unusable ≤0.1%; 80% of expert "too noisy" windows flagged |
 | — | **Beat detection** | "Where is every heartbeat?" | Pan-Tompkins + R-peak refinement (4 detectors benchmarked EC57-style) | **Se 99.5%, +P 99.3%** on all 48 MIT-BIH records |
-| M2 | **Beat classifier** | "Is this beat normal, supraventricular (S), ventricular (V) or fusion (F)?" | 1D-CNN on beat shape + MLP on RR timing | **v0.1**: V Se 84.9% / +P 96.5%; S and F weak (inter-patient MIT-BIH) |
-| M3 | **Rhythm classifier** | "What rhythm is this stretch?" sinus, AF, flutter, blocks, VT… | 1D ResNet over 10–30 s, then compare with an ECG foundation model | Next: PTB-XL, CinC 2017/2021, MIT-BIH AF |
+| M2 | **Beat classifier** | "Is this beat normal, supraventricular (S), ventricular (V) or fusion (F)?" | 1D-CNN on beat shape + MLP on RR timing | **v0.1**: end to end V Se 87.0% / +P 95.7%; S and F weak (inter-patient MIT-BIH) |
+| M3 | **Rhythm classifier** | "What rhythm is this stretch?" normal / AF / other / too noisy (later: flutter, blocks, VT…) | 1D ResNet over 30 s + RR-irregularity features | **v0.1**: CinC 2017 challenge F1 83.1%; on unseen MIT-BIH, AF sensitivity 97.7%, PPV 56.8% |
 | M4 | **12-lead statements + measurements** | PR, QRS, QT/QTc, axis; MI, LVH, bundle-branch blocks… | Multi-label 1D ResNet + delineation | After M3: PTB-XL, CODE-15%, MIMIC-IV-ECG |
-| M5 | **Calibration and "not sure"** | "How sure am I, and is this input unlike anything I trained on?" | Temperature scaling + out-of-distribution detection | With M3 |
+| M5 | **Calibration and "not sure"** | "How sure am I, and is this input unlike anything I trained on?" | Temperature scaling (done) + out-of-distribution detection (next) | **Rhythm**: ECE 3.1% → 1.6%. **Beats**: does not transfer across patients yet |
 | M6 | **Multi-signal (OT/ICU)** | "Is this monitor alarm real, given the pulse and BP?" "What changed together?" | Multi-input model over ECG + ABP/PPG | Product B/C: CinC 2015, VitalDB |
 | M7 | **ECG image digitiser** | "Turn a photo or scan of a paper ECG into a signal" | Segmentation + trace extraction | Later; PhysioNet Challenge 2024 as benchmark |
 
@@ -43,10 +43,11 @@ how it is measured, and the order we build them. Measured results live in
 | Step | Deliverable | Data | Done when |
 |---|---|---|---|
 | 1 | M1 quality + beat detection + M2 beats, end-to-end research pipeline | MIT-BIH, NSTDB | **Done (v0.1)**: end-to-end 91.7% beat accuracy on 22 unseen patients; numbers and known issues in RESULTS.md |
-| 1b | Fix the quality gate over-rejecting low-amplitude arrhythmic recordings (record 222) | + MIT-BIH AF database | Flutter/AF windows rated analysable; no rise in missed unusable windows |
+| 1b | Fix the quality gate over-rejecting low-amplitude arrhythmic recordings (record 222) | + CinC 2017 | **Done (quality v0.3)**: beats hidden in unusable segments 1,839 → 248 across the 22 test patients |
 | 2 | Improve M2 on S/F beats (augmentation, patient-adaptive features, more data from INCART / LTAF) | + INCART, LTAF | S-beat Se and +P both improve on DS2 |
-| 3 | M3 rhythm classifier (AF first) | MIT-BIH AF, CinC 2017, PTB-XL | AF Se/+P reported per dataset, including on a dataset not used in training |
-| 4 | M5 calibration; confidence levels in the pipeline output | Held-out calibration sets | Reliability plots and expected calibration error reported |
+| 3 | M3 rhythm classifier (AF first) | CinC 2017; tested on MIT-BIH | **Done (v0.1)**: reported on CinC test and cross-dataset on MIT-BIH |
+| 3b | Stop AF being over-called in ectopy-rich recordings: RR irregularity on normal-to-normal intervals (from M2), ectopy-rich non-AF training examples | + MIT-BIH AF, INCART | Cross-dataset AF PPV rises without losing sensitivity |
+| 4 | M5 calibration; confidence levels in the pipeline output | Held-out calibration sets | **Done for rhythm**; beats need a larger, more varied calibration set |
 | 5 | M4 12-lead statements and interval measurements | PTB-XL (+PTB-XL+), CODE-15% | AUROC per statement on official test fold; interval error vs reference |
 | 6 | Export to ONNX; deterministic `ecg-engine` service with model registry | — | Same outputs from ONNX and PyTorch; engine API used by the app |
 | 7 | Partner-hospital retrospective validation | Partner ECGs, ≥2 cardiologists per label | Pre-agreed acceptance targets met |

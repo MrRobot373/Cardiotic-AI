@@ -1,6 +1,6 @@
 {
   "cardiotic_ml_version": "0.1.0",
-  "created_utc": "2026-10-26T17:52:55+00:00",
+  "created_utc": "2026-10-27T04:20:53+00:00",
   "torch": "2.14.1+cpu",
   "python": "3.13.17",
   "datasets": {
@@ -8,6 +8,7 @@
     "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
   },
   "task": "end_to_end_pipeline",
+  "quality_model": "quality_net_v0.3",
   "beat_model": "beat_net_v0.1",
   "qrs_method": "pantompkins1985",
   "test_patients": [
@@ -35,52 +36,52 @@
     234
   ],
   "test": {
-    "accuracy": 0.9166369565673301,
-    "macro_f1": 0.5335835519600192,
+    "accuracy": 0.9185343077547706,
+    "macro_f1": 0.5376984914524334,
     "per_class": {
       "N": {
-        "support": 42357,
-        "sensitivity": 0.9544349222088439,
-        "ppv": 0.9553370985655883,
-        "f1": 0.9548857972931478
+        "support": 43866,
+        "sensitivity": 0.9550449094971049,
+        "ppv": 0.9570521314022022,
+        "f1": 0.9560474669100868
       },
       "S": {
-        "support": 1767,
-        "sensitivity": 0.298811544991511,
-        "ppv": 0.22906724511930585,
-        "f1": 0.2593320235756385
+        "support": 1824,
+        "sensitivity": 0.3196271929824561,
+        "ppv": 0.2498928418345478,
+        "f1": 0.28049073851335093
       },
       "V": {
-        "support": 3173,
-        "sensitivity": 0.8673179955877718,
-        "ppv": 0.9724381625441696,
-        "f1": 0.9168748958853906
+        "support": 3184,
+        "sensitivity": 0.8696608040201005,
+        "ppv": 0.9568071872840359,
+        "f1": 0.9111549851924975
       },
       "F": {
         "support": 386,
         "sensitivity": 0.0025906735751295338,
-        "ppv": 0.004329004329004329,
-        "f1": 0.003241491085899514
+        "ppv": 0.003861003861003861,
+        "f1": 0.00310077519379845
       }
     },
     "confusion": [
       [
-        40427,
-        1649,
-        59,
-        222
+        41894,
+        1619,
+        107,
+        246
       ],
       [
-        1222,
-        528,
-        16,
-        1
+        1220,
+        583,
+        15,
+        6
       ],
       [
-        289,
-        125,
-        2752,
-        7
+        281,
+        128,
+        2769,
+        6
       ],
       [
         379,
@@ -97,10 +98,10 @@
     ]
   },
   "totals": {
-    "matched": 47683,
-    "missed": 183,
-    "in_unusable_segments": 1839,
-    "unmatched_detections": 154
+    "matched": 49260,
+    "missed": 197,
+    "in_unusable_segments": 248,
+    "unmatched_detections": 178
   },
   "per_record": {
     "100": {
@@ -111,29 +112,29 @@
       "usable_fraction": 0.9996923076923077
     },
     "103": {
-      "matched": 2073,
-      "missed": 4,
-      "in_unusable_segments": 7,
-      "unmatched_detections": 1,
-      "usable_fraction": 0.9969230769230769
+      "matched": 2079,
+      "missed": 5,
+      "in_unusable_segments": 0,
+      "unmatched_detections": 0,
+      "usable_fraction": 0.9996923076923077
     },
     "105": {
-      "matched": 2401,
-      "missed": 9,
-      "in_unusable_segments": 157,
-      "unmatched_detections": 20,
-      "usable_fraction": 0.9401538461538461
+      "matched": 2512,
+      "missed": 12,
+      "in_unusable_segments": 43,
+      "unmatched_detections": 43,
+      "usable_fraction": 0.9830769230769231
     },
     "111": {
-      "matched": 2106,
-      "missed": 0,
-      "in_unusable_segments": 18,
-      "unmatched_detections": 1,
-      "usable_fraction": 0.9913846153846154
+      "matched": 2117,
+      "missed": 1,
+      "in_unusable_segments": 6,
+      "unmatched_detections": 0,
+      "usable_fraction": 0.9969230769230769
     },
     "113": {
-      "matched": 1794,
-      "missed": 1,
+      "matched": 1793,
+      "missed": 2,
       "in_unusable_segments": 0,
       "unmatched_detections": 2,
       "usable_fraction": 0.9996923076923077
@@ -142,15 +143,15 @@
       "matched": 1438,
       "missed": 94,
       "in_unusable_segments": 3,
-      "unmatched_detections": 93,
+      "unmatched_detections": 92,
       "usable_fraction": 0.9983076923076923
     },
     "121": {
-      "matched": 1774,
-      "missed": 1,
-      "in_unusable_segments": 88,
+      "matched": 1818,
+      "missed": 2,
+      "in_unusable_segments": 43,
       "unmatched_detections": 0,
-      "usable_fraction": 0.9581538461538461
+      "usable_fraction": 0.9803076923076923
     },
     "123": {
       "matched": 1514,
@@ -174,11 +175,11 @@
       "usable_fraction": 0.9983076923076923
     },
     "210": {
-      "matched": 2617,
-      "missed": 26,
-      "in_unusable_segments": 7,
+      "matched": 2623,
+      "missed": 27,
+      "in_unusable_segments": 0,
       "unmatched_detections": 4,
-      "usable_fraction": 0.9969230769230769
+      "usable_fraction": 0.9996923076923077
     },
     "212": {
       "matched": 2743,
@@ -188,8 +189,8 @@
       "usable_fraction": 0.9983076923076923
     },
     "213": {
-      "matched": 3249,
-      "missed": 2,
+      "matched": 3248,
+      "missed": 3,
       "in_unusable_segments": 0,
       "unmatched_detections": 0,
       "usable_fraction": 0.9996923076923077
@@ -202,57 +203,57 @@
       "usable_fraction": 0.9996923076923077
     },
     "219": {
-      "matched": 2146,
+      "matched": 2154,
       "missed": 0,
-      "in_unusable_segments": 8,
+      "in_unusable_segments": 0,
       "unmatched_detections": 0,
-      "usable_fraction": 0.9941538461538462
+      "usable_fraction": 0.9996923076923077
     },
     "221": {
       "matched": 2419,
       "missed": 8,
       "in_unusable_segments": 0,
-      "unmatched_detections": 1,
+      "unmatched_detections": 0,
       "usable_fraction": 0.9996923076923077
     },
     "222": {
-      "matched": 1308,
-      "missed": 2,
-      "in_unusable_segments": 1173,
-      "unmatched_detections": 0,
-      "usable_fraction": 0.5123076923076924
+      "matched": 2409,
+      "missed": 3,
+      "in_unusable_segments": 71,
+      "unmatched_detections": 2,
+      "usable_fraction": 0.9706153846153847
     },
     "228": {
-      "matched": 1709,
-      "missed": 1,
-      "in_unusable_segments": 343,
-      "unmatched_detections": 15,
-      "usable_fraction": 0.8321538461538461
+      "matched": 1995,
+      "missed": 4,
+      "in_unusable_segments": 54,
+      "unmatched_detections": 19,
+      "usable_fraction": 0.972
     },
     "231": {
       "matched": 1569,
       "missed": 2,
       "in_unusable_segments": 0,
-      "unmatched_detections": 1,
+      "unmatched_detections": 0,
       "usable_fraction": 0.9996923076923077
     },
     "232": {
-      "matched": 1776,
+      "matched": 1778,
       "missed": 2,
-      "in_unusable_segments": 2,
+      "in_unusable_segments": 0,
       "unmatched_detections": 9,
-      "usable_fraction": 0.965076923076923
+      "usable_fraction": 0.9816923076923076
     },
     "233": {
-      "matched": 3064,
+      "matched": 3069,
       "missed": 6,
-      "in_unusable_segments": 9,
+      "in_unusable_segments": 4,
       "unmatched_detections": 0,
-      "usable_fraction": 0.9969230769230769
+      "usable_fraction": 0.9983076923076923
     },
     "234": {
-      "matched": 2743,
-      "missed": 0,
+      "matched": 2742,
+      "missed": 1,
       "in_unusable_segments": 10,
       "unmatched_detections": 0,
       "usable_fraction": 0.9955384615384615
