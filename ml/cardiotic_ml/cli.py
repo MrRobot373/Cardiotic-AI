@@ -5,7 +5,8 @@
   train-quality   train + test the signal-quality model (--version v0.1 | v0.2)
   quality-real    add CinC 2017 real-data checks to an existing quality report (--version)
   train-rhythm    train + test the rhythm model on CinC 2017 (also fits its calibration)
-  eval-rhythm-mitdb  cross-dataset AF test of the rhythm model on MIT-BIH
+  eval-rhythm-mitdb  AF test of a rhythm model on MIT-BIH (--version, --split val|test|all)
+  rhythm-cinc-val    add CinC validation scores to an older rhythm report (--version)
   calibrate-beats    fit the beat model's calibration temperature on its validation patients
   train-beats     train + test the beat classifier (inter-patient DS1 -> DS2)
   eval-pipeline   run the full pipeline on all 22 DS2 test records and score it end to end
@@ -27,8 +28,9 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("eval-pipeline")
     q = sub.add_parser("train-quality"); q.add_argument("--version", default="v0.3", choices=["v0.1", "v0.2", "v0.3"])
     qr = sub.add_parser("quality-real"); qr.add_argument("--version", default="v0.1")
-    tr = sub.add_parser("train-rhythm"); tr.add_argument("--epochs", type=int, default=16)
-    sub.add_parser("eval-rhythm-mitdb")
+    tr = sub.add_parser("train-rhythm"); tr.add_argument("--version", default="v0.2", choices=["v0.1", "v0.2"])
+    er = sub.add_parser("eval-rhythm-mitdb"); er.add_argument("--version", default="v0.2"); er.add_argument("--split", default="test", choices=["val", "test", "all"])
+    cv = sub.add_parser("rhythm-cinc-val"); cv.add_argument("--version", default="v0.1")
     sub.add_parser("calibrate-beats")
     b = sub.add_parser("train-beats"); b.add_argument("--version", default="v0.2", choices=["v0.1", "v0.2"])
     a = sub.add_parser("analyze")
@@ -59,10 +61,13 @@ def main(argv: list[str] | None = None) -> None:
         quality_real_data_for(args.version)
     elif args.cmd == "train-rhythm":
         from cardiotic_ml.experiments_rhythm import train_rhythm
-        train_rhythm(epochs=args.epochs)
+        train_rhythm(version=args.version)
+    elif args.cmd == "rhythm-cinc-val":
+        from cardiotic_ml.experiments_rhythm import cinc_val_for
+        cinc_val_for(args.version)
     elif args.cmd == "eval-rhythm-mitdb":
         from cardiotic_ml.experiments_rhythm import eval_rhythm_mitdb
-        eval_rhythm_mitdb()
+        eval_rhythm_mitdb(version=args.version, split=args.split)
     elif args.cmd == "calibrate-beats":
         from cardiotic_ml.experiments_rhythm import calibrate_beats
         calibrate_beats()

@@ -23,14 +23,14 @@ class ResBlock(nn.Module):
 
 
 class RhythmNet(nn.Module):
-    def __init__(self, n_classes: int = 4):
+    def __init__(self, n_classes: int = 4, n_rrf: int = N_RRF):
         super().__init__()
         self.stem = nn.Sequential(nn.Conv1d(1, 32, 15, stride=2, padding=7, bias=False), nn.BatchNorm1d(32), nn.ReLU())
         self.res = nn.Sequential(
             ResBlock(32, 32, 2), ResBlock(32, 64, 2), ResBlock(64, 64, 2),
             ResBlock(64, 128, 2), ResBlock(128, 128, 2), ResBlock(128, 128, 1),
         )
-        self.rr = nn.Sequential(nn.Linear(N_RRF, 32), nn.ReLU(), nn.Linear(32, 32), nn.ReLU())
+        self.rr = nn.Sequential(nn.Linear(n_rrf, 32), nn.ReLU(), nn.Linear(32, 32), nn.ReLU())
         self.head = nn.Sequential(nn.Linear(128 * 2 + 32, 128), nn.ReLU(), nn.Dropout(0.3), nn.Linear(128, n_classes))
 
     def forward(self, x: torch.Tensor, rr: torch.Tensor) -> torch.Tensor:

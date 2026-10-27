@@ -146,3 +146,32 @@ def test_detect_beats_ignores_startup_transient():
     fs = 360
     x = nk.ecg_simulate(duration=20, sampling_rate=fs, heart_rate=70, random_state=4).astype(np.float32)
     assert qrs.detect_beats(x, fs).min() >= int(qrs.STARTUP_S * fs)
+
+
+def test_mitdb_window_label_rules():
+    from cardiotic_ml.rhythm.dataset import mitdb_window_label
+
+    N, A, O = 0, 1, 2
+    assert mitdb_window_label(["(AFIB"], 5) == A
+    assert mitdb_window_label(["(AFIB", "(N"], 0) is None      # straddles an AF boundary
+    assert mitdb_window_label(["(B"], 10) == O                 # bigeminy is "other rhythm"
+    assert mitdb_window_label(["(N"], 0) == N
+    assert mitdb_window_label(["(N"], 4) == O                  # frequent ectopy, not AF
+    assert mitdb_window_label(["(N"], 1) is None               # ambiguous for the CinC label set
+    assert mitdb_window_label(["(P"], 0) is None               # paced
+
+
+def test_ectopy_features_remove_pvc_irregularity():
+    from cardiotic_ml.rhythm.dataset import N_RRF, N_RRF_ECTOPY, rr_window_features_ectopy
+
+    # sinus at 0.8 s with every 4th beat a PVC (early, then compensatory pause)
+    t, beats, ect = 0.0, [], []
+    for i in range(36):
+        pvc = i % 4 == 3
+        t += 0.5 if pvc else (1.1 if i % 4 == 0 and i else 0.8)
+        beats.append(t); ect.append(pvc)
+    f = rr_window_features_ectopy(np.array(beats), np.array(ect), 30)
+    assert f.shape == (N_RRF_ECTOPY,)
+    assert f[2] > 0.2                 # all-beat RR CV: looks irregular
+    assert f[N_RRF + 1] < 0.05        # CV without PVC-adjacent intervals: regular again
+    assert abs(f[N_RRF] - 0.25) < 0.02
