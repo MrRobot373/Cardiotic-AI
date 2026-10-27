@@ -189,7 +189,9 @@ Quality gate `quality_net_v0.3` → `pantompkins1985` detection → R-peak refin
 
 PTB-XL: 21,799 ten-second 12-lead ECGs from 18,869 patients, statements by up to two cardiologists. Official patient-wise folds: 1–8 train, 9 validation, 10 test (2,198 ECGs). Every choice was made on folds 1–9; fold 10 was scored once per version.
 
-### 7.1 Diagnostic statements (ML)
+### 7.1 Diagnostic statements (ML) — first version v0.1, PTB-XL only
+
+The adopted model is now v0.3 (PTB-XL + Ningbo, section 7.5); v0.1 is shown in full as the PTB-XL-only baseline.
 
 | Task | Statements | Test macro-AUC | 95% CI (bootstrap) | Validation macro-AUC |
 |---|---:|---:|---|---:|
@@ -328,6 +330,57 @@ Decision (validation): SBRAD → model, STACH → model, 1AVB → model, LNGQT �
 
 **Finding: hospitals write these statements differently.** Chapman's physicians label sinus bradycardia by the definition (rule F1 0.96 there); PTB-XL's cardiologists mostly do not label 55–59 bpm (rule PPV 16%). No single model or rule matches both. In the product these statements must follow the **site's own convention**, chosen and verified on that hospital's data during installation. Long QT is labelled far less often than QTc ≥ 460 ms occurs in both datasets.
 
+### 7.5 More data: the Ningbo part of Chapman–Shaoxing–Ningbo (China)
+
+v0.2 and v0.3 are trained on PTB-XL folds 1–8 plus 27,901 ECGs from the Ningbo part (80% patient-level training split; 10% validation, 10% test). The 10,646 Chapman–Shaoxing ECGs inside that database were excluded (46 of 46 sampled ECGs match Chapman signal-for-signal). Loss is masked: Ningbo ECGs teach only the statements their labels map to without ambiguity.
+
+**Ningbo atrial-fibrillation labels are not trusted.** The Ningbo part has no fibrillation code and 7,615 'flutter' ECGs (22%). On the signals they behave like fibrillation: irregular RR in 80.0% (Chapman fibrillation 89.0%, Chapman flutter 48.0%). Neither label is used.
+
+**v0.2 had a label-map error.** The Ningbo part codes PVCs as 427172004, never the 17338001 that v0.2 mapped, so v0.2 learned 'no PVC' from every Ningbo ECG (Chapman PVC sensitivity fell from 77% to 22%). The external-test drop is what revealed it; the fix (map v0.3) comes from the code table itself, not from test results. Map v0.3 also adds complete/incomplete RBBB, complete LBBB, LAFB, pacing, low voltage and anterior MI, and treats unspecific codes (plain 'RBBB', 'LBBB', 'MI') as unknown.
+
+Selection rule: Adopt a candidate over the current model only if, on VALIDATION data: PTB-XL macro-AUC (all statements) drops by at most 0.005, and Ningbo-validation macro-AUC on the mapped statements improves (both models scored with the same, current label map).
+
+| Version | PTB-XL validation, all statements | Ningbo validation, mapped statements (map v0.3) |
+|---|---:|---:|
+| v0.1 | 0.928 | 0.884 |
+| v0.2 | 0.932 | 0.947 |
+| v0.3 | 0.931 | 0.980 |
+
+**Chosen: v0.3** (candidate v0.3 against current v0.2).
+
+Test results (each version scored once):
+
+| Test set | v0.1 | v0.2 | v0.3 |
+|---|---:|---:|---:|
+| PTB-XL fold 10, superclass macro-AUC | 0.925 | 0.929 | 0.929 |
+| PTB-XL fold 10, diagnostic macro-AUC | 0.925 | 0.930 | 0.935 |
+| PTB-XL fold 10, form macro-AUC | 0.856 | 0.877 | 0.865 |
+| PTB-XL fold 10, rhythm macro-AUC | 0.957 | 0.946 | 0.951 |
+| PTB-XL fold 10, all macro-AUC | 0.914 | 0.920 | 0.921 |
+| Ningbo test split, mapped statements (own map) | — | 0.979 | 0.975 |
+
+Chapman–Shaoxing (held out; same country and ECG system as Ningbo, so not fully independent for v0.2+; its results have been seen for every version, so it is no longer a pristine test set):
+
+| Statement | ECGs | v0.1 AUC | v0.2 AUC | v0.3 AUC | v0.1 Se | v0.2 Se | v0.3 Se |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| SBRAD | 3,889 | 0.965 | 0.999 | 0.999 | 12.1% | 97.6% | 98.7% |
+| SR | 1,826 | 0.928 | 0.996 | 0.996 | 99.1% | 96.2% | 95.8% |
+| AFIB | 1,780 | 0.978 | 0.986 | 0.988 | 93.6% | 97.2% | 97.2% |
+| STACH | 1,568 | 0.992 | 0.997 | 0.997 | 76.7% | 96.3% | 95.6% |
+| NORM | 1,366 | 0.788 | 0.843 | 0.830 | 90.5% | 89.2% | 85.9% |
+| SVTAC | 587 | 0.983 | 0.992 | 0.992 | 92.0% | 86.2% | 77.2% |
+| CRBBB | 460 | 0.979 | 0.990 | 0.985 | 77.4% | 58.3% | 81.3% |
+| AFLT | 445 | 0.876 | 0.901 | 0.896 | 4.5% | 9.7% | 9.2% |
+| SARRH | 399 | 0.918 | 0.984 | 0.983 | 30.6% | 90.2% | 92.2% |
+| PVC | 310 | 0.975 | 0.907 | 0.990 | 76.8% | 22.3% | 78.4% |
+| PAC | 278 | 0.866 | 0.973 | 0.970 | 16.5% | 70.1% | 75.5% |
+| 1AVB | 252 | 0.949 | 0.983 | 0.984 | 52.0% | 79.8% | 78.6% |
+| LAFB | 108 | 0.976 | 0.986 | 0.991 | 87.0% | 88.9% | 68.5% |
+| CLBBB | 94 | 0.996 | 0.990 | 0.993 | 85.1% | 76.6% | 86.2% |
+| LNGQT | 58 | 0.766 | 0.926 | 0.926 | 1.7% | 36.2% | 22.4% |
+
+v0.3 subgroups (PTB-XL test, superclass macro-AUC): female 0.917; male 0.939; age <40 0.936; age 40–65 0.918; age >65 0.918.
+
 ## 8. Issues found while testing
 
 ### Fixed
@@ -338,6 +391,7 @@ Decision (validation): SBRAD → model, STACH → model, 1AVB → model, LNGQT �
 5. **Resampling mixed up the leads of a 12-lead ECG.** The resampling helper worked along the first array axis, so a (12 leads × samples) ECG was resampled across leads instead of over time. Found by the first 12-lead end-to-end run (training was not affected: it uses the database's own 100 Hz files). It now always works along time; single-lead results are unchanged (demo record 233 reproduced exactly). Test added.
 6. **12-lead measurements were reported for pure noise.** When every lead is rated unusable, measurements and statements are now both withheld. Test added.
 7. **12-lead measurement v0.1 had large misses** (wide QRS, low P waves, flat T waves; section 7.2). Fixed in v0.2.
+7b. **Statement model v0.2 learned 'no PVC' from 27,901 Ningbo ECGs** because the label map used a PVC code that dataset never uses (section 7.5). Fixed in v0.3 with a map built from the dataset's actual code list; Chapman PVC AUC 0.907 → 0.990. Lesson, now a rule: before training on a new dataset, list every label code it actually uses and check each mapped statement has positives.
 
 ### Open (next work)
 8. **AF over-called in ectopy-rich recordings — four candidates tried, none adopted** (section 4). Every candidate cut false AF substantially but lost real AF in some patient. With the MIT-BIH AF Database (8 validation AF patients) the pre-declared rule now catches this on validation. On fresh AFDB test patients, v0.1 itself finds 97.4% of AF windows with 95.5% positive predictivity, so the false-alarm problem is concentrated in non-AF patients with frequent ectopy (MIT-BIH DS2: PPV ~60%). Next options: (a) an explicit AF-probability operating point chosen on validation per use case (screening vs. review) — a transparent sensitivity/false-alarm trade-off; (b) more AF data (Long-Term AF Database, 84 patients); (c) beat labels inside AF for a beat classifier that is reliable during AF.
@@ -347,8 +401,9 @@ Decision (validation): SBRAD → model, STACH → model, 1AVB → model, LNGQT �
 11. **Proxy and weak labels.** Synthetic quality labels come from known noise levels; CinC 'too noisy' labels are per recording, not per window. Clinician-labelled windows are needed.
 12. **Public data only.** MIT-BIH (1970s Holter, MLII) and CinC 2017 (handheld, lead I). Performance on modern 12-lead carts and OT/ICU monitors is unknown until tested on partner-hospital data.
 13. **CinC split is by record, not patient** (no patient IDs are published), so some test records may share a patient with training records. The cross-dataset MIT-BIH result is the stronger generalisation evidence.
-14. **Rare 12-lead statements are weak.** Wolff-Parkinson-White (8 test ECGs), long QT (11), atrial flutter (7) and anterior MI (35) have low sensitivity at thresholds chosen from very few validation examples. Next: more 12-lead data (CODE-15%, MIMIC-IV-ECG; licences in PRODUCT_PLAN §7) and, for long QT, a rule on our own measured QTc instead of the learned statement.
-15. **Sex gap in the 12-lead model.** Superclass macro-AUC is 0.914 for women and 0.935 for men on the test fold. Needs investigation (sex-specific criteria such as LVH voltage, class balance) before any claim; subgroup results must be part of every future model card.
+14. **Rare 12-lead statements are still weak.** Atrial flutter: Chapman sensitivity 9% (no trustworthy flutter training labels: Ningbo's are mislabelled fibrillation). Long QT: AUC 0.93 on Chapman but sensitivity 22% at the PTB-XL threshold. WPW has 8 PTB-XL test ECGs. Next: flutter data with verified labels (e.g. CODE-15%, MIMIC-IV-ECG; licences in PRODUCT_PLAN §7) and per-site operating points (section 7.4).
+15. **Sex gap in the 12-lead model.** Superclass macro-AUC on PTB-XL test: v0.1 0.914 women vs 0.935 men; v0.3 0.917 vs 0.939 — more data did not close it. Needs investigation (sex-specific criteria such as LVH voltage, class balance) before any claim; subgroup results must be part of every future model card.
 16. **12-lead measurements are checked against other algorithms, not a referee.** IEC 60601-2-25 requires the CSE database (licensed). PR is not measured beyond 300 ms (very long first-degree AV block) and paced ECGs are not handled specially.
 17. **The signal-quality model was trained on Holter lead II, not 12-lead ECGs.** On clean PTB-XL validation ECGs it rates 0.35% of leads unusable (about 1 ECG in 25 gets an 'unusable lead' note) and 20% noisy. Next: train it on 12-lead data, e.g. using PTB-XL's own noise and electrode annotations.
-18. **PTB-XL is one manufacturer and one country** (Schiller devices, Germany, 1989–1996). Performance on today's ECG carts in Indian and US hospitals is unknown until tested on partner data.
+18. **Two countries, no Indian or US data yet.** PTB-XL (Schiller devices, Germany, 1989–1996) and Chapman/Ningbo (China, 2013–2018). Performance on today's ECG carts in Indian and US hospitals is unknown until tested on partner data.
+19. **Thresholds are per site.** The same model needs different yes/no thresholds where hospitals label differently (section 7.3–7.4). The product must let each site set and verify its operating points on local data at installation.

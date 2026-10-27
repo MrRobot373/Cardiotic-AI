@@ -1,0 +1,1315 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T16:42:02+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "ptbxl": "PhysioNet PTB-XL 1.0.3 (CC BY 4.0)",
+    "ningbo": "PhysioNet Chapman\u2013Shaoxing\u2013Ningbo 12-lead ECG database 1.0.0 (CC BY 4.0)"
+  },
+  "task": "ecg12_statements",
+  "version": "v0.3",
+  "sizes": {
+    "train": 17418,
+    "val": 2183,
+    "test": 2198
+  },
+  "val": {
+    "all": 0.9313628914501311,
+    "diagnostic": 0.9373617355398962,
+    "form": 0.8924330707185929,
+    "rhythm": 0.962759892242592,
+    "superclass": 0.9324072065522244
+  },
+  "test": {
+    "all": {
+      "macro_auc": 0.9211083479197006,
+      "ci95": [
+        0.9105458261954407,
+        0.9292461953710675
+      ],
+      "n_labels": 71
+    },
+    "diagnostic": {
+      "macro_auc": 0.9345703381927979,
+      "ci95": [
+        0.9226645493194129,
+        0.9429702168040551
+      ],
+      "n_labels": 44
+    },
+    "form": {
+      "macro_auc": 0.8653575971031087,
+      "ci95": [
+        0.8429456334100733,
+        0.8889239321013084
+      ],
+      "n_labels": 19
+    },
+    "rhythm": {
+      "macro_auc": 0.9505295722237919,
+      "ci95": [
+        0.9256137843560226,
+        0.9681758838157709
+      ],
+      "n_labels": 12
+    },
+    "superclass": {
+      "macro_auc": 0.9286638399355027,
+      "ci95": [
+        0.9211591413923812,
+        0.9341221882253382
+      ],
+      "n_labels": 5
+    }
+  },
+  "per_label": {
+    "1AVB": {
+      "support": 79,
+      "auc": 0.9766369376527022,
+      "threshold": 0.30000000000000004,
+      "sensitivity": 0.6708860759493671,
+      "specificity": 0.9815950920245399,
+      "ppv": 0.5760869565217391,
+      "description": "first degree AV block"
+    },
+    "2AVB": {
+      "support": 1,
+      "auc": 0.9831588529813381,
+      "threshold": 0.08,
+      "sensitivity": 0.0,
+      "specificity": 0.9977241693218024,
+      "ppv": 0.0,
+      "description": "second degree AV block"
+    },
+    "3AVB": {
+      "support": 2,
+      "auc": 0.9995446265938069,
+      "threshold": 0.22,
+      "sensitivity": 1.0,
+      "specificity": 0.9990892531876139,
+      "ppv": 0.5,
+      "description": "third degree AV block"
+    },
+    "ABQRS": {
+      "support": 322,
+      "auc": 0.8172005986041398,
+      "threshold": 0.22,
+      "sensitivity": 0.593167701863354,
+      "specificity": 0.8646055437100213,
+      "ppv": 0.42921348314606744,
+      "description": "abnormal QRS"
+    },
+    "AFIB": {
+      "support": 152,
+      "auc": 0.9843468642280188,
+      "threshold": 0.54,
+      "sensitivity": 0.8618421052631579,
+      "specificity": 0.9912023460410557,
+      "ppv": 0.8791946308724832,
+      "description": "atrial fibrillation"
+    },
+    "AFLT": {
+      "support": 7,
+      "auc": 0.924561517897894,
+      "threshold": 0.56,
+      "sensitivity": 0.42857142857142855,
+      "specificity": 1.0,
+      "ppv": 1.0,
+      "description": "atrial flutter"
+    },
+    "ALMI": {
+      "support": 27,
+      "auc": 0.94457239367419,
+      "threshold": 0.24,
+      "sensitivity": 0.4074074074074074,
+      "specificity": 0.9940119760479041,
+      "ppv": 0.4583333333333333,
+      "description": "anterolateral myocardial infarction"
+    },
+    "AMI": {
+      "support": 35,
+      "auc": 0.8911960900865201,
+      "threshold": 0.22,
+      "sensitivity": 0.08571428571428572,
+      "specificity": 0.9939898289412853,
+      "ppv": 0.1875,
+      "description": "anterior myocardial infarction"
+    },
+    "ANEUR": {
+      "support": 10,
+      "auc": 0.9226234003656307,
+      "threshold": 0.13999999999999999,
+      "sensitivity": 0.3,
+      "specificity": 0.9949725776965265,
+      "ppv": 0.21428571428571427,
+      "description": "ST-T changes compatible with ventricular aneurysm"
+    },
+    "ASMI": {
+      "support": 234,
+      "auc": 0.9687995021498077,
+      "threshold": 0.4,
+      "sensitivity": 0.7777777777777778,
+      "specificity": 0.964867617107943,
+      "ppv": 0.7250996015936255,
+      "description": "anteroseptal myocardial infarction"
+    },
+    "BIGU": {
+      "support": 8,
+      "auc": 0.9870433789954338,
+      "threshold": 0.26,
+      "sensitivity": 0.125,
+      "specificity": 0.9990867579908675,
+      "ppv": 0.3333333333333333,
+      "description": "bigeminal pattern (unknown origin, SV or Ventricular)"
+    },
+    "CLBBB": {
+      "support": 54,
+      "auc": 0.997952943615257,
+      "threshold": 0.32,
+      "sensitivity": 0.9259259259259259,
+      "specificity": 0.9930037313432836,
+      "ppv": 0.7692307692307693,
+      "description": "complete left bundle branch block"
+    },
+    "CRBBB": {
+      "support": 54,
+      "auc": 0.9982120646766169,
+      "threshold": 0.24,
+      "sensitivity": 1.0,
+      "specificity": 0.9916044776119403,
+      "ppv": 0.75,
+      "description": "complete right bundle branch block"
+    },
+    "DIG": {
+      "support": 18,
+      "auc": 0.9287971457696229,
+      "threshold": 0.30000000000000004,
+      "sensitivity": 0.16666666666666666,
+      "specificity": 0.9926605504587156,
+      "ppv": 0.15789473684210525,
+      "description": "digitalis-effect"
+    },
+    "EL": {
+      "support": 9,
+      "auc": 0.929495964671844,
+      "threshold": 0.1,
+      "sensitivity": 0.1111111111111111,
+      "specificity": 0.9904065783462769,
+      "ppv": 0.045454545454545456,
+      "description": "electrolytic disturbance or drug (former EDIS)"
+    },
+    "HVOLT": {
+      "support": 6,
+      "auc": 0.9273114355231142,
+      "threshold": 0.04,
+      "sensitivity": 0.5,
+      "specificity": 0.9621350364963503,
+      "ppv": 0.03488372093023256,
+      "description": "high QRS voltage"
+    },
+    "ILBBB": {
+      "support": 8,
+      "auc": 0.9298801369863013,
+      "threshold": 0.16,
+      "sensitivity": 0.25,
+      "specificity": 0.9926940639269406,
+      "ppv": 0.1111111111111111,
+      "description": "incomplete left bundle branch block"
+    },
+    "ILMI": {
+      "support": 48,
+      "auc": 0.9598255813953488,
+      "threshold": 0.22,
+      "sensitivity": 0.7083333333333334,
+      "specificity": 0.9823255813953489,
+      "ppv": 0.4722222222222222,
+      "description": "inferolateral myocardial infarction"
+    },
+    "IMI": {
+      "support": 267,
+      "auc": 0.9230551401633509,
+      "threshold": 0.36000000000000004,
+      "sensitivity": 0.6142322097378277,
+      "specificity": 0.9409632314862766,
+      "ppv": 0.5899280575539568,
+      "description": "inferior myocardial infarction"
+    },
+    "INJAL": {
+      "support": 14,
+      "auc": 0.9763212977498692,
+      "threshold": 0.26,
+      "sensitivity": 0.42857142857142855,
+      "specificity": 0.9981684981684982,
+      "ppv": 0.6,
+      "description": "subendocardial injury in anterolateral leads"
+    },
+    "INJAS": {
+      "support": 22,
+      "auc": 0.989764371657754,
+      "threshold": 0.18,
+      "sensitivity": 0.6818181818181818,
+      "specificity": 0.9940257352941176,
+      "ppv": 0.5357142857142857,
+      "description": "subendocardial injury in anteroseptal leads"
+    },
+    "INJIL": {
+      "support": 2,
+      "auc": 0.9842896174863388,
+      "threshold": 0.02,
+      "sensitivity": 0.5,
+      "specificity": 0.9904371584699454,
+      "ppv": 0.045454545454545456,
+      "description": "subendocardial injury in inferolateral leads"
+    },
+    "INJIN": {
+      "support": 2,
+      "auc": 0.997040072859745,
+      "threshold": 0.02,
+      "sensitivity": 1.0,
+      "specificity": 0.9863387978142076,
+      "ppv": 0.0625,
+      "description": "subendocardial injury in inferior leads"
+    },
+    "INJLA": {
+      "support": 2,
+      "auc": 0.8053278688524591,
+      "threshold": 0.02,
+      "sensitivity": 0.0,
+      "specificity": 0.9890710382513661,
+      "ppv": 0.0,
+      "description": "subendocardial injury in lateral leads"
+    },
+    "INVT": {
+      "support": 29,
+      "auc": 0.9569482202190744,
+      "threshold": 0.24,
+      "sensitivity": 0.2413793103448276,
+      "specificity": 0.991701244813278,
+      "ppv": 0.28,
+      "description": "inverted T-waves"
+    },
+    "IPLMI": {
+      "support": 5,
+      "auc": 0.9303237574099407,
+      "threshold": 0.22,
+      "sensitivity": 0.0,
+      "specificity": 1.0,
+      "ppv": 0.0,
+      "description": "inferoposterolateral myocardial infarction"
+    },
+    "IPMI": {
+      "support": 3,
+      "auc": 0.9403189066059225,
+      "threshold": 0.02,
+      "sensitivity": 0.6666666666666666,
+      "specificity": 0.9785876993166287,
+      "ppv": 0.04081632653061224,
+      "description": "inferoposterior myocardial infarction"
+    },
+    "IRBBB": {
+      "support": 112,
+      "auc": 0.9726706957950966,
+      "threshold": 0.18,
+      "sensitivity": 0.7857142857142857,
+      "specificity": 0.9587727708533078,
+      "ppv": 0.5057471264367817,
+      "description": "incomplete right bundle branch block"
+    },
+    "ISCAL": {
+      "support": 66,
+      "auc": 0.9436295411905168,
+      "threshold": 0.19999999999999998,
+      "sensitivity": 0.5303030303030303,
+      "specificity": 0.9624765478424016,
+      "ppv": 0.30434782608695654,
+      "description": "ischemic in anterolateral leads"
+    },
+    "ISCAN": {
+      "support": 4,
+      "auc": 0.867137648131267,
+      "threshold": 0.02,
+      "sensitivity": 0.0,
+      "specificity": 0.9567000911577028,
+      "ppv": 0.0,
+      "description": "ischemic in anterior leads"
+    },
+    "ISCAS": {
+      "support": 17,
+      "auc": 0.9511287320980663,
+      "threshold": 0.28,
+      "sensitivity": 0.17647058823529413,
+      "specificity": 0.9940394314534617,
+      "ppv": 0.1875,
+      "description": "ischemic in anteroseptal leads"
+    },
+    "ISCIL": {
+      "support": 18,
+      "auc": 0.9377420998980631,
+      "threshold": 0.34,
+      "sensitivity": 0.16666666666666666,
+      "specificity": 0.9967889908256881,
+      "ppv": 0.3,
+      "description": "ischemic in inferolateral leads"
+    },
+    "ISCIN": {
+      "support": 22,
+      "auc": 0.927118148395722,
+      "threshold": 0.24,
+      "sensitivity": 0.13636363636363635,
+      "specificity": 0.9931066176470589,
+      "ppv": 0.16666666666666666,
+      "description": "ischemic in inferior leads"
+    },
+    "ISCLA": {
+      "support": 13,
+      "auc": 0.9234289737722231,
+      "threshold": 0.13999999999999999,
+      "sensitivity": 0.15384615384615385,
+      "specificity": 0.9958810068649886,
+      "ppv": 0.18181818181818182,
+      "description": "ischemic in lateral leads"
+    },
+    "ISC_": {
+      "support": 128,
+      "auc": 0.9648060084541064,
+      "threshold": 0.46,
+      "sensitivity": 0.5625,
+      "specificity": 0.9830917874396136,
+      "ppv": 0.6728971962616822,
+      "description": "non-specific ischemic"
+    },
+    "IVCD": {
+      "support": 79,
+      "auc": 0.7508497559751733,
+      "threshold": 0.19999999999999998,
+      "sensitivity": 0.2911392405063291,
+      "specificity": 0.9688532326569136,
+      "ppv": 0.25842696629213485,
+      "description": "non-specific intraventricular conduction disturbance (block)"
+    },
+    "LAFB": {
+      "support": 162,
+      "auc": 0.9830610735162143,
+      "threshold": 0.34,
+      "sensitivity": 0.8024691358024691,
+      "specificity": 0.9803536345776032,
+      "ppv": 0.7647058823529411,
+      "description": "left anterior fascicular block"
+    },
+    "LAO/LAE": {
+      "support": 42,
+      "auc": 0.8291037194098418,
+      "threshold": 0.22,
+      "sensitivity": 0.16666666666666666,
+      "specificity": 0.9888682745825603,
+      "ppv": 0.22580645161290322,
+      "description": "left atrial overload/enlargement"
+    },
+    "LMI": {
+      "support": 20,
+      "auc": 0.8901974288337926,
+      "threshold": 0.08,
+      "sensitivity": 0.35,
+      "specificity": 0.967860422405877,
+      "ppv": 0.09090909090909091,
+      "description": "lateral myocardial infarction"
+    },
+    "LNGQT": {
+      "support": 11,
+      "auc": 0.8510204929958016,
+      "threshold": 0.24,
+      "sensitivity": 0.18181818181818182,
+      "specificity": 0.9954275262917238,
+      "ppv": 0.16666666666666666,
+      "description": "long QT-interval"
+    },
+    "LOWT": {
+      "support": 44,
+      "auc": 0.92966573816156,
+      "threshold": 0.28,
+      "sensitivity": 0.25,
+      "specificity": 0.978644382544104,
+      "ppv": 0.19298245614035087,
+      "description": "low amplitude T-waves"
+    },
+    "LPFB": {
+      "support": 18,
+      "auc": 0.9577726809378185,
+      "threshold": 0.34,
+      "sensitivity": 0.3888888888888889,
+      "specificity": 0.9972477064220183,
+      "ppv": 0.5384615384615384,
+      "description": "left posterior fascicular block"
+    },
+    "LPR": {
+      "support": 34,
+      "auc": 0.9763102098510383,
+      "threshold": 0.4,
+      "sensitivity": 0.29411764705882354,
+      "specificity": 0.9902957486136784,
+      "ppv": 0.3225806451612903,
+      "description": "prolonged PR interval"
+    },
+    "LVH": {
+      "support": 214,
+      "auc": 0.9361527735905939,
+      "threshold": 0.19999999999999998,
+      "sensitivity": 0.705607476635514,
+      "specificity": 0.9410282258064516,
+      "ppv": 0.5634328358208955,
+      "description": "left ventricular hypertrophy"
+    },
+    "LVOLT": {
+      "support": 18,
+      "auc": 0.8885575942915392,
+      "threshold": 0.46,
+      "sensitivity": 0.05555555555555555,
+      "specificity": 0.9986238532110092,
+      "ppv": 0.25,
+      "description": "low QRS voltages in the frontal and horizontal leads"
+    },
+    "NDT": {
+      "support": 182,
+      "auc": 0.9348644906680621,
+      "threshold": 0.28,
+      "sensitivity": 0.7307692307692307,
+      "specificity": 0.9221230158730159,
+      "ppv": 0.4586206896551724,
+      "description": "non-diagnostic T abnormalities"
+    },
+    "NORM": {
+      "support": 963,
+      "auc": 0.9517701514750212,
+      "threshold": 0.5,
+      "sensitivity": 0.9241952232606438,
+      "specificity": 0.8291497975708502,
+      "ppv": 0.8083560399636693,
+      "description": "normal ECG"
+    },
+    "NST_": {
+      "support": 77,
+      "auc": 0.8558692603954273,
+      "threshold": 0.12000000000000001,
+      "sensitivity": 0.5714285714285714,
+      "specificity": 0.8901461574728902,
+      "ppv": 0.1588447653429603,
+      "description": "non-specific ST changes"
+    },
+    "NT_": {
+      "support": 42,
+      "auc": 0.9334526018199487,
+      "threshold": 0.42000000000000004,
+      "sensitivity": 0.19047619047619047,
+      "specificity": 0.9944341372912802,
+      "ppv": 0.4,
+      "description": "non-specific T-wave changes"
+    },
+    "PAC": {
+      "support": 40,
+      "auc": 0.980885078776645,
+      "threshold": 0.19999999999999998,
+      "sensitivity": 0.7,
+      "specificity": 0.9782205746061168,
+      "ppv": 0.37333333333333335,
+      "description": "atrial premature complex"
+    },
+    "PACE": {
+      "support": 28,
+      "auc": 0.9848749177090191,
+      "threshold": 0.78,
+      "sensitivity": 0.6785714285714286,
+      "specificity": 0.9990783410138249,
+      "ppv": 0.9047619047619048,
+      "description": "normal functioning artificial pacemaker"
+    },
+    "PMI": {
+      "support": 2,
+      "auc": 0.980191256830601,
+      "threshold": 0.02,
+      "sensitivity": 0.0,
+      "specificity": 0.9918032786885246,
+      "ppv": 0.0,
+      "description": "posterior myocardial infarction"
+    },
+    "PRC(S)": {
+      "support": 1,
+      "auc": 0.9676832043695949,
+      "threshold": 0.02,
+      "sensitivity": 0.0,
+      "specificity": 0.9949931725079654,
+      "ppv": 0.0,
+      "description": "premature complex(es)"
+    },
+    "PSVT": {
+      "support": 2,
+      "auc": 0.9990892531876139,
+      "threshold": 0.08,
+      "sensitivity": 1.0,
+      "specificity": 0.9954462659380692,
+      "ppv": 0.16666666666666666,
+      "description": "paroxysmal supraventricular tachycardia"
+    },
+    "PVC": {
+      "support": 114,
+      "auc": 0.9914132740680877,
+      "threshold": 0.54,
+      "sensitivity": 0.8771929824561403,
+      "specificity": 0.986084452975048,
+      "ppv": 0.7751937984496124,
+      "description": "ventricular premature complex"
+    },
+    "QWAVE": {
+      "support": 55,
+      "auc": 0.8495312433716541,
+      "threshold": 0.16,
+      "sensitivity": 0.34545454545454546,
+      "specificity": 0.9594027064862343,
+      "ppv": 0.1792452830188679,
+      "description": "Q waves present"
+    },
+    "RAO/RAE": {
+      "support": 10,
+      "auc": 0.9662705667276051,
+      "threshold": 0.18,
+      "sensitivity": 0.3,
+      "specificity": 0.9981718464351006,
+      "ppv": 0.42857142857142855,
+      "description": "right atrial overload/enlargement"
+    },
+    "RVH": {
+      "support": 12,
+      "auc": 0.9330207380298872,
+      "threshold": 0.19999999999999998,
+      "sensitivity": 0.5,
+      "specificity": 0.9913083257090577,
+      "ppv": 0.24,
+      "description": "right ventricular hypertrophy"
+    },
+    "SARRH": {
+      "support": 77,
+      "auc": 0.9269028943710698,
+      "threshold": 0.19999999999999998,
+      "sensitivity": 0.5844155844155844,
+      "specificity": 0.9684111268269684,
+      "ppv": 0.4017857142857143,
+      "description": "sinus arrhythmia"
+    },
+    "SBRAD": {
+      "support": 64,
+      "auc": 0.9563832591377693,
+      "threshold": 0.46,
+      "sensitivity": 0.5,
+      "specificity": 0.9906279287722587,
+      "ppv": 0.6153846153846154,
+      "description": "sinus bradycardia"
+    },
+    "SEHYP": {
+      "support": 2,
+      "auc": 0.9920309653916212,
+      "threshold": 0.02,
+      "sensitivity": 1.0,
+      "specificity": 0.9758652094717668,
+      "ppv": 0.03636363636363636,
+      "description": "septal hypertrophy"
+    },
+    "SR": {
+      "support": 1674,
+      "auc": 0.9012170875628152,
+      "threshold": 0.42000000000000004,
+      "sensitivity": 0.967741935483871,
+      "specificity": 0.6450381679389313,
+      "ppv": 0.8970099667774086,
+      "description": "sinus rhythm"
+    },
+    "STACH": {
+      "support": 82,
+      "auc": 0.99082484208585,
+      "threshold": 0.5800000000000001,
+      "sensitivity": 0.9390243902439024,
+      "specificity": 0.9924385633270322,
+      "ppv": 0.8279569892473119,
+      "description": "sinus tachycardia"
+    },
+    "STD_": {
+      "support": 101,
+      "auc": 0.877618663153869,
+      "threshold": 0.30000000000000004,
+      "sensitivity": 0.3564356435643564,
+      "specificity": 0.9542203147353362,
+      "ppv": 0.2727272727272727,
+      "description": "non-specific ST depression"
+    },
+    "STE_": {
+      "support": 3,
+      "auc": 0.5784358390280941,
+      "threshold": 0.02,
+      "sensitivity": 0.0,
+      "specificity": 0.9954441913439636,
+      "ppv": 0.0,
+      "description": "non-specific ST elevation"
+    },
+    "SVARR": {
+      "support": 14,
+      "auc": 0.8304552590266877,
+      "threshold": 0.1,
+      "sensitivity": 0.14285714285714285,
+      "specificity": 0.9908424908424909,
+      "ppv": 0.09090909090909091,
+      "description": "supraventricular arrhythmia"
+    },
+    "SVTAC": {
+      "support": 3,
+      "auc": 0.9263477600607442,
+      "threshold": 0.18,
+      "sensitivity": 0.3333333333333333,
+      "specificity": 0.9963553530751709,
+      "ppv": 0.1111111111111111,
+      "description": "supraventricular tachycardia"
+    },
+    "TAB_": {
+      "support": 3,
+      "auc": 0.2933940774487472,
+      "threshold": 0.02,
+      "sensitivity": 0.0,
+      "specificity": 0.9954441913439636,
+      "ppv": 0.0,
+      "description": "T-wave abnormality"
+    },
+    "TRIGU": {
+      "support": 2,
+      "auc": 0.9943078324225865,
+      "threshold": 0.08,
+      "sensitivity": 0.0,
+      "specificity": 0.9986338797814208,
+      "ppv": 0.0,
+      "description": "trigeminal pattern (unknown origin, SV or Ventricular)"
+    },
+    "VCLVH": {
+      "support": 87,
+      "auc": 0.9028351764430432,
+      "threshold": 0.26,
+      "sensitivity": 0.4367816091954023,
+      "specificity": 0.9554713405968736,
+      "ppv": 0.2878787878787879,
+      "description": "voltage criteria (QRS) for left ventricular hypertrophy"
+    },
+    "WPW": {
+      "support": 8,
+      "auc": 0.8441210045662101,
+      "threshold": 0.66,
+      "sensitivity": 0.5,
+      "specificity": 1.0,
+      "ppv": 1.0,
+      "description": "Wolf-Parkinson-White syndrome"
+    },
+    "SUPER_NORM": {
+      "support": 963,
+      "auc": 0.9517289509419367,
+      "threshold": 0.44,
+      "sensitivity": 0.936656282450675,
+      "specificity": 0.8080971659919028,
+      "ppv": 0.7919227392449517,
+      "description": "SUPER_NORM"
+    },
+    "SUPER_MI": {
+      "support": 550,
+      "auc": 0.9267144748455427,
+      "threshold": 0.38,
+      "sensitivity": 0.76,
+      "specificity": 0.9108009708737864,
+      "ppv": 0.7398230088495575,
+      "description": "SUPER_MI"
+    },
+    "SUPER_STTC": {
+      "support": 521,
+      "auc": 0.9385292949547737,
+      "threshold": 0.4,
+      "sensitivity": 0.7984644913627639,
+      "specificity": 0.9129397734048896,
+      "ppv": 0.7402135231316725,
+      "description": "SUPER_STTC"
+    },
+    "SUPER_CD": {
+      "support": 496,
+      "auc": 0.927144535840188,
+      "threshold": 0.34,
+      "sensitivity": 0.7862903225806451,
+      "specificity": 0.9294947121034077,
+      "ppv": 0.7647058823529411,
+      "description": "SUPER_CD"
+    },
+    "SUPER_HYP": {
+      "support": 262,
+      "auc": 0.8992019430950728,
+      "threshold": 0.36000000000000004,
+      "sensitivity": 0.5916030534351145,
+      "specificity": 0.9519628099173554,
+      "ppv": 0.625,
+      "description": "SUPER_HYP"
+    }
+  },
+  "subgroups": {
+    "female": {
+      "n": 1066,
+      "superclass_macro_auc": 0.9171889048608157
+    },
+    "male": {
+      "n": 1132,
+      "superclass_macro_auc": 0.9391604281753253
+    },
+    "age <40": {
+      "n": 284,
+      "superclass_macro_auc": 0.9362307523506285
+    },
+    "age 40\u201365": {
+      "n": 916,
+      "superclass_macro_auc": 0.9182274751338904
+    },
+    "age >65": {
+      "n": 964,
+      "superclass_macro_auc": 0.9183741963823238
+    }
+  },
+  "calibration": {
+    "temperature": 1.2364264726638794,
+    "ece_before": 0.007647042640263958,
+    "ece_after": 0.003764793526454489
+  },
+  "training": {
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.20324149583278212,
+        "val_macro_auc": 0.7705537903488959,
+        "ningbo_val_macro_auc": 0.8420251770701777,
+        "seconds": 409.4
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.10356211401384884,
+        "val_macro_auc": 0.8285798209576831,
+        "ningbo_val_macro_auc": 0.8939359107842316,
+        "seconds": 384.4
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.08802137388857119,
+        "val_macro_auc": 0.8551118293806896,
+        "ningbo_val_macro_auc": 0.9322063105776364,
+        "seconds": 379.8
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.08012990192117778,
+        "val_macro_auc": 0.8803011150782374,
+        "ningbo_val_macro_auc": 0.9494050930385608,
+        "seconds": 370.5
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.07516436859162709,
+        "val_macro_auc": 0.8914170568132933,
+        "ningbo_val_macro_auc": 0.9450899249364711,
+        "seconds": 362.5
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.07181559563052684,
+        "val_macro_auc": 0.8941878192949748,
+        "ningbo_val_macro_auc": 0.9618586936364628,
+        "seconds": 363.3
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.06834523289578325,
+        "val_macro_auc": 0.9006200692842312,
+        "ningbo_val_macro_auc": 0.9688783325648765,
+        "seconds": 356.7
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.06577806731719657,
+        "val_macro_auc": 0.9136064320677451,
+        "ningbo_val_macro_auc": 0.9660104830141515,
+        "seconds": 366.9
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.0639044225407277,
+        "val_macro_auc": 0.9042530372249791,
+        "ningbo_val_macro_auc": 0.969892541803896,
+        "seconds": 357.1
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.06292124823383205,
+        "val_macro_auc": 0.9159121601521651,
+        "ningbo_val_macro_auc": 0.9746228504778132,
+        "seconds": 361.1
+      },
+      {
+        "epoch": 11,
+        "train_loss": 0.06009984960461716,
+        "val_macro_auc": 0.9178571427990054,
+        "ningbo_val_macro_auc": 0.974398426988848,
+        "seconds": 351.0
+      },
+      {
+        "epoch": 12,
+        "train_loss": 0.05860499756836892,
+        "val_macro_auc": 0.9195725289258383,
+        "ningbo_val_macro_auc": 0.9765241805632696,
+        "seconds": 357.2
+      },
+      {
+        "epoch": 13,
+        "train_loss": 0.05715898026646745,
+        "val_macro_auc": 0.9253524610993129,
+        "ningbo_val_macro_auc": 0.9788938687429392,
+        "seconds": 352.5
+      },
+      {
+        "epoch": 14,
+        "train_loss": 0.05466774735991364,
+        "val_macro_auc": 0.9252309597716861,
+        "ningbo_val_macro_auc": 0.9783702969059273,
+        "seconds": 347.3
+      },
+      {
+        "epoch": 15,
+        "train_loss": 0.05278494931916839,
+        "val_macro_auc": 0.9306420296919524,
+        "ningbo_val_macro_auc": 0.9785018387564124,
+        "seconds": 346.0
+      },
+      {
+        "epoch": 16,
+        "train_loss": 0.05059400282580884,
+        "val_macro_auc": 0.9301138064169908,
+        "ningbo_val_macro_auc": 0.979846603782133,
+        "seconds": 359.6
+      },
+      {
+        "epoch": 17,
+        "train_loss": 0.048606653432956,
+        "val_macro_auc": 0.9303544104062631,
+        "ningbo_val_macro_auc": 0.9800828596666273,
+        "seconds": 328.8
+      },
+      {
+        "epoch": 18,
+        "train_loss": 0.046613719147878714,
+        "val_macro_auc": 0.9314315963910584,
+        "ningbo_val_macro_auc": 0.9801936231714046,
+        "seconds": 320.7
+      },
+      {
+        "epoch": 19,
+        "train_loss": 0.04538555340810382,
+        "val_macro_auc": 0.9307625299472377,
+        "ningbo_val_macro_auc": 0.9799594334649763,
+        "seconds": 343.3
+      },
+      {
+        "epoch": 20,
+        "train_loss": 0.044597684631572175,
+        "val_macro_auc": 0.931584555424617,
+        "ningbo_val_macro_auc": 0.9799246792749094,
+        "seconds": 330.2
+      }
+    ],
+    "best_val_selection_metric": 0.9558126097812315
+  },
+  "model_card": {
+    "name": "ecg12_net",
+    "version": "v0.3",
+    "recipe": {
+      "epochs": 20,
+      "width": 64,
+      "lr": 0.001,
+      "weight_decay": 0.01,
+      "batch": 128,
+      "ningbo": true,
+      "ningbo_map": "v0.3"
+    },
+    "labels": [
+      "1AVB",
+      "2AVB",
+      "3AVB",
+      "ABQRS",
+      "AFIB",
+      "AFLT",
+      "ALMI",
+      "AMI",
+      "ANEUR",
+      "ASMI",
+      "BIGU",
+      "CLBBB",
+      "CRBBB",
+      "DIG",
+      "EL",
+      "HVOLT",
+      "ILBBB",
+      "ILMI",
+      "IMI",
+      "INJAL",
+      "INJAS",
+      "INJIL",
+      "INJIN",
+      "INJLA",
+      "INVT",
+      "IPLMI",
+      "IPMI",
+      "IRBBB",
+      "ISCAL",
+      "ISCAN",
+      "ISCAS",
+      "ISCIL",
+      "ISCIN",
+      "ISCLA",
+      "ISC_",
+      "IVCD",
+      "LAFB",
+      "LAO/LAE",
+      "LMI",
+      "LNGQT",
+      "LOWT",
+      "LPFB",
+      "LPR",
+      "LVH",
+      "LVOLT",
+      "NDT",
+      "NORM",
+      "NST_",
+      "NT_",
+      "PAC",
+      "PACE",
+      "PMI",
+      "PRC(S)",
+      "PSVT",
+      "PVC",
+      "QWAVE",
+      "RAO/RAE",
+      "RVH",
+      "SARRH",
+      "SBRAD",
+      "SEHYP",
+      "SR",
+      "STACH",
+      "STD_",
+      "STE_",
+      "SVARR",
+      "SVTAC",
+      "TAB_",
+      "TRIGU",
+      "VCLVH",
+      "WPW",
+      "SUPER_NORM",
+      "SUPER_MI",
+      "SUPER_STTC",
+      "SUPER_CD",
+      "SUPER_HYP"
+    ],
+    "task": "10 s 12-lead ECG -> probability of each SCP-ECG statement (multi-label) and of 5 diagnostic superclasses",
+    "input": "12 x 1000 samples @ 100 Hz, leads ['I', 'II', 'III', 'AVR', 'AVL', 'AVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'], mV; diagnostic band-pass, then per-lead standardisation",
+    "lead_mean": [
+      -0.0003485694178380072,
+      -0.0003688583383336663,
+      -1.7985874364967458e-05,
+      0.0003575484734028578,
+      -0.00014343179645948112,
+      -0.00017591215146239847,
+      -0.0007598158554174006,
+      -0.001648777979426086,
+      -0.002231979975476861,
+      -0.0012144186766818166,
+      -0.0014624883187934756,
+      -0.002870323834940791
+    ],
+    "lead_std": [
+      0.21070531010627747,
+      0.20700490474700928,
+      0.20850348472595215,
+      0.18099679052829742,
+      0.18288162350654602,
+      0.17950290441513062,
+      0.2899056077003479,
+      0.4324800670146942,
+      0.42622777819633484,
+      0.38038042187690735,
+      0.33613285422325134,
+      0.2873479127883911
+    ],
+    "temperature": 1.2364264726638794,
+    "thresholds": {
+      "1AVB": 0.30000000000000004,
+      "2AVB": 0.08,
+      "3AVB": 0.22,
+      "ABQRS": 0.22,
+      "AFIB": 0.54,
+      "AFLT": 0.56,
+      "ALMI": 0.24,
+      "AMI": 0.22,
+      "ANEUR": 0.13999999999999999,
+      "ASMI": 0.4,
+      "BIGU": 0.26,
+      "CLBBB": 0.32,
+      "CRBBB": 0.24,
+      "DIG": 0.30000000000000004,
+      "EL": 0.1,
+      "HVOLT": 0.04,
+      "ILBBB": 0.16,
+      "ILMI": 0.22,
+      "IMI": 0.36000000000000004,
+      "INJAL": 0.26,
+      "INJAS": 0.18,
+      "INJIL": 0.02,
+      "INJIN": 0.02,
+      "INJLA": 0.02,
+      "INVT": 0.24,
+      "IPLMI": 0.22,
+      "IPMI": 0.02,
+      "IRBBB": 0.18,
+      "ISCAL": 0.19999999999999998,
+      "ISCAN": 0.02,
+      "ISCAS": 0.28,
+      "ISCIL": 0.34,
+      "ISCIN": 0.24,
+      "ISCLA": 0.13999999999999999,
+      "ISC_": 0.46,
+      "IVCD": 0.19999999999999998,
+      "LAFB": 0.34,
+      "LAO/LAE": 0.22,
+      "LMI": 0.08,
+      "LNGQT": 0.24,
+      "LOWT": 0.28,
+      "LPFB": 0.34,
+      "LPR": 0.4,
+      "LVH": 0.19999999999999998,
+      "LVOLT": 0.46,
+      "NDT": 0.28,
+      "NORM": 0.5,
+      "NST_": 0.12000000000000001,
+      "NT_": 0.42000000000000004,
+      "PAC": 0.19999999999999998,
+      "PACE": 0.78,
+      "PMI": 0.02,
+      "PRC(S)": 0.02,
+      "PSVT": 0.08,
+      "PVC": 0.54,
+      "QWAVE": 0.16,
+      "RAO/RAE": 0.18,
+      "RVH": 0.19999999999999998,
+      "SARRH": 0.19999999999999998,
+      "SBRAD": 0.46,
+      "SEHYP": 0.02,
+      "SR": 0.42000000000000004,
+      "STACH": 0.5800000000000001,
+      "STD_": 0.30000000000000004,
+      "STE_": 0.02,
+      "SVARR": 0.1,
+      "SVTAC": 0.18,
+      "TAB_": 0.02,
+      "TRIGU": 0.08,
+      "VCLVH": 0.26,
+      "WPW": 0.66,
+      "SUPER_NORM": 0.44,
+      "SUPER_MI": 0.38,
+      "SUPER_STTC": 0.4,
+      "SUPER_CD": 0.34,
+      "SUPER_HYP": 0.36000000000000004
+    },
+    "threshold_rule": "per statement, maximise F1 on validation fold 9",
+    "intended_use": "Research use only. Not validated on clinical ECG machines.",
+    "data": "PhysioNet PTB-XL 1.0.3 (CC BY 4.0): folds 1\u20138 train (17418 ECGs), 9 validation, 10 test; patient-wise folds; plus PhysioNet Chapman\u2013Shaoxing\u2013Ningbo 12-lead ECG database 1.0.0 (CC BY 4.0), Ningbo part only (Chapman\u2013Shaoxing records excluded), 27901 training ECGs, label map v0.3: statements ['1AVB', '2AVB', '3AVB', 'AMI', 'CLBBB', 'CRBBB', 'IRBBB', 'LAFB', 'LNGQT', 'LVH', 'LVOLT', 'PAC', 'PACE', 'PVC', 'RVH', 'SARRH', 'SBRAD', 'SR', 'STACH', 'SVTAC', 'WPW'] only",
+    "file": "ecg12_net_v0.3.pt",
+    "sha256": "3a7852b34d618c05d4f8471a0cf7dd186095cdfcdce7b1eb7c6693e2a49a4e0f",
+    "parameters": 2882508
+  },
+  "ningbo": {
+    "val": {
+      "n": 3460,
+      "label_map": "v0.3",
+      "macro_auc_mapped": 0.9801936231714046,
+      "per_label": {
+        "1AVB": {
+          "support": 95,
+          "auc": 0.9815124736060061
+        },
+        "2AVB": {
+          "support": 9,
+          "auc": 0.9743713577384977
+        },
+        "3AVB": {
+          "support": 10,
+          "auc": 0.989072463768116
+        },
+        "AMI": {
+          "support": 1,
+          "auc": 0.9750796870472327
+        },
+        "CLBBB": {
+          "support": 26,
+          "auc": 0.998220317848965
+        },
+        "CRBBB": {
+          "support": 114,
+          "auc": 0.998163086015494
+        },
+        "IRBBB": {
+          "support": 31,
+          "auc": 0.9554959068461222
+        },
+        "LAFB": {
+          "support": 43,
+          "auc": 0.9866963665345159
+        },
+        "LNGQT": {
+          "support": 32,
+          "auc": 0.926615373395566
+        },
+        "LVH": {
+          "support": 52,
+          "auc": 0.9716842723004695
+        },
+        "LVOLT": {
+          "support": 84,
+          "auc": 0.9444503215978334
+        },
+        "PAC": {
+          "support": 129,
+          "auc": 0.9671328069183311
+        },
+        "PACE": {
+          "support": 134,
+          "auc": 0.9916218666140135
+        },
+        "PVC": {
+          "support": 115,
+          "auc": 0.9940157275622279
+        },
+        "RVH": {
+          "support": 6,
+          "auc": 0.9815190117737888
+        },
+        "SARRH": {
+          "support": 241,
+          "auc": 0.9715266847903848
+        },
+        "SBRAD": {
+          "support": 1204,
+          "auc": 0.9984040344242596
+        },
+        "SR": {
+          "support": 615,
+          "auc": 0.9901153071284667
+        },
+        "STACH": {
+          "support": 615,
+          "auc": 0.9973149299155558
+        },
+        "SVTAC": {
+          "support": 18,
+          "auc": 0.9965943572858158
+        },
+        "WPW": {
+          "support": 8,
+          "auc": 0.9944597334878331
+        }
+      }
+    },
+    "test": {
+      "n": 3543,
+      "label_map": "v0.3",
+      "macro_auc_mapped": 0.9749700135777872,
+      "per_label": {
+        "1AVB": {
+          "support": 99,
+          "auc": 0.9845199967151186
+        },
+        "2AVB": {
+          "support": 7,
+          "auc": 0.9381868131868132
+        },
+        "3AVB": {
+          "support": 3,
+          "auc": 0.9767419962335216
+        },
+        "AMI": {
+          "support": 3,
+          "auc": 0.943877551020408
+        },
+        "CLBBB": {
+          "support": 21,
+          "auc": 0.9983090601647303
+        },
+        "CRBBB": {
+          "support": 121,
+          "auc": 0.9980896093385977
+        },
+        "IRBBB": {
+          "support": 19,
+          "auc": 0.9485659713800629
+        },
+        "LAFB": {
+          "support": 39,
+          "auc": 0.987878521706669
+        },
+        "LNGQT": {
+          "support": 24,
+          "auc": 0.9360969025291276
+        },
+        "LVH": {
+          "support": 55,
+          "auc": 0.9815158465387823
+        },
+        "LVOLT": {
+          "support": 86,
+          "auc": 0.9676625115202724
+        },
+        "PAC": {
+          "support": 96,
+          "auc": 0.982484769364665
+        },
+        "PACE": {
+          "support": 114,
+          "auc": 0.9878589737686299
+        },
+        "PVC": {
+          "support": 114,
+          "auc": 0.9912050467375788
+        },
+        "RVH": {
+          "support": 12,
+          "auc": 0.9709949966959313
+        },
+        "SARRH": {
+          "support": 248,
+          "auc": 0.9801838073327134
+        },
+        "SBRAD": {
+          "support": 1253,
+          "auc": 0.9985634477254589
+        },
+        "SR": {
+          "support": 677,
+          "auc": 0.9899329066599598
+        },
+        "STACH": {
+          "support": 568,
+          "auc": 0.9967179547875488
+        },
+        "SVTAC": {
+          "support": 15,
+          "auc": 0.9923847316704459
+        },
+        "WPW": {
+          "support": 3,
+          "auc": 0.9225988700564972
+        }
+      }
+    }
+  },
+  "benchmark_note": "Published PTB-XL benchmark (Strodthoff et al. 2021, separate model per task): macro-AUC all 0.925, diagnostic 0.937, form 0.896, rhythm 0.957, superclass 0.930 (best models)."
+}

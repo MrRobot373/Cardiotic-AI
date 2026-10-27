@@ -4,9 +4,9 @@
     "version": "0.1.0",
     "use": "research use only",
     "models": {
-      "ecg12_net_v0.1": {
-        "sha256": "a5dae07773ef",
-        "temperature": 1.1985052824020386
+      "ecg12_net_v0.3": {
+        "sha256": "3a7852b34d61",
+        "temperature": 1.2364264726638794
       },
       "quality_net_v0.3": {
         "sha256": "a07d9ae9563e"
@@ -66,33 +66,39 @@
   "statements": [
     {
       "statement": "SUPER_CD",
-      "probability": 0.9960275888442993,
-      "threshold": 0.38,
+      "probability": 0.9947269558906555,
+      "threshold": 0.34,
       "confidence": "high"
     },
     {
       "statement": "CLBBB",
-      "probability": 0.9911709427833557,
-      "threshold": 0.36000000000000004,
+      "probability": 0.9832113981246948,
+      "threshold": 0.32,
       "confidence": "high"
     },
     {
       "statement": "SR",
-      "probability": 0.9746213555335999,
-      "threshold": 0.4,
+      "probability": 0.9774322509765625,
+      "threshold": 0.42000000000000004,
       "confidence": "high"
     },
     {
       "statement": "SUPER_HYP",
-      "probability": 0.293356716632843,
-      "threshold": 0.12000000000000001,
+      "probability": 0.7158064842224121,
+      "threshold": 0.36000000000000004,
       "confidence": "moderate"
     },
     {
+      "statement": "LVH",
+      "probability": 0.3682670593261719,
+      "threshold": 0.19999999999999998,
+      "confidence": "low"
+    },
+    {
       "statement": "LAO/LAE",
-      "probability": 0.08633410185575485,
-      "threshold": 0.06,
-      "confidence": "high"
+      "probability": 0.33153969049453735,
+      "threshold": 0.22,
+      "confidence": "low"
     }
   ],
   "notes": [],

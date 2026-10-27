@@ -60,7 +60,8 @@ def _ecg12_section() -> list[str]:
             "fold 10 was scored once per version.", ""]
     if st:
         t = st["test"]
-        out += ["### 7.1 Diagnostic statements (ML)", "",
+        out += ["### 7.1 Diagnostic statements (ML) — first version v0.1, PTB-XL only", "",
+                "The adopted model is now v0.3 (PTB-XL + Ningbo, section 7.5); v0.1 is shown in full as the PTB-XL-only baseline.", "",
                 "| Task | Statements | Test macro-AUC | 95% CI (bootstrap) | Validation macro-AUC |", "|---|---:|---:|---|---:|"]
         for k in ("superclass", "diagnostic", "form", "rhythm", "all"):
             out.append(f"| {k} | {t[k]['n_labels']} | {t[k]['macro_auc']:.3f} | {t[k]['ci95'][0]:.3f}–{t[k]['ci95'][1]:.3f} | {st['val'][k]:.3f} |")
@@ -166,41 +167,51 @@ def _ecg12_section() -> list[str]:
     sel = _load("ecg12_selection")
     if v2 and sel:
         af = _load("ecg12_ningbo_af_check")
-        out += ["### 7.5 More data: v0.2 adds the Ningbo part of Chapman–Shaoxing–Ningbo (China)", "",
-                f"v0.2 is trained on PTB-XL folds 1–8 plus {_ningbo_train_n(v2)} ECGs from the Ningbo part (80% patient-level "
-                "training split; 10% validation, 10% test). "
-                "The 10,646 Chapman–Shaoxing ECGs inside that database were excluded (46 of 46 sampled ECGs match "
-                "Chapman signal-for-signal), so Chapman stays a held-out test. Loss is masked: Ningbo ECGs teach only the "
-                "statements their labels map to without ambiguity.", ""]
+        vers = list(sel["ptbxl_val_all"])
+        out += ["### 7.5 More data: the Ningbo part of Chapman–Shaoxing–Ningbo (China)", "",
+                f"v0.2 and v0.3 are trained on PTB-XL folds 1–8 plus {_ningbo_train_n(v2)} ECGs from the Ningbo part "
+                "(80% patient-level training split; 10% validation, 10% test). The 10,646 Chapman–Shaoxing ECGs inside that "
+                "database were excluded (46 of 46 sampled ECGs match Chapman signal-for-signal). Loss is masked: Ningbo ECGs "
+                "teach only the statements their labels map to without ambiguity.", ""]
         if af:
             g = af["groups"]
             out += ["**Ningbo atrial-fibrillation labels are not trusted.** The Ningbo part has no fibrillation code and "
                     f"{af['ningbo_part_counts']['AFLT code 164890007']:,} 'flutter' ECGs (22%). On the signals they behave like "
                     f"fibrillation: irregular RR in {_pct(g['Ningbo AFLT (as coded)']['rr_irregular_share'])} (Chapman fibrillation "
                     f"{_pct(g['Chapman AFIB']['rr_irregular_share'])}, Chapman flutter {_pct(g['Chapman AFLT']['rr_irregular_share'])}). "
-                    "Neither label is used.", ""]
+                    "Neither label is used.", "",
+                    "**v0.2 had a label-map error.** The Ningbo part codes PVCs as 427172004, never the 17338001 that v0.2 mapped, "
+                    "so v0.2 learned 'no PVC' from every Ningbo ECG (Chapman PVC sensitivity fell from 77% to 22%). The external-"
+                    "test drop is what revealed it; the fix (map v0.3) comes from the code table itself, not from test results. "
+                    "Map v0.3 also adds complete/incomplete RBBB, complete LBBB, LAFB, pacing, low voltage and anterior MI, and "
+                    "treats unspecific codes (plain 'RBBB', 'LBBB', 'MI') as unknown.", ""]
         out += [f"Selection rule: {sel['rule']}", "",
-                "| | PTB-XL validation, all statements | Ningbo validation, mapped statements |", "|---|---:|---:|"]
-        for v in (sel["baseline"], sel["candidate"]):
+                f"| Version | PTB-XL validation, all statements | Ningbo validation, mapped statements (map {sel['label_map']}) |",
+                "|---|---:|---:|"]
+        for v in vers:
             out.append(f"| {v} | {sel['ptbxl_val_all'][v]:.3f} | {sel['ningbo_val_mapped'][v]:.3f} |")
-        out += ["", f"**Chosen: {sel['chosen']}.**", "",
-                "Test results (each scored once):", "",
-                "| Test set | v0.1 | v0.2 |", "|---|---:|---:|"]
-        v1 = _load("ecg12_statements_v0.1")
+        out += ["", f"**Chosen: {sel['chosen']}** (candidate {sel['candidate']} against current {sel['current']}).", "",
+                "Test results (each version scored once):", "",
+                "| Test set | " + " | ".join(vers) + " |", "|---|" + "---:|" * len(vers)]
+        reps = {v: _load(f"ecg12_statements_{v}") for v in vers}
         for k in ("superclass", "diagnostic", "form", "rhythm", "all"):
-            out.append(f"| PTB-XL fold 10, {k} macro-AUC | {v1['test'][k]['macro_auc']:.3f} | {v2['test'][k]['macro_auc']:.3f} |")
-        out.append(f"| Ningbo test split, mapped statements macro-AUC | — | {v2['ningbo']['test']['macro_auc_mapped']:.3f} |")
-        e1, e2 = _load("ecg12_external_chapman_v0.1"), _load("ecg12_external_chapman_v0.2")
-        if e1 and e2:
-            out += ["", "Chapman–Shaoxing (held out; same country and ECG system as Ningbo, so no longer fully independent for v0.2):", "",
-                    "| Statement | ECGs | v0.1 AUC | v0.2 AUC | v0.1 sensitivity | v0.2 sensitivity |", "|---|---:|---:|---:|---:|---:|"]
-            for k, a1 in sorted(e1["per_label"].items(), key=lambda kv: -kv[1]["support"]):
-                a2 = e2["per_label"].get(k)
-                if a2:
-                    out.append(f"| {k} | {a1['support']:,} | {a1['auc']:.3f} | {a2['auc']:.3f} | {_pct(a1['sensitivity'])} | {_pct(a2['sensitivity'])} |")
-        sg = v2["subgroups"]
-        out += ["", "v0.2 subgroups (PTB-XL test, superclass macro-AUC): " + "; ".join(
-            f"{g} {v['superclass_macro_auc']:.3f}" for g, v in sg.items()) + ".", ""]
+            out.append(f"| PTB-XL fold 10, {k} macro-AUC | " + " | ".join(f"{reps[v]['test'][k]['macro_auc']:.3f}" for v in vers) + " |")
+        out.append("| Ningbo test split, mapped statements (own map) | " + " | ".join(
+            f"{reps[v]['ningbo']['test']['macro_auc_mapped']:.3f}" if reps[v].get("ningbo") else "—" for v in vers) + " |")
+        ext = {v: _load(f"ecg12_external_chapman_{v}") for v in vers}
+        if all(ext.values()):
+            out += ["", "Chapman–Shaoxing (held out; same country and ECG system as Ningbo, so not fully independent for v0.2+; "
+                    "its results have been seen for every version, so it is no longer a pristine test set):", "",
+                    "| Statement | ECGs | " + " | ".join(f"{v} AUC" for v in vers) + " | " + " | ".join(f"{v} Se" for v in vers) + " |",
+                    "|---|---:|" + "---:|" * (2 * len(vers))]
+            base = ext[vers[0]]["per_label"]
+            for k, a1 in sorted(base.items(), key=lambda kv: -kv[1]["support"]):
+                if all(k in ext[v]["per_label"] for v in vers):
+                    out.append(f"| {k} | {a1['support']:,} | " + " | ".join(f"{ext[v]['per_label'][k]['auc']:.3f}" for v in vers)
+                               + " | " + " | ".join(_pct(ext[v]["per_label"][k]["sensitivity"]) for v in vers) + " |")
+        ch = reps[sel["chosen"]]
+        out += ["", f"{sel['chosen']} subgroups (PTB-XL test, superclass macro-AUC): " + "; ".join(
+            f"{g} {v['superclass_macro_auc']:.3f}" for g, v in ch["subgroups"].items()) + ".", ""]
     return out
 
 
@@ -412,7 +423,11 @@ def write_results() -> str:
             "results are unchanged (demo record 233 reproduced exactly). Test added.",
             "6. **12-lead measurements were reported for pure noise.** When every lead is rated unusable, measurements and "
             "statements are now both withheld. Test added.",
-            "7. **12-lead measurement v0.1 had large misses** (wide QRS, low P waves, flat T waves; section 7.2). Fixed in v0.2.", "",
+            "7. **12-lead measurement v0.1 had large misses** (wide QRS, low P waves, flat T waves; section 7.2). Fixed in v0.2.",
+            "7b. **Statement model v0.2 learned 'no PVC' from 27,901 Ningbo ECGs** because the label map used a PVC code that "
+            "dataset never uses (section 7.5). Fixed in v0.3 with a map built from the dataset's actual code list; Chapman PVC "
+            "AUC 0.907 → 0.990. Lesson, now a rule: before training on a new dataset, list every label code it actually uses "
+            "and check each mapped statement has positives.", "",
             "### Open (next work)",
             "8. **AF over-called in ectopy-rich recordings — four candidates tried, none adopted** (section 4). Every candidate "
             "cut false AF substantially but lost real AF in some patient. With the MIT-BIH AF Database (8 validation AF patients) "
@@ -434,11 +449,12 @@ def write_results() -> str:
             "carts and OT/ICU monitors is unknown until tested on partner-hospital data.",
             "13. **CinC split is by record, not patient** (no patient IDs are published), so some test records may share a patient "
             "with training records. The cross-dataset MIT-BIH result is the stronger generalisation evidence.",
-            "14. **Rare 12-lead statements are weak.** Wolff-Parkinson-White (8 test ECGs), long QT (11), atrial flutter (7) and "
-            "anterior MI (35) have low sensitivity at thresholds chosen from very few validation examples. Next: more 12-lead data "
-            "(CODE-15%, MIMIC-IV-ECG; licences in PRODUCT_PLAN §7) and, for long QT, a rule on our own measured QTc instead of "
-            "the learned statement.",
-            "15. **Sex gap in the 12-lead model.** Superclass macro-AUC is 0.914 for women and 0.935 for men on the test fold. "
+            "14. **Rare 12-lead statements are still weak.** Atrial flutter: Chapman sensitivity 9% (no trustworthy flutter "
+            "training labels: Ningbo's are mislabelled fibrillation). Long QT: AUC 0.93 on Chapman but sensitivity 22% at the "
+            "PTB-XL threshold. WPW has 8 PTB-XL test ECGs. Next: flutter data with verified labels (e.g. CODE-15%, MIMIC-IV-ECG; "
+            "licences in PRODUCT_PLAN §7) and per-site operating points (section 7.4).",
+            "15. **Sex gap in the 12-lead model.** Superclass macro-AUC on PTB-XL test: v0.1 0.914 women vs 0.935 men; v0.3 0.917 "
+            "vs 0.939 — more data did not close it. "
             "Needs investigation (sex-specific criteria such as LVH voltage, class balance) before any claim; subgroup results "
             "must be part of every future model card.",
             "16. **12-lead measurements are checked against other algorithms, not a referee.** IEC 60601-2-25 requires the CSE "
@@ -447,8 +463,10 @@ def write_results() -> str:
             "17. **The signal-quality model was trained on Holter lead II, not 12-lead ECGs.** On clean PTB-XL validation ECGs "
             "it rates 0.35% of leads unusable (about 1 ECG in 25 gets an 'unusable lead' note) and 20% noisy. Next: train it on "
             "12-lead data, e.g. using PTB-XL's own noise and electrode annotations.",
-            "18. **PTB-XL is one manufacturer and one country** (Schiller devices, Germany, 1989–1996). Performance on today's ECG "
-            "carts in Indian and US hospitals is unknown until tested on partner data.", ""]
+            "18. **Two countries, no Indian or US data yet.** PTB-XL (Schiller devices, Germany, 1989–1996) and Chapman/Ningbo "
+            "(China, 2013–2018). Performance on today's ECG carts in Indian and US hospitals is unknown until tested on partner data.",
+            "19. **Thresholds are per site.** The same model needs different yes/no thresholds where hospitals label differently "
+            "(section 7.3–7.4). The product must let each site set and verify its operating points on local data at installation.", ""]
     path = REPORTS_DIR / "RESULTS.md"
     path.write_text("\n".join(out))
     return str(path)

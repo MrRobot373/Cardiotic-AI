@@ -4,9 +4,9 @@
     "version": "0.1.0",
     "use": "research use only",
     "models": {
-      "ecg12_net_v0.1": {
-        "sha256": "a5dae07773ef",
-        "temperature": 1.1985052824020386
+      "ecg12_net_v0.3": {
+        "sha256": "3a7852b34d61",
+        "temperature": 1.2364264726638794
       },
       "quality_net_v0.3": {
         "sha256": "a07d9ae9563e"
@@ -65,52 +65,58 @@
   },
   "statements": [
     {
-      "statement": "SUPER_MI",
-      "probability": 0.9434213042259216,
-      "threshold": 0.6,
+      "statement": "IMI",
+      "probability": 0.9552817344665527,
+      "threshold": 0.36000000000000004,
       "confidence": "high"
     },
     {
-      "statement": "IMI",
-      "probability": 0.9420620203018188,
-      "threshold": 0.4,
+      "statement": "SUPER_MI",
+      "probability": 0.9381516575813293,
+      "threshold": 0.38,
       "confidence": "high"
     },
     {
       "statement": "AFIB",
-      "probability": 0.8035663962364197,
-      "threshold": 0.52,
-      "confidence": "moderate"
+      "probability": 0.919600248336792,
+      "threshold": 0.54,
+      "confidence": "high"
     },
     {
       "statement": "SUPER_STTC",
-      "probability": 0.7524477243423462,
-      "threshold": 0.44,
+      "probability": 0.7333968281745911,
+      "threshold": 0.4,
       "confidence": "moderate"
     },
     {
-      "statement": "QWAVE",
-      "probability": 0.499240905046463,
-      "threshold": 0.38,
+      "statement": "ABQRS",
+      "probability": 0.4617091119289398,
+      "threshold": 0.22,
       "confidence": "low"
     },
     {
-      "statement": "LOWT",
-      "probability": 0.44367215037345886,
+      "statement": "NDT",
+      "probability": 0.4413372278213501,
       "threshold": 0.28,
       "confidence": "low"
     },
     {
-      "statement": "STD_",
-      "probability": 0.4114440977573395,
-      "threshold": 0.32,
+      "statement": "LOWT",
+      "probability": 0.3740527033805847,
+      "threshold": 0.28,
       "confidence": "low"
     },
     {
       "statement": "NST_",
-      "probability": 0.16303634643554688,
-      "threshold": 0.13999999999999999,
+      "probability": 0.180211141705513,
+      "threshold": 0.12000000000000001,
       "confidence": "moderate"
+    },
+    {
+      "statement": "IPMI",
+      "probability": 0.05433138087391853,
+      "threshold": 0.02,
+      "confidence": "high"
     }
   ],
   "notes": [
