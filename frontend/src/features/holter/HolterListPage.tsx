@@ -1,5 +1,6 @@
 import { Activity } from "lucide-react";
 import { Link } from "react-router";
+import { useDemo } from "@/app/demo-store";
 import { Avatar, Badge, Button, Card, PageHeader } from "@/components/ui";
 import { useCatalog } from "@/data/api";
 import { ageLabel } from "@/data/clinical";
@@ -7,6 +8,7 @@ import { fmtDateTime } from "@/lib/utils";
 
 export default function HolterListPage() {
   const { data: c } = useCatalog();
+  const { site } = useDemo();
   return (
     <div className="animate-fade-in">
       <PageHeader title="Holter & long recordings" description="Every beat classified and every 30 s window given a rhythm by the AI. The reader confirms events instead of scrolling through hours of ECG." />
@@ -30,7 +32,7 @@ export default function HolterListPage() {
               </div>
               <ul className="mt-3 flex-1 space-y-1 text-[0.8rem]">{h.findings.map((f) => <li key={f} className="flex gap-1.5"><Activity className="mt-0.5 size-3.5 shrink-0 text-primary" />{f}</li>)}</ul>
               <div className="mt-4 flex items-center justify-between">
-                <Badge tone="outline">{h.source.dataset} {h.source.record}</Badge>
+                {site.showReference ? <Badge tone="outline">{h.source.dataset} {h.source.record}</Badge> : <span />}
                 <Button size="sm" variant="strong" asChild><Link to={`/holter/${h.id}`}>Review</Link></Button>
               </div>
             </Card>

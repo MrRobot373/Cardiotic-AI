@@ -1,6 +1,6 @@
-# Cardiotic AI — frontend (demo)
+# Cardiotic AI — frontend
 
-The clinician-facing app, built to give demos **without a backend**. It uses the same design system as
+The clinician-facing app. This build runs **without a backend** (static data, reviews kept in the browser) so it can be shown anywhere. It uses the same design system as
 MED AI: React 18, TypeScript, Vite, Tailwind, Radix UI and lucide icons.
 
 **Everything the AI shows is real.**
@@ -11,25 +11,25 @@ MED AI: React 18, TypeScript, Vite, Tailwind, Radix UI and lucide icons.
 **What is not real:**
 - Patient names, record numbers, doctors and dates are invented.
 - Reviews and sign-offs are stored in the browser only.
-- Research use only.
+- The UI carries no "demo" or "research use" wording, by product decision. Dataset provenance is visible only with **Settings → Validation view** on.
 
 ## Screens
 
-Screenshots: [worklist](screenshots/worklist-light.png) · [ECG review](screenshots/review-light.png) · [dark](screenshots/review-dark.png) · [phone](screenshots/review-mobile.png) · [Holter](screenshots/holter-light.png) · [monitoring](screenshots/monitoring-dark.png) · [patient](screenshots/patient-light.png) · [report](screenshots/report-light.png) · [AI & validation](screenshots/ai-light.png)
+Screenshots: [worklist](screenshots/worklist-light.png) · [ECG review](screenshots/review-light.png) · [dark](screenshots/review-dark.png) · [phone](screenshots/review-mobile.png) · [Holter](screenshots/holter-light.png) · [monitoring](screenshots/monitoring-dark.png) · [patient](screenshots/patient-light.png) · [report](screenshots/report-light.png) · [sign-in](screenshots/login-light.png) · [upload](screenshots/upload-light.png) · [AI & validation](screenshots/ai-light.png)
 
 
 | Screen | What it shows |
 |---|---|
-| Sign-in | Demo users: cardiologist (can sign), technician (records, sends for reading), IT admin |
+| Sign-in | User name + password (any password; SSO button fills one). Users: `arao` cardiologist (can sign), `rsawant` technician (records, sends for reading), `kdesai` IT admin |
 | Worklist | ECGs pre-read by the AI and ordered by urgency (critical / urgent / routine / normal), with key findings, rate and QTc |
-| ECG review | 12-lead ECG on ECG paper: 3×4, 6×2 or 12×1 layout, 25/50 mm/s, gain, beat markers and RR intervals, a drag caliper. Also median beats per lead with the AI's fiducial points, which can be edited (intervals are recomputed and marked "edited"). AI measurements are flagged against reference ranges; QTc is not interpreted with a wide QRS. AI findings show probability, threshold and confidence, with Accept / Reject / Show on ECG, plus "add finding". Comparison with the previous ECG, sign-off, and repeat request. Demo only: the dataset cardiologists' labels |
+| ECG review | 12-lead ECG on ECG paper: 3×4, 6×2 or 12×1 layout, 25/50 mm/s, gain, beat markers and RR intervals, a drag caliper. Also median beats per lead with the AI's fiducial points, which can be edited (intervals are recomputed and marked "edited"). AI measurements are flagged against reference ranges; QTc is not interpreted with a wide QRS. AI findings show probability, threshold and confidence, with Accept / Reject / Show on ECG, plus "add finding". Comparison with the previous ECG, sign-off, and repeat request. With Validation view on: the dataset cardiologists' labels |
 | Report | Printable A4 report (DRAFT until signed), with the engine version and model fingerprints in the footer |
 | Patients / patient | ECG history, HR / PR / QRS / QTc trends against usual ranges, Holter recordings |
-| Holter | Beat-by-beat review of 30-minute recordings: summary, HR trend with AF shaded, rhythm timeline, event list (AF episodes, ventricular runs and couplets, pauses), strip viewer with beat labels, and agreement with the dataset cardiologists |
-| Monitoring | OT/ICU board (future product). Traces replay real recordings; heart rate comes from AI beats; SpO₂/BP are simulated. States: flags, diathermy, offline |
-| Upload | Drop zone plus simulated analysis steps; connected ECG machines and file formats |
+| Holter | Beat-by-beat review of 30-minute recordings: summary, HR trend with AF shaded, rhythm timeline, event list (AF episodes, ventricular runs and couplets, pauses), strip viewer with beat labels, and, with Validation view on, agreement with the dataset cardiologists |
+| Monitoring | OT/ICU board (Live Assist, future product). Traces replay real MIT-BIH recordings; heart rate comes from AI beats; SpO₂/BP are made up. States: flags, diathermy, offline |
+| Upload | Drop zone (a dropped file is shown as queued), import from a machine inbox (runs the analysis steps on a stored recording), connected ECG machines and file formats |
 | AI models & validation | Every model's task, test data, key numbers and known weaknesses, generated from `ml/reports` |
-| Audit log, Settings | Who did what; site operating points, appearance (theme, accent, ECG paper colour), integrations, roles |
+| Audit log, Settings | Who did what; site name, operating points, Validation view, reset of local review data (admin), appearance (theme, accent, ECG paper colour), integrations, roles |
 
 ## Run it
 
@@ -51,8 +51,8 @@ node scripts/shots.mjs http://localhost:5174 shots   # screenshots of every scre
 Rebuild the demo data, which needs the research environment and data:
 
 ```bash
-npm run demo-data                         # public/demo/catalog.json, ecg/*.json, holter/*  (real engine output)
-python3 scripts/build_validation.py       # public/demo/validation.json (numbers for the AI page)
+npm run demo-data                         # public/data/catalog.json, ecg/*.json, holter/*  (real engine output)
+python3 scripts/build_validation.py       # public/data/validation.json (numbers for the AI page)
 ```
 
 Static hosting must send unknown paths to `index.html` (single-page app).

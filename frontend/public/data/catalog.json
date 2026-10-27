@@ -195,7 +195,7 @@
    "recorded_at": "2026-10-07T21:03",
    "location": "ECG room 1",
    "ordered_by": "Dr. Ananya Rao",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 271,
@@ -295,7 +295,7 @@
    "recorded_at": "2026-10-18T10:51",
    "location": "ECG room 2",
    "ordered_by": "Dr. Vivek Sharma",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 336,
@@ -412,7 +412,7 @@
    "recorded_at": "2026-10-27T08:30",
    "location": "Cardiology OPD",
    "ordered_by": "Dr. Priya Nair",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 347,
@@ -503,7 +503,7 @@
    "recorded_at": "2026-10-17T10:46",
    "location": "Ward 4B",
    "ordered_by": "Dr. Karan Mehta",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 581,
@@ -605,7 +605,7 @@
    "recorded_at": "2026-10-27T06:00",
    "location": "Emergency",
    "ordered_by": "Dr. Ananya Rao",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 598,
@@ -650,7 +650,7 @@
    "recorded_at": "2026-10-24T22:15",
    "location": "CCU",
    "ordered_by": "Dr. Vivek Sharma",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 8215,
@@ -703,7 +703,7 @@
    "recorded_at": "2026-10-27T03:30",
    "location": "ECG room 1",
    "ordered_by": "Dr. Priya Nair",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 8219,
@@ -760,7 +760,7 @@
    "recorded_at": "2026-07-15T00:31",
    "location": "ECG room 2",
    "ordered_by": "Dr. Karan Mehta",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 7598,
@@ -833,7 +833,7 @@
    "recorded_at": "2026-07-29T00:43",
    "location": "Cardiology OPD",
    "ordered_by": "Dr. Ananya Rao",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 7700,
@@ -919,7 +919,7 @@
    "recorded_at": "2026-08-27T01:46",
    "location": "Ward 4B",
    "ordered_by": "Dr. Vivek Sharma",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 7813,
@@ -1007,7 +1007,7 @@
    "recorded_at": "2026-09-16T01:03",
    "location": "Emergency",
    "ordered_by": "Dr. Priya Nair",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 7881,
@@ -1078,7 +1078,7 @@
    "recorded_at": "2026-10-27T01:00",
    "location": "CCU",
    "ordered_by": "Dr. Karan Mehta",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 8032,
@@ -1144,7 +1144,7 @@
    "recorded_at": "2025-11-03T14:42",
    "location": "ECG room 1",
    "ordered_by": "Dr. Ananya Rao",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 3582,
@@ -1215,7 +1215,7 @@
    "recorded_at": "2026-10-26T22:30",
    "location": "ECG room 2",
    "ordered_by": "Dr. Vivek Sharma",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 5219,
@@ -1292,7 +1292,7 @@
    "recorded_at": "2026-10-09T21:14",
    "location": "Cardiology OPD",
    "ordered_by": "Dr. Priya Nair",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 112,
@@ -1345,7 +1345,7 @@
    "recorded_at": "2026-10-26T20:00",
    "location": "Ward 4B",
    "ordered_by": "Dr. Karan Mehta",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 122,
@@ -1398,7 +1398,7 @@
    "recorded_at": "2026-10-25T16:56",
    "location": "Emergency",
    "ordered_by": "Dr. Ananya Rao",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 2587,
@@ -1462,7 +1462,7 @@
    "recorded_at": "2026-10-26T17:30",
    "location": "CCU",
    "ordered_by": "Dr. Vivek Sharma",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 2592,
@@ -1526,7 +1526,7 @@
    "recorded_at": "2025-09-20T21:13",
    "location": "ECG room 1",
    "ordered_by": "Dr. Priya Nair",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 18761,
@@ -1579,7 +1579,7 @@
    "recorded_at": "2025-10-25T22:43",
    "location": "ECG room 2",
    "ordered_by": "Dr. Karan Mehta",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 18914,
@@ -1642,7 +1642,7 @@
    "recorded_at": "2025-11-09T16:46",
    "location": "Cardiology OPD",
    "ordered_by": "Dr. Ananya Rao",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 18982,
@@ -1696,7 +1696,7 @@
    "recorded_at": "2026-05-21T20:21",
    "location": "Ward 4B",
    "ordered_by": "Dr. Vivek Sharma",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 19330,
@@ -1756,7 +1756,7 @@
    "recorded_at": "2026-10-12T17:19",
    "location": "Emergency",
    "ordered_by": "Dr. Priya Nair",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 19924,
@@ -1809,7 +1809,7 @@
    "recorded_at": "2026-10-26T15:00",
    "location": "CCU",
    "ordered_by": "Dr. Karan Mehta",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 19981,
@@ -1862,7 +1862,7 @@
    "recorded_at": "2026-10-26T12:30",
    "location": "ECG room 1",
    "ordered_by": "Dr. Ananya Rao",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 3009,
@@ -1955,7 +1955,7 @@
    "recorded_at": "2026-10-26T10:00",
    "location": "ECG room 2",
    "ordered_by": "Dr. Vivek Sharma",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 180,
@@ -2022,7 +2022,7 @@
    "recorded_at": "2026-10-25T12:26",
    "location": "Cardiology OPD",
    "ordered_by": "Dr. Priya Nair",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 3479,
@@ -2086,7 +2086,7 @@
    "recorded_at": "2026-10-26T07:30",
    "location": "Ward 4B",
    "ordered_by": "Dr. Karan Mehta",
-   "device": "Schiller AT-6 / CS-12 (PTB-XL)",
+   "device": "Schiller AT-6 / CS-12",
    "source": {
     "dataset": "PTB-XL 1.0.3",
     "record": 3484,
@@ -2139,7 +2139,7 @@
    "recorded_at": "2026-10-27T03:06",
    "location": "Emergency",
    "ordered_by": "Dr. Ananya Rao",
-   "device": "GE MUSE (Chapman\u2013Shaoxing)",
+   "device": "GE MAC 5500 \u00b7 MUSE",
    "source": {
     "dataset": "Chapman\u2013Shaoxing",
     "record": "MUSE_20180112_122850_57000",
@@ -2210,7 +2210,7 @@
    "recorded_at": "2026-10-27T02:53",
    "location": "CCU",
    "ordered_by": "Dr. Vivek Sharma",
-   "device": "GE MUSE (Chapman\u2013Shaoxing)",
+   "device": "GE MAC 5500 \u00b7 MUSE",
    "source": {
     "dataset": "Chapman\u2013Shaoxing",
     "record": "MUSE_20180111_155633_99000",
@@ -2274,7 +2274,7 @@
    "recorded_at": "2026-10-27T02:40",
    "location": "ECG room 1",
    "ordered_by": "Dr. Priya Nair",
-   "device": "GE MUSE (Chapman\u2013Shaoxing)",
+   "device": "GE MAC 5500 \u00b7 MUSE",
    "source": {
     "dataset": "Chapman\u2013Shaoxing",
     "record": "MUSE_20180112_073319_29000",
@@ -2329,7 +2329,7 @@
    "recorded_at": "2026-10-27T02:27",
    "location": "ECG room 2",
    "ordered_by": "Dr. Karan Mehta",
-   "device": "GE MUSE (Chapman\u2013Shaoxing)",
+   "device": "GE MAC 5500 \u00b7 MUSE",
    "source": {
     "dataset": "Chapman\u2013Shaoxing",
     "record": "MUSE_20180113_135023_96000",
@@ -2401,7 +2401,7 @@
     "licence": "ODC-By 1.0",
     "role": "test record (DS2)"
    },
-   "device": "Holter (MIT-BIH, 1975\u201379)",
+   "device": "Del Mar Avionics Holter",
    "ordered_by": "Dr. Ananya Rao",
    "findings": [
     "Possible atrial fibrillation in 108 of 120 rhythm windows (highest confidence: high)",
@@ -2437,7 +2437,7 @@
     "licence": "ODC-By 1.0",
     "role": "test record (DS2)"
    },
-   "device": "Holter (MIT-BIH, 1975\u201379)",
+   "device": "Del Mar Avionics Holter",
    "ordered_by": "Dr. Vivek Sharma",
    "findings": [
     "Predominant rhythm: other rhythm (120 of 120 windows)",
@@ -2475,7 +2475,7 @@
     "licence": "ODC-By 1.0",
     "role": "test record (DS2)"
    },
-   "device": "Holter (MIT-BIH, 1975\u201379)",
+   "device": "Del Mar Avionics Holter",
    "ordered_by": "Dr. Priya Nair",
    "findings": [
     "Predominant rhythm: sinus rhythm (80 of 120 windows)",

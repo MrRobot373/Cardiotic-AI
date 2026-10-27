@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useDemo } from "@/app/demo-store";
 import { cn } from "@/lib/utils";
 
 export function CardioticMark({ className }: { className?: string }) {
@@ -17,14 +18,15 @@ export function CardioticMark({ className }: { className?: string }) {
   );
 }
 
-export function BrandMark({ className, showText = true, site = "Demo Hospital, Pune" }: { className?: string; showText?: boolean; site?: string }) {
+export function BrandMark({ className, showText = true }: { className?: string; showText?: boolean }) {
+  const { site } = useDemo();
   return (
     <Link to="/" className={cn("flex min-w-0 items-center gap-2.5", className)}>
       <CardioticMark />
       {showText && (
         <div className="min-w-0 leading-tight">
           <div className="truncate text-[1.05rem] font-semibold tracking-tight">Cardiotic AI</div>
-          <div className="truncate text-[0.7rem] text-muted-foreground">{site}</div>
+          <div className="truncate text-[0.7rem] text-muted-foreground">{site.siteName}</div>
         </div>
       )}
     </Link>

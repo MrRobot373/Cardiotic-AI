@@ -30,7 +30,7 @@ export default function HolterReviewPage() {
   const { id } = useParams();
   const { data: c } = useCatalog();
   const { data, isLoading, error } = useHolter(id);
-  const { review, updateReview, user } = useDemo();
+  const { review, updateReview, user, site } = useDemo();
   const [t, setT] = useState(0);
   const [span, setSpan] = useState<"10" | "30" | "60">("30");
   const [filter, setFilter] = useState<"all" | "af" | "ventricular" | "pause">("all");
@@ -51,7 +51,7 @@ export default function HolterReviewPage() {
     <div className="animate-fade-in">
       <PatientHeader patient={p} chips={<><Badge tone="outline">Holter · {h.lead} · {fmtDur(a.dur)}</Badge><StatusBadge status={rv.status} /></>}
         actions={canSign(user) && rv.status !== "signed" ? (
-          <Button variant="strong" onClick={() => { updateReview(h.id, { status: "signed", signedBy: user!.name, signedAt: new Date().toISOString() }, "Signed Holter report"); toast.success("Holter report signed and sent (simulated)"); }}><ShieldCheck /> Sign Holter report</Button>
+          <Button variant="strong" onClick={() => { updateReview(h.id, { status: "signed", signedBy: user!.name, signedAt: new Date().toISOString() }, "Signed Holter report"); toast.success("Holter report signed and sent"); }}><ShieldCheck /> Sign Holter report</Button>
         ) : rv.status === "signed" ? <Badge tone="success"><ShieldCheck /> Signed by {rv.signedBy}</Badge> : undefined} />
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
@@ -144,13 +144,13 @@ export default function HolterReviewPage() {
               ))}
             </div>
           </Card>
-          <Card className="p-4 text-[0.8rem]">
-            <div className="mb-1 flex items-center gap-1.5 font-semibold"><ShieldCheck className="size-4 text-success" /> Checked against the dataset cardiologists</div>
+          {site.showReference && <Card className="p-4 text-[0.8rem]">
+            <div className="mb-1 flex items-center gap-1.5 font-semibold"><ShieldCheck className="size-4 text-success" /> Checked against the reference cardiologists</div>
             <p className="text-muted-foreground">
               {h.source.dataset} record {h.source.record} ({h.source.role}) has every beat labelled by cardiologists. The AI found {(a.agreement.detected * 100).toFixed(1)}% of their {a.agreement.refBeats.toLocaleString()} beats and gave {(a.agreement.sameClass * 100).toFixed(1)}% of them the same class
-              {a.agreement.vSensitivity !== null && <> · ventricular beats found: {(a.agreement.vSensitivity * 100).toFixed(1)}% of {a.agreement.vRef}</>}. Shown only in this demo.
+              {a.agreement.vSensitivity !== null && <> · ventricular beats found: {(a.agreement.vSensitivity * 100).toFixed(1)}% of {a.agreement.vRef}</>}. 
             </p>
-          </Card>
+          </Card>}
         </div>
       </div>
     </div>

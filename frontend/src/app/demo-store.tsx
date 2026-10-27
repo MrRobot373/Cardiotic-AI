@@ -1,6 +1,6 @@
 /**
  * Demo state (no backend): who is signed in, review decisions, sign-off and the audit trail.
- * Kept in this browser's localStorage; "Reset demo" clears it.
+ * Kept in this browser's localStorage; Settings → "Reset local review data" clears it.
  */
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
@@ -10,12 +10,13 @@ export interface DemoUser {
   name: string;
   role: Role;
   title: string;
+  username: string;
 }
 
 export const DEMO_USERS: DemoUser[] = [
-  { name: "Dr. Ananya Rao", role: "cardiologist", title: "Consultant cardiologist" },
-  { name: "Rohit Sawant", role: "technician", title: "ECG technician" },
-  { name: "Kiran Desai", role: "admin", title: "Hospital IT administrator" },
+  { name: "Dr. Ananya Rao", role: "cardiologist", title: "Consultant cardiologist", username: "arao" },
+  { name: "Rohit Sawant", role: "technician", title: "ECG technician", username: "rsawant" },
+  { name: "Kiran Desai", role: "admin", title: "Hospital IT administrator", username: "kdesai" },
 ];
 
 export type ReviewStatus = "new" | "in_review" | "signed" | "repeat";
@@ -43,6 +44,9 @@ export interface SiteSettings {
   thresholdOverrides: Record<string, number>;
   ratesFromMeasurements: boolean;
   autoSendHis: boolean;
+  siteName: string;
+  /** Show the dataset cardiologists' labels next to the AI (validation / sales presentations). */
+  showReference: boolean;
 }
 
 interface State {
@@ -54,7 +58,7 @@ interface State {
 
 const KEY = "cardiotic.demo.v1";
 const EMPTY_REVIEW: Review = { status: "new", decisions: {}, added: [], edits: {}, note: "" };
-const DEFAULT_SITE: SiteSettings = { operatingPoint: "balanced", thresholdOverrides: {}, ratesFromMeasurements: false, autoSendHis: true };
+const DEFAULT_SITE: SiteSettings = { operatingPoint: "balanced", thresholdOverrides: {}, ratesFromMeasurements: false, autoSendHis: true, siteName: "Department of Cardiology", showReference: false };
 const INITIAL: State = { user: null, reviews: {}, audit: [], site: DEFAULT_SITE };
 
 function load(): State {

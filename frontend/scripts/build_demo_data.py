@@ -2,7 +2,7 @@
 
     PYTHONPATH=engine:ml .venv/bin/python frontend/scripts/build_demo_data.py
 
-Writes frontend/public/demo/. Signals come from public research databases (PTB-XL test fold,
+Writes frontend/public/data/. Signals come from public research databases (PTB-XL test fold,
 Chapman–Shaoxing, MIT-BIH test records), the results from cardiotic-engine. Patient names, record
 numbers, doctors and dates are fictitious; the real dataset and record id are kept in `source`.
 Ages, sexes and the time between a patient's ECGs are the real ones (PTB-XL keeps them).
@@ -24,7 +24,7 @@ from cardiotic_ml import dsp
 from cardiotic_ml.data import chapman, mitdb, ptbxl
 from cardiotic_ml.ecg12 import measure
 
-OUT = Path(os.environ.get("DEMO_OUT", Path(__file__).resolve().parents[1] / "public" / "demo"))
+OUT = Path(os.environ.get("DEMO_OUT", Path(__file__).resolve().parents[1] / "public" / "data"))
 NOW = datetime(2026, 10, 27, 9, 30)
 FS_VIEW = 250
 
@@ -115,7 +115,7 @@ def main() -> None:
             when = latest - (dates[-1] - d)
             add_ecg(p, ptbxl.load_signal(r, hr=True), 500, when,
                     {"dataset": "PTB-XL 1.0.3", "record": r.ecg_id, "licence": "CC BY 4.0", "role": "test fold (never used for training)"},
-                    "Schiller AT-6 / CS-12 (PTB-XL)", sorted(c for c, v in r.codes.items()), n)
+                    "Schiller AT-6 / CS-12", sorted(c for c, v in r.codes.items()), n)
             n += 1
     crecs = chapman.records()
     for label, count in CHAPMAN_PICKS.items():
@@ -124,7 +124,7 @@ def main() -> None:
             p = new_patient(r.age, r.sex, "Chapman–Shaoxing")
             add_ecg(p, chapman.load_signal(r.file), 500, NOW - timedelta(minutes=20 + 13 * n),
                     {"dataset": "Chapman–Shaoxing", "record": r.file, "licence": "CC0", "role": "held-out test set"},
-                    "GE MUSE (Chapman–Shaoxing)", sorted(r.scp()), n)
+                    "GE MAC 5500 · MUSE", sorted(r.scp()), n)
             n += 1
 
     holters = []
@@ -145,7 +145,7 @@ def main() -> None:
         holters.append({"id": hid, "patient_id": p["id"], "recorded_at": (NOW - timedelta(days=1, hours=3 * i)).isoformat(timespec="minutes"),
                         "duration_s": len(sig) / rec.fs, "lead": "MLII", "fs": rec.fs,
                         "source": {"dataset": "MIT-BIH Arrhythmia", "record": rid, "licence": "ODC-By 1.0", "role": "test record (DS2)"},
-                        "device": "Holter (MIT-BIH, 1975–79)", "ordered_by": DOCTORS[i % len(DOCTORS)],
+                        "device": "Del Mar Avionics Holter", "ordered_by": DOCTORS[i % len(DOCTORS)],
                         "findings": r["findings"], "measurements": r["measurements"]})
     catalog = {"generated": NOW.isoformat(timespec="minutes"), "engine": eng.info(), "patients": patients,
                "ecgs": ecgs, "holters": holters, "statement_descriptions": descriptions,

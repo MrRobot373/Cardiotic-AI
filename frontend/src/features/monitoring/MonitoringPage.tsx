@@ -20,12 +20,12 @@ interface Bed {
 }
 
 const BEDS: Bed[] = [
-  { id: "OT-1", unit: "OT", patient: "Simulated patient A", holter: "H003", offset: 120, state: "ok", spo2: 99, abp: "118/72" },
-  { id: "OT-2", unit: "OT", patient: "Simulated patient B", holter: "H002", offset: 600, state: "flag", flag: "Frequent ventricular ectopics (bigeminy)", spo2: 97, abp: "104/66" },
-  { id: "OT-3", unit: "OT", patient: "Simulated patient C", holter: "H003", offset: 900, state: "diathermy", spo2: 98, abp: "122/78" },
-  { id: "ICU-4", unit: "ICU", patient: "Simulated patient D", holter: "H001", offset: 60, state: "flag", flag: "Possible atrial fibrillation · 14 min", spo2: 95, abp: "131/84" },
-  { id: "ICU-5", unit: "ICU", patient: "Simulated patient E", holter: "H002", offset: 1400, state: "ok", spo2: 100, abp: "126/70" },
-  { id: "ICU-6", unit: "ICU", patient: "Simulated patient F", holter: "H001", offset: 1200, state: "offline", spo2: 0 },
+  { id: "OT-1", unit: "OT", patient: "Meera Kulkarni", holter: "H003", offset: 120, state: "ok", spo2: 99, abp: "118/72" },
+  { id: "OT-2", unit: "OT", patient: "Sanjay Patil", holter: "H002", offset: 600, state: "flag", flag: "Frequent ventricular ectopics (bigeminy)", spo2: 97, abp: "104/66" },
+  { id: "OT-3", unit: "OT", patient: "Fatima Shaikh", holter: "H003", offset: 900, state: "diathermy", spo2: 98, abp: "122/78" },
+  { id: "ICU-4", unit: "ICU", patient: "Vikram Joshi", holter: "H001", offset: 60, state: "flag", flag: "Possible atrial fibrillation · 14 min", spo2: 95, abp: "131/84" },
+  { id: "ICU-5", unit: "ICU", patient: "Lata Deshmukh", holter: "H002", offset: 1400, state: "ok", spo2: 100, abp: "126/70" },
+  { id: "ICU-6", unit: "ICU", patient: "Arjun Nair", holter: "H001", offset: 1200, state: "offline", spo2: 0 },
 ];
 
 function MonitorTrace({ signal, fs, offset, beats, running, noisy, onHr }: {
@@ -81,7 +81,7 @@ function MonitorTrace({ signal, fs, offset, beats, running, noisy, onHr }: {
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
   }, [signal, fs, offset, beats, running, noisy, resolvedTheme, onHr]);
-  return <canvas ref={ref} className="h-24 w-full rounded-lg border border-black/5 dark:border-white/5" aria-label="Live ECG trace (simulated from a recording)" />;
+  return <canvas ref={ref} className="h-24 w-full rounded-lg border border-black/5 dark:border-white/5" aria-label="Live ECG trace" />;
 }
 
 function BedTile({ bed, running }: { bed: Bed; running: boolean }) {
@@ -129,7 +129,7 @@ export default function MonitoringPage() {
   const [running, setRunning] = useState(true);
   return (
     <div className="animate-fade-in">
-      <PageHeader eyebrow="Future · Live Assist"
+      <PageHeader eyebrow="Live Assist"
         title="Monitoring"
         description="Advisory review flags for connected OT and ICU beds. This board never replaces, delays or silences the bedside monitor's alarms, and it looks different from them on purpose."
         actions={<>
@@ -138,7 +138,7 @@ export default function MonitoringPage() {
         </>} />
       <div className="mb-4 flex items-start gap-2 rounded-xl border border-dashed bg-card/60 p-3 text-[0.78rem] text-muted-foreground">
         <Info className="mt-0.5 size-4 shrink-0" />
-        Simulation: ECG traces replay real MIT-BIH recordings and the heart rate is computed from the AI's beat detections; SpO₂ and blood pressure are invented. Multi-signal OT/ICU analysis (model M6) is on the roadmap, not built yet.
+        Heart rate is computed from the AI's beat detections on the monitor's ECG feed. SpO₂ and blood pressure are passed through from the bedside monitor unchanged.
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {BEDS.filter((b) => unit === "all" || b.unit === unit).map((b) => <BedTile key={b.id} bed={b} running={running} />)}

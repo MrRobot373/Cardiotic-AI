@@ -22,7 +22,7 @@ export default function PatientsPage() {
   }, [catalog, items, q]);
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Patients" description="Patient identity comes from the hospital's HIS / ADT feed in the product. Demo patients are fictitious."
+      <PageHeader title="Patients" description="Patients and demographics come from the hospital information system (ADT feed)."
         actions={<Input icon={<Search />} placeholder="Name or MRN" value={q} onChange={(e) => setQ(e.target.value)} className="w-64" />} />
       <Card className="overflow-hidden">
         <Table>

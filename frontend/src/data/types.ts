@@ -1,4 +1,4 @@
-/** Shapes of the demo dataset (public/demo, built by scripts/build_demo_data.py from real engine output). */
+/** Shapes of the demo dataset (public/data, built by scripts/build_demo_data.py from real engine output). */
 
 export type Sex = "M" | "F";
 

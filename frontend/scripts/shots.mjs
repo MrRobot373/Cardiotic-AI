@@ -11,7 +11,7 @@ const ROUTES = [
   ["reports", "/reports", true], ["upload", "/upload", true], ["ai", "/ai", true], ["audit", "/audit", true],
   ["settings", "/settings/site", true],
 ];
-const user = { name: "Dr. Ananya Rao", role: "cardiologist", title: "Consultant cardiologist" };
+const user = { name: "Dr. Ananya Rao", role: "cardiologist", title: "Consultant cardiologist", username: "arao" };
 const browser = await chromium.launch().catch(() => chromium.launch({ executablePath: "/opt/pw-browsers/chromium" }));
 const errors = [];
 for (const [mode, vp] of [["light", { width: 1536, height: 960 }], ["dark", { width: 1536, height: 960 }], ["mobile", { width: 390, height: 844 }]]) {

@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { registerDescriptions } from "./clinical";
 import type { Catalog, EcgDetail, HolterDetail } from "./types";
 
-const BASE = `${import.meta.env.BASE_URL}demo`;
+const BASE = `${import.meta.env.BASE_URL}data`;
 
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}/${path}`);
@@ -11,7 +11,7 @@ async function getJson<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-/** Demo times are stored relative to the build date; shift them so the newest ECG is always "today". */
+/** Recording times are stored relative to the build date; shift them so the newest ECG is always "today". */
 function shiftTimes(c: Catalog): Catalog {
   const offset = Date.now() - new Date(c.generated).getTime();
   const shift = (iso: string) => new Date(new Date(iso).getTime() + offset).toISOString();

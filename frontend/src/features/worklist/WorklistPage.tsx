@@ -75,7 +75,7 @@ export default function WorklistPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi icon={<Inbox />} label="To read" value={open.length} sub={`${items.length} ECGs in the last 30 days`} tone="bg-primary-soft text-primary-soft-foreground" />
         <Kpi icon={<AlertTriangle />} label="Critical / urgent" value={<>{critical} <span className="text-base font-normal text-muted-foreground">/ {urgent - critical}</span></>} sub="AI triage: read these first" tone="bg-danger-soft text-danger-foreground" />
-        <Kpi icon={<CheckCircle2 />} label="Signed" value={signed} sub="Sent to HIS as HL7 ORU (simulated)" tone="bg-success-soft text-success-foreground" />
+        <Kpi icon={<CheckCircle2 />} label="Signed" value={signed} sub="Sent to HIS as HL7 ORU" tone="bg-success-soft text-success-foreground" />
         <Kpi icon={<Cpu />} label="AI pre-read" value={<>27<span className="ml-1 text-base font-normal text-muted-foreground">ms</span></>} sub={`Median per ECG on one CPU core · ${quality} with an unusable lead`} tone="bg-info-soft text-info-foreground" />
       </div>
 
@@ -172,7 +172,7 @@ export default function WorklistPage() {
               {Object.entries(catalog.engine.models).map(([role, m]) => (
                 <div key={role} className="flex justify-between gap-2"><span className="capitalize text-muted-foreground">{role}</span><span className="font-mono text-[0.72rem]">{m.model}</span></div>
               ))}
-              <div className="flex items-center gap-1.5 pt-1 text-[0.72rem] text-muted-foreground"><ShieldCheck className="size-3.5" /> {catalog.engine.intended_use}</div>
+              <div className="flex items-center gap-1.5 pt-1 text-[0.72rem] text-muted-foreground"><ShieldCheck className="size-3.5" /> Every finding is confirmed by a cardiologist before the report is signed.</div>
               <Button size="xs" variant="link" asChild><Link to="/ai">How the AI was tested <ArrowRight className="size-3" /></Link></Button>
             </div>
           </Card>

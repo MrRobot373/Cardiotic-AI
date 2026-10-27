@@ -74,7 +74,7 @@ def main():
                       "beats": sum(v.get("beats", 0) for v in sets.values()),
                       "max_prob_diff": max(v["max_prob_diff"] for v in sets.values())},
            "source": "ml/reports/RESULTS.md and engine/validation/equivalence.json"}
-    path = ROOT / "frontend" / "public" / "demo" / "validation.json"
+    path = ROOT / "frontend" / "public" / "data" / "validation.json"
     path.write_text(json.dumps(out, indent=1))
     print("wrote", path)
 

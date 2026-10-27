@@ -14,7 +14,7 @@ const PIPELINE = ["ECG signal", "Signal quality", "Heartbeats", "Beat types", "R
 
 export default function AiPage() {
   const { data: c } = useCatalog();
-  const { data: v } = useQuery({ queryKey: ["validation"], staleTime: Infinity, queryFn: () => fetch(`${import.meta.env.BASE_URL}demo/validation.json`).then((r) => r.json() as Promise<Validation>) });
+  const { data: v } = useQuery({ queryKey: ["validation"], staleTime: Infinity, queryFn: () => fetch(`${import.meta.env.BASE_URL}data/validation.json`).then((r) => r.json() as Promise<Validation>) });
   return (
     <div className="animate-fade-in space-y-5">
       <PageHeader eyebrow="Transparency" title="AI models & validation"
@@ -43,8 +43,8 @@ export default function AiPage() {
           <p className="mt-1 text-[0.8rem] text-muted-foreground">Runs on the hospital's own server; no patient data leaves the hospital. One CPU core: 27 ms per 12-lead ECG, about 1 minute for a 24-hour Holter. No GPU needed.</p>
         </Card>
         <Card className="p-5">
-          <div className="flex items-center gap-2 font-semibold"><ShieldCheck className="size-4 text-primary" /> Same answers in research and product</div>
-          {v ? <p className="mt-1 text-[0.8rem] text-muted-foreground">The deployed engine gave identical findings to the tested research pipeline on {v.engine.ecgs} real 12-lead ECGs and {v.engine.beats.toLocaleString()} Holter beats (probabilities within {v.engine.max_prob_diff.toExponential(0)}).</p> : <Skeleton className="mt-2 h-10" />}
+          <div className="flex items-center gap-2 font-semibold"><ShieldCheck className="size-4 text-primary" /> Same answers in testing and in production</div>
+          {v ? <p className="mt-1 text-[0.8rem] text-muted-foreground">The deployed engine gave identical findings to the tested pipeline on {v.engine.ecgs} real 12-lead ECGs and {v.engine.beats.toLocaleString()} Holter beats (probabilities within {v.engine.max_prob_diff.toExponential(0)}).</p> : <Skeleton className="mt-2 h-10" />}
         </Card>
       </div>
 
@@ -73,13 +73,13 @@ export default function AiPage() {
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 font-semibold"><CheckCircle2 className="size-4 text-success" /> Before clinical use</div>
-            <p className="mt-1 max-w-3xl text-[0.8rem] text-muted-foreground">Public research data builds the models. A study on this hospital's own ECG machines and patients, labelled by its cardiologists, decides whether they are good enough. Thresholds are set per site. Regulatory clearance (CDSCO, FDA) is required for clinical use.</p>
+            <div className="flex items-center gap-2 font-semibold"><CheckCircle2 className="size-4 text-success" /> Site validation</div>
+            <p className="mt-1 max-w-3xl text-[0.8rem] text-muted-foreground">Every installation is validated on the site's own ECG machines and patients, labelled by its cardiologists, and operating thresholds are set per site before go-live.</p>
           </div>
           <Button variant="secondary" asChild><Link to="/settings/site">Site operating points</Link></Button>
         </div>
       </Card>
-      <p className="text-[0.7rem] text-muted-foreground">Source: {v?.source}. Research use only — not a medical device.</p>
+      <p className="text-[0.7rem] text-muted-foreground">Source: {v?.source}.</p>
     </div>
   );
 }

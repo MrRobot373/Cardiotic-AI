@@ -1,10 +1,10 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Info, Menu, Moon, Search, Sun, Upload } from "lucide-react";
+import { Menu, Moon, Search, Sun, Upload } from "lucide-react";
 import { useState } from "react";
 import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router";
 import { useAppearance } from "@/app/appearance";
 import { useDemo } from "@/app/demo-store";
-import { Button, Kbd, Popover, PopoverContent, PopoverTrigger, SheetContent, Tooltip } from "@/components/ui";
+import { Button, Kbd, SheetContent, Tooltip } from "@/components/ui";
 import { isOpen, useWorkItems } from "@/data/derived";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "./BrandMark";
@@ -13,27 +13,6 @@ import { NAV, PRIMARY_NAV, RAIL_NAV, visibleFor } from "./nav";
 import { UserMenu } from "./UserMenu";
 
 const iconBtn = "glass relative flex size-10 items-center justify-center rounded-xl border border-white/70 text-muted-foreground shadow-card transition-colors hover:text-foreground dark:border-white/[0.06] [&_svg]:size-[18px]";
-
-export function DemoBanner() {
-  return (
-    <div className="no-print flex items-center gap-2 bg-[#0B1530] px-3 py-1.5 text-[0.72rem] text-white/80 md:px-6">
-      <span className="font-semibold text-amber-300">Demo</span>
-      <span className="hidden truncate sm:inline">Real Cardiotic AI output on public research ECGs · patients, doctors and dates are fictitious · research use only</span>
-      <span className="truncate sm:hidden">Real AI output · fictitious patients</span>
-      <Popover>
-        <PopoverTrigger asChild>
-          <button className="ml-auto flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-white/70 hover:bg-white/10 hover:text-white"><Info className="size-3.5" /> About this demo</button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-80 text-[0.8rem] leading-relaxed">
-          <p className="font-semibold">What is real</p>
-          <p className="mt-1 text-muted-foreground">Every waveform is a real ECG from a public research database (PTB-XL, Chapman–Shaoxing, MIT-BIH), from patients the AI never trained on. Every measurement, beat label, rhythm and finding is the actual output of the Cardiotic AI engine — including its mistakes.</p>
-          <p className="mt-2 font-semibold">What is not</p>
-          <p className="mt-1 text-muted-foreground">Names, record numbers, doctors and dates are invented. There is no server: reviews and sign-offs are kept in this browser only. Not a medical device.</p>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
 
 function TopBar() {
   const palette = usePalette();
@@ -111,7 +90,7 @@ function TopBar() {
 function Rail() {
   const { user } = useDemo();
   return (
-    <aside className="no-print sticky top-[96px] hidden h-fit shrink-0 lg:block">
+    <aside className="no-print sticky top-[88px] hidden h-fit shrink-0 lg:block">
       <div className="glass flex flex-col items-center gap-1.5 rounded-full border border-white/70 p-1.5 shadow-card dark:border-white/[0.06]">
         {visibleFor(RAIL_NAV, user?.role).map((item) => (
           <Tooltip key={item.to} content={item.label} side="right">
@@ -140,14 +119,13 @@ export function AppShell() {
   return (
     <CommandPaletteProvider>
       <div className="min-h-screen">
-        <DemoBanner />
         <TopBar />
         <div className="mx-auto flex w-full max-w-[1680px] gap-4 px-3 pb-6 md:px-6">
           <Rail />
           <main className="min-w-0 flex-1 pb-2">
             <Outlet />
             <footer className="no-print mt-8 text-[0.7rem] text-muted-foreground">
-              Cardiotic AI supports qualified clinicians. ECG results are drafts until reviewed and do not replace clinical judgement or the bedside monitor. Research use only — not a medical device.
+              Cardiotic AI supports qualified clinicians. ECG results are drafts until reviewed and do not replace clinical judgement or the bedside monitor.
             </footer>
           </main>
         </div>

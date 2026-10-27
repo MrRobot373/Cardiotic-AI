@@ -90,10 +90,6 @@ export default function PatientPage() {
               ))}
             </div>
           </Card>
-          <Card className="p-4 text-[0.78rem] text-muted-foreground">
-            <div className="font-semibold text-foreground">Data source</div>
-            Signals: {Array.from(new Set([...ecgs.map((i) => i.ecg.source.dataset), ...holters.map((h) => h.source.dataset)])).join(", ")} — real recordings, the time between this patient's ECGs is real. Name and record number are fictitious.
-          </Card>
         </div>
       </div>
     </div>

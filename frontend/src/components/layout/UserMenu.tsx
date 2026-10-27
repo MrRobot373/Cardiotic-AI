@@ -1,4 +1,4 @@
-import { LogOut, Monitor, Moon, Palette, RotateCcw, Settings, Sun, UserRound } from "lucide-react";
+import { LogOut, Monitor, Moon, Palette, Settings, Sun, UserRound } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { useAppearance } from "@/app/appearance";
@@ -10,7 +10,7 @@ import {
 import { initials } from "@/lib/utils";
 
 export function UserMenu() {
-  const { user, signIn, signOut, reset } = useDemo();
+  const { user, signIn, signOut } = useDemo();
   const { appearance, update } = useAppearance();
   const navigate = useNavigate();
   if (!user) return null;
@@ -28,7 +28,7 @@ export function UserMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger><UserRound /> Switch demo user</DropdownMenuSubTrigger>
+          <DropdownMenuSubTrigger><UserRound /> Switch user</DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             <DropdownMenuRadioGroup value={user.name} onValueChange={(v) => { const u = DEMO_USERS.find((d) => d.name === v); if (u) { signIn(u); toast.success(`Signed in as ${u.name}`); } }}>
               {DEMO_USERS.map((u) => <DropdownMenuRadioItem key={u.name} value={u.name}>{u.name} · {u.title}</DropdownMenuRadioItem>)}
@@ -47,7 +47,6 @@ export function UserMenu() {
           </DropdownMenuSubContent>
         </DropdownMenuSub>
         <DropdownMenuItem onSelect={() => navigate("/settings")}><Settings /> Settings</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => { reset(); toast.success("Demo reset: all reviews and sign-offs cleared"); }}><RotateCcw /> Reset demo</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem danger onSelect={() => { signOut(); navigate("/login", { replace: true }); }}><LogOut /> Sign out</DropdownMenuItem>
       </DropdownMenuContent>

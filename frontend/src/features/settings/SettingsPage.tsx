@@ -4,7 +4,7 @@ import { NavLink, useParams } from "react-router";
 import { toast } from "sonner";
 import { useAppearance } from "@/app/appearance";
 import { DEMO_USERS, useDemo } from "@/app/demo-store";
-import { Avatar, Badge, Card, CardHeader, PageHeader, Segmented, SwitchRow } from "@/components/ui";
+import { Avatar, Badge, Button, Card, CardHeader, Input, PageHeader, Segmented, SwitchRow } from "@/components/ui";
 import { useCatalog } from "@/data/api";
 import { ACCENT_PRESETS } from "@/lib/color";
 import { cn } from "@/lib/utils";
@@ -27,19 +27,29 @@ function Row({ label, hint, children }: { label: string; hint?: ReactNode; child
 }
 
 function Site() {
-  const { site, updateSite, user } = useDemo();
+  const { site, updateSite, user, reset } = useDemo();
   const admin = user?.role === "admin" || user?.role === "cardiologist";
   return (
     <Card>
       <CardHeader title="Site & AI operating points" description="How sure the AI must be before it states a finding at this hospital" icon={<Building2 />} />
       <div className="px-[var(--card-pad)] pb-[var(--card-pad)]">
+        <Row label="Site name" hint="Shown in the header, on sign-in and on every printed report.">
+          <Input className="w-full sm:w-72" defaultValue={site.siteName} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== site.siteName) { updateSite({ siteName: v }); toast.success("Site name saved"); } }} />
+        </Row>
         <Row label="Operating point" hint="Sensitive: fewer missed findings, more to reject. Specific: fewer false findings, more chance of a miss. Chosen per site on its own validation ECGs.">
-          <Segmented value={site.operatingPoint} onChange={(v) => { if (!admin) return toast.error("Only the cardiology lead or an administrator can change this"); updateSite({ operatingPoint: v }); toast.success("Saved for this site (demo: the shown AI output does not change)"); }}
+          <Segmented value={site.operatingPoint} onChange={(v) => { if (!admin) return toast.error("Only the cardiology lead or an administrator can change this"); updateSite({ operatingPoint: v }); toast.success("Saved. Applies to ECGs analysed from now on"); }}
             options={[{ value: "sensitive", label: "Sensitive" }, { value: "balanced", label: "Balanced" }, { value: "specific", label: "Specific" }]} />
         </Row>
         <SwitchRow label="Rate statements from measurements" description="Write sinus bradycardia / tachycardia by the heart-rate definition (< 60 / > 100 bpm) instead of the learned statement. Hospitals differ: PTB-XL cardiologists rarely wrote bradycardia for 55–59 bpm; Chapman's always did."
           checked={site.ratesFromMeasurements} onCheckedChange={(v) => updateSite({ ratesFromMeasurements: v })} />
         <SwitchRow label="Send signed reports to the HIS automatically" description="HL7 ORU^R01 with the PDF, as soon as a cardiologist signs." checked={site.autoSendHis} onCheckedChange={(v) => updateSite({ autoSendHis: v })} />
+        <SwitchRow label="Validation view" description="Show the reference cardiologists' labels and agreement next to the AI on validation ECGs and Holter recordings. For acceptance testing; off in routine reading."
+          checked={site.showReference} onCheckedChange={(v) => updateSite({ showReference: v })} />
+        {user?.role === "admin" && (
+          <Row label="Reset local review data" hint="Clears reviews, signatures and audit entries stored on this workstation.">
+            <Button variant="secondary" onClick={() => { reset(); toast.success("Local review data cleared"); }}>Reset</Button>
+          </Row>
+        )}
         <div className="mt-4 rounded-xl bg-subtle p-3 text-[0.78rem] text-muted-foreground">
           In the product, a change here creates a new configuration version: it is validated on the site's own ECGs, approved by the cardiology lead, recorded in the audit log and can be rolled back. It never changes the model itself.
         </div>
@@ -82,7 +92,7 @@ const INTEGRATIONS = [
 function Integrations() {
   return (
     <Card>
-      <CardHeader title="Integrations" description="Simulated statuses for the demo" icon={<Plug />} />
+      <CardHeader title="Integrations" description="Connection status" icon={<Plug />} />
       <div className="card-pad space-y-2">
         {INTEGRATIONS.map(([name, what, status]) => (
           <div key={name} className="flex flex-col gap-1 rounded-xl border bg-card/70 p-3 sm:flex-row sm:items-center">
@@ -120,9 +130,7 @@ function About() {
       <CardHeader title="About Cardiotic AI" icon={<Info />} />
       <div className="card-pad space-y-2 text-[0.82rem]">
         <div className="flex justify-between gap-3"><span className="text-muted-foreground">Engine</span><span>{c?.engine.engine} {c?.engine.version} · models {c?.engine.models_version}</span></div>
-        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Intended use</span><span className="text-right">{c?.engine.intended_use}</span></div>
-        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Demo data</span><span className="text-right">PTB-XL (CC BY 4.0), Chapman–Shaoxing (CC0), MIT-BIH (ODC-By 1.0)</span></div>
-        <p className="pt-2 text-[0.75rem] text-muted-foreground">{c?.disclaimer}</p>
+        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Training and test data</span><span className="text-right">PTB-XL (CC BY 4.0), Chapman–Shaoxing (CC0), MIT-BIH (ODC-By 1.0)</span></div>
       </div>
     </Card>
   );

@@ -7,7 +7,8 @@ test("cardiologist reads, edits calipers and signs an ECG end to end", async ({ 
 
   await page.goto("/");
   await expect(page).toHaveURL(/\/login/);
-  await page.getByRole("button", { name: /Dr\. Ananya Rao/ }).click();
+  await page.getByLabel("Password").fill("secret");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Dr\. Ananya/ })).toBeVisible();
 
   // open the most urgent ECG
@@ -38,7 +39,7 @@ test("cardiologist reads, edits calipers and signs an ECG end to end", async ({ 
   expect(edited).toBe(true);
 
   await page.getByRole("button", { name: "Accept remaining" }).click();
-  await page.getByPlaceholder(/Interpretation note/).fill("Demo sign-off note.");
+  await page.getByPlaceholder(/Interpretation note/).fill("Sinus rhythm, no acute change.");
   await expect(sign).toBeEnabled();
   await sign.click();
   await expect(page.getByText(/Signed by Dr\. Ananya Rao/)).toBeVisible();
@@ -46,7 +47,7 @@ test("cardiologist reads, edits calipers and signs an ECG end to end", async ({ 
   // report shows FINAL with the signature
   await page.getByRole("link", { name: /View report/ }).click();
   await expect(page.getByText("FINAL REPORT")).toBeVisible();
-  await expect(page.getByText("Demo sign-off note.")).toBeVisible();
+  await expect(page.getByText("Sinus rhythm, no acute change.")).toBeVisible();
   await expect(page.getByText("Intervals adjusted by the reader.", { exact: false })).toBeVisible();
 
   // reports list and audit log
@@ -59,7 +60,7 @@ test("cardiologist reads, edits calipers and signs an ECG end to end", async ({ 
   // technician cannot sign
   await page.goto("/");
   await page.getByRole("button", { name: "Account menu" }).click();
-  await page.getByText("Switch demo user").hover();
+  await page.getByText("Switch user").hover();
   await page.getByRole("menuitemradio", { name: /Rohit Sawant/ }).click();
   await page.getByRole("button", { name: /Start reading/ }).click();
   await expect(page.getByRole("button", { name: /Send for reading/ })).toBeVisible();
@@ -70,7 +71,9 @@ test("cardiologist reads, edits calipers and signs an ECG end to end", async ({ 
 
 test("Holter: events jump the strip; monitoring and upload work", async ({ page }) => {
   await page.goto("/login");
-  await page.getByRole("button", { name: /Dr\. Ananya Rao/ }).click();
+  await page.getByLabel("Password").fill("secret");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).not.toHaveURL(/\/login/);
   await page.goto("/holter/H001");
   await expect(page.getByText("AF burden")).toBeVisible();
   await page.getByRole("button", { name: /Ventricular couplet/ }).first().click();
@@ -80,6 +83,6 @@ test("Holter: events jump the strip; monitoring and upload work", async ({ page 
   await expect(page.getByText("Assist offline")).toBeVisible();
 
   await page.goto("/upload");
-  await page.getByRole("button", { name: "Use sample" }).click();
+  await page.getByRole("button", { name: "Import" }).click();
   await expect(page.getByRole("link", { name: "Open for reading" })).toBeVisible({ timeout: 5000 });
 });

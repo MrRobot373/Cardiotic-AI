@@ -1,5 +1,6 @@
 import { ArrowLeft, Printer } from "lucide-react";
 import { Link, useParams } from "react-router";
+import { useDemo } from "@/app/demo-store";
 
 import { CardioticMark } from "@/components/layout/BrandMark";
 import { Ecg12View } from "@/components/ecg/Ecg12View";
@@ -15,6 +16,7 @@ const f = (v: number | null | undefined) => (v === null || v === undefined ? "�
 /** Printable report — what the HIS receives as PDF (with HL7 ORU / FHIR DiagnosticReport alongside). */
 export default function ReportPage() {
   const { id } = useParams();
+  const { site } = useDemo();
   const { items, catalog } = useWorkItems();
   const { data: detail, signals } = useEcgSignals(id);
   const item = items.find((x) => x.ecg.id === id);
@@ -37,7 +39,7 @@ export default function ReportPage() {
           <div className="flex items-center gap-3">
             <CardioticMark className="size-10" />
             <div>
-              <div className="text-lg font-semibold">Demo Hospital, Pune · Department of Cardiology</div>
+              <div className="text-lg font-semibold">{site.siteName}</div>
               <div className="text-xs text-slate-500">12-lead ECG report · Cardiotic AI assisted</div>
             </div>
           </div>
@@ -73,7 +75,6 @@ export default function ReportPage() {
         </section>
         <footer className="mt-6 border-t border-slate-200 pt-2 text-[10px] leading-relaxed text-slate-500">
           Pre-read by {detail.analysis.engine.engine} {detail.analysis.engine.version} (models {detail.analysis.engine.models_version}: {Object.values(detail.analysis.engine.models).map((x) => `${x.model} ${x.sha256.slice(0, 8)}`).join(", ")}); interpretation confirmed by the signing physician.
-          {" "}{detail.analysis.engine.intended_use} Demo report: patient and hospital details are fictitious; waveform from {item.ecg.source.dataset} ({item.ecg.source.licence}).
         </footer>
       </article>
     </div>

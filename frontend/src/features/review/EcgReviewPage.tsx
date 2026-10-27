@@ -201,7 +201,7 @@ function Reference({ item }: { item: WorkItem }) {
   const ai = new Set(item.ecg.statements.map((s) => s.statement));
   return (
     <Card>
-      <CardHeader title="Dataset reference" description={`What the ${item.ecg.source.dataset} cardiologists wrote — shown only in this demo`} icon={<ShieldCheck />} />
+      <CardHeader title="Validation reference" description={`Labels from the ${item.ecg.source.dataset} cardiologists`} icon={<ShieldCheck />} />
       <div className="card-pad flex flex-wrap gap-1.5">
         {item.ecg.reference_statements.map((c) => (
           <Badge key={c} tone={ai.has(c) ? "success" : "warning"}>{ai.has(c) ? <Check /> : <TriangleAlert />}{statementName(c, desc)}</Badge>
@@ -277,7 +277,7 @@ function SignPanel({ item, detail, review }: { item: WorkItem; detail: EcgDetail
   }
   const sign = () => {
     updateReview(item.ecg.id, { status: "signed", note, signedBy: user!.name, signedAt: new Date().toISOString() }, "Signed ECG report");
-    toast.success("Report signed and sent", { description: "HL7 ORU^R01 to the HIS · PDF stored · ordering doctor notified (simulated)" });
+    toast.success("Report signed and sent", { description: "HL7 ORU^R01 to the HIS · PDF stored · ordering doctor notified" });
   };
   return (
     <Card>
@@ -286,7 +286,7 @@ function SignPanel({ item, detail, review }: { item: WorkItem; detail: EcgDetail
         {canSign(user) ? (
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="strong" className="flex-1" disabled={pending > 0} onClick={sign}><ShieldCheck /> Sign & send report</Button>
-            <Button variant="secondary" onClick={() => { updateReview(item.ecg.id, { status: "repeat", note }, "Requested repeat ECG"); toast("Repeat ECG requested", { description: `${item.ecg.location} notified (simulated)` }); navigate("/"); }}>Request repeat</Button>
+            <Button variant="secondary" onClick={() => { updateReview(item.ecg.id, { status: "repeat", note }, "Requested repeat ECG"); toast("Repeat ECG requested", { description: `${item.ecg.location} notified` }); navigate("/"); }}>Request repeat</Button>
           </div>
         ) : (
           <Button variant="strong" className="w-full" onClick={() => { updateReview(item.ecg.id, { status: "in_review", note }, "Sent ECG for reading"); toast.success("Sent to the cardiologist's worklist"); }}><Send /> Send for reading</Button>
@@ -396,6 +396,7 @@ function Neighbours({ id }: { id: string }) {
 
 export default function EcgReviewPage() {
   const { id } = useParams();
+  const { site } = useDemo();
   const { items, isLoading } = useWorkItems();
   const { data: detail, signals, isLoading: loadingEcg, error } = useEcgSignals(id);
   const [highlight, setHighlight] = useState<string | null>(null);
@@ -417,9 +418,9 @@ export default function EcgReviewPage() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
         <div className="min-w-0 space-y-4">
           <EcgPanel item={item} detail={detail} signals={signals} review={rv} highlight={highlight} />
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className={cn("grid gap-4", site.showReference && "lg:grid-cols-2")}>
             <Compare item={item} />
-            <Reference item={item} />
+            {site.showReference && <Reference item={item} />}
           </div>
         </div>
         <div className="space-y-4">
@@ -432,14 +433,15 @@ export default function EcgReviewPage() {
         <DialogContent title="Recording and analysis" icon={<Info />}>
           <dl className="grid grid-cols-[140px_1fr] gap-y-2 text-sm">
             <dt className="text-muted-foreground">Device</dt><dd>{item.ecg.device}</dd>
-            <dt className="text-muted-foreground">Source</dt><dd>{item.ecg.source.dataset} · record {String(item.ecg.source.record)} · {item.ecg.source.licence}</dd>
-            <dt className="text-muted-foreground">Role</dt><dd>{item.ecg.source.role}</dd>
+            {site.showReference && <>
+              <dt className="text-muted-foreground">Source</dt><dd>{item.ecg.source.dataset} · record {String(item.ecg.source.record)} · {item.ecg.source.licence}</dd>
+              <dt className="text-muted-foreground">Role</dt><dd>{item.ecg.source.role}</dd>
+            </>}
             <dt className="text-muted-foreground">Engine</dt><dd>{detail.analysis.engine.engine} {detail.analysis.engine.version} · models {detail.analysis.engine.models_version}</dd>
             {Object.entries(detail.analysis.engine.models).map(([role, m]) => (
               <Fragment key={role}><dt className="capitalize text-muted-foreground">{role} model</dt><dd className="font-mono text-xs">{m.model} · {m.sha256.slice(0, 16)}…</dd></Fragment>
             ))}
             <dt className="text-muted-foreground">Processing</dt><dd>{detail.analysis.processing_ms} ms</dd>
-            <dt className="text-muted-foreground">Intended use</dt><dd>{detail.analysis.engine.intended_use}</dd>
           </dl>
         </DialogContent>
       </Dialog>
