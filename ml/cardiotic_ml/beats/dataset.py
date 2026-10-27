@@ -12,10 +12,9 @@ from dataclasses import dataclass
 import numpy as np
 
 from cardiotic_ml import dsp
-from cardiotic_ml.data import mitdb
 
 CLASSES = ["N", "S", "V", "F"]
-FS = mitdb.FS
+FS = 360  # MIT-BIH sampling rate; the model's input rate
 PRE, POST = 90, 144          # 250 ms before, 400 ms after the R peak (234 samples)
 VAL_PATIENTS = [106, 118, 207, 220]
 N_RR = 7
@@ -58,6 +57,8 @@ def from_signal(signal: np.ndarray, peaks: np.ndarray, fs: int = FS) -> tuple[np
 
 
 def build(record_ids: list[int]) -> BeatSet:
+    from cardiotic_ml.data import mitdb
+
     xs, rrs, ys, recs, samples = [], [], [], [], []
     for rid in record_ids:
         if rid in mitdb.PACED:
@@ -75,5 +76,7 @@ def build(record_ids: list[int]) -> BeatSet:
 
 
 def splits() -> tuple[BeatSet, BeatSet, BeatSet]:
+    from cardiotic_ml.data import mitdb
+
     train_ids = [r for r in mitdb.DS1 if r not in VAL_PATIENTS]
     return build(train_ids), build(VAL_PATIENTS), build(mitdb.DS2)

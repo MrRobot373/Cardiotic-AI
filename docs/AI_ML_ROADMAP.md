@@ -44,7 +44,7 @@ how it is measured, and the order we build them. Measured results live in
 on-premise):
 1. **M4 — 12-lead measurements and statements.** First versions done (statements v0.1, measurements v0.2). Both buyers need it: hospital ECG reading rooms read
    12-lead ECGs, and ECG-cart makers embed 12-lead interpretation. It is also what the UI concept shows.
-2. **Engine packaging (step 6 below) moves up:** manufacturers integrate an engine, not an app, so the
+2. **Engine packaging (step 6 below), first version done:** manufacturers integrate an engine, not an app, so the
    exported, deterministic, versioned engine with its own test reports is needed early.
 3. **AF operating point (3d)** and the open AF / beat issues continue alongside.
 4. Multi-signal OT/ICU (M6) and image digitisation (M7) stay later.
@@ -64,7 +64,7 @@ on-premise):
 | 5b2 | Second country: external test + more training data | Chapman–Shaoxing (CC0, external), Chapman–Shaoxing–Ningbo (CC BY 4.0) | **Done**: statements v0.3 adopted on validation; Chapman held out; Ningbo AF labels found unreliable and excluded |
 | 5c | Rare statements (flutter, long QT, WPW), sex gap, 12-lead signal quality, per-site operating points | + CODE-15%, MIMIC-IV-ECG; PTB-XL noise annotations | Per-statement sensitivity at a site-chosen operating point; subgroup gap closed or explained |
 | 5b | Measurement accuracy against a referee, not another algorithm | CSE database (licensed) | IEC 60601-2-25 tolerances met on CSE |
-| 6 | Export to ONNX; deterministic `ecg-engine` service with model registry | — | Same outputs from ONNX and PyTorch; engine API used by the app |
+| 6 | Export to ONNX; deterministic `ecg-engine` service with model registry | — | **Done (engine 0.1.0)**: identical results to the research pipeline on 800 12-lead ECGs and 22 full MIT-BIH records; SHA-256 model registry; HTTP API; no PyTorch. Next: chunked Holter, DICOM / HL7 aECG / SCP-ECG input, built and tested container |
 | 7 | Partner-hospital retrospective validation | Partner ECGs, ≥2 cardiologists per label | Pre-agreed acceptance targets met |
 | 8 | M6 multi-signal false-alarm model (silent mode) | CinC 2015, VitalDB, partner OT data | Zero missed true alarms at the chosen operating point |
 

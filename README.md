@@ -14,6 +14,7 @@ For hospitals and medical-equipment manufacturers. On-premise. Markets: India an
 | | |
 |---|---|
 | [docs/AI_ML_ROADMAP.md](docs/AI_ML_ROADMAP.md) | **The AI**: every model, what it learns from, how it is tested, build order |
+| [engine/](engine/) | **The deployable engine**: ONNX models with integrity checks, HTTP API, on-premise image ([API and deployment](engine/README.md)) |
 | [ml/](ml/) | AI research code: data loaders, signal processing, models, training, evaluation ([how to run](ml/README.md)) |
 | [ml/reports/RESULTS.md](ml/reports/RESULTS.md) | Measured results on patients the models never saw |
 | [docs/PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md) | Review of the original research, product definition, regulatory path, data, AI/ML design, architecture, roadmap, team, risks and **open decisions** (section 14) |

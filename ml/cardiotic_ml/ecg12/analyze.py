@@ -11,15 +11,13 @@ from __future__ import annotations
 import json
 
 import numpy as np
-import torch
 
 from cardiotic_ml import __version__, calibration as cal, dsp
 from cardiotic_ml.data.ptbxl import LEADS
 from cardiotic_ml.ecg12 import measure
-from cardiotic_ml.ecg12.model import ECG12Net
 from cardiotic_ml.paths import ARTIFACTS_DIR
 from cardiotic_ml.quality import dataset as q_data
-from cardiotic_ml.quality.model import QualityNet
+from cardiotic_ml.runner import TorchRunner, run_batched
 
 ECG12_MODEL = "ecg12_net_v0.3"  # chosen by experiments_ecg12.select_ecg12 on validation data (reports/ecg12_selection.json)
 QUALITY_MODEL = "quality_net_v0.3"
@@ -28,18 +26,26 @@ MAX_UNUSABLE_LEADS = 2
 
 
 class Models12:
-    def __init__(self, directory=ARTIFACTS_DIR):
-        self.card = json.loads((directory / f"{ECG12_MODEL}.card.json").read_text())
-        self.net = ECG12Net(len(self.card["labels"]), width=self.card["recipe"]["width"])
-        self.net.load_state_dict(torch.load(directory / f"{ECG12_MODEL}.pt", weights_only=True))
-        self.net.eval()
-        self.q_card = json.loads((directory / f"{QUALITY_MODEL}.card.json").read_text())
-        self.quality = QualityNet(len(q_data.LABELS))
-        self.quality.load_state_dict(torch.load(directory / f"{QUALITY_MODEL}.pt", weights_only=True))
-        self.quality.eval()
+    """Statement and quality runners plus their cards. Default: PyTorch weights from ARTIFACTS_DIR
+    (research); the engine passes ONNX runners and its manifest entries instead."""
+
+    def __init__(self, directory=ARTIFACTS_DIR, net=None, card=None, quality=None, q_card=None):
+        if net is None:
+            import torch
+
+            from cardiotic_ml.ecg12.model import ECG12Net
+            from cardiotic_ml.quality.model import QualityNet
+
+            card = json.loads((directory / f"{ECG12_MODEL}.card.json").read_text())
+            m = ECG12Net(len(card["labels"]), width=card["recipe"]["width"])
+            m.load_state_dict(torch.load(directory / f"{ECG12_MODEL}.pt", weights_only=True))
+            q_card = json.loads((directory / f"{QUALITY_MODEL}.card.json").read_text())
+            q = QualityNet(len(q_data.LABELS))
+            q.load_state_dict(torch.load(directory / f"{QUALITY_MODEL}.pt", weights_only=True))
+            net, quality = TorchRunner(m), TorchRunner(q)
+        self.net, self.card, self.quality, self.q_card = net, card, quality, q_card
 
 
-@torch.no_grad()
 def lead_quality(signal: np.ndarray, fs: float, models: Models12) -> dict[str, str]:
     """Worst-of-majority label per lead from 2.5 s windows (good / noisy / unusable)."""
     out = {}
@@ -47,19 +53,18 @@ def lead_quality(signal: np.ndarray, fs: float, models: Models12) -> dict[str, s
         x = dsp.resample(lead, fs, q_data.FS)
         starts = range(0, len(x) - q_data.WIN + 1, q_data.WIN)
         wins = np.stack([x[s:s + q_data.WIN] - np.median(x[s:s + q_data.WIN]) for s in starts]).astype(np.float32)
-        lab = models.quality(torch.from_numpy(np.clip(wins, -10, 10))).argmax(1).numpy()
+        lab = run_batched(models.quality, np.clip(wins, -10, 10)).argmax(1)
         out[name] = q_data.LABELS[2] if (lab == 2).mean() > 0.5 else q_data.LABELS[1] if (lab >= 1).mean() > 0.5 else q_data.LABELS[0]
     return out
 
 
-@torch.no_grad()
 def statements(signal: np.ndarray, fs: float, models: Models12) -> list[dict]:
     x = dsp.resample(signal, fs, FS_MODEL) if fs != FS_MODEL else signal.astype(np.float32)
     x = x[:, :N_MODEL] if x.shape[1] >= N_MODEL else np.pad(x, ((0, 0), (0, N_MODEL - x.shape[1])))
     x = dsp.bandpass(x, FS_MODEL, "diagnostic")
     c = models.card
     x = (x - np.array(c["lead_mean"])[:, None]) / np.array(c["lead_std"])[:, None]
-    z = models.net(torch.from_numpy(x[None].astype(np.float32))).numpy()[0] / c["temperature"]
+    z = run_batched(models.net, x[None].astype(np.float32))[0] / c["temperature"]
     p = 1 / (1 + np.exp(-z))
     out = [{"statement": name, "probability": float(pi), "threshold": c["thresholds"][name],
             "confidence": cal.confidence_level(float(max(pi, 1 - pi)))}

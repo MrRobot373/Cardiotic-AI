@@ -23,6 +23,7 @@ models from here (see [docs/AI_ML_ROADMAP.md](../docs/AI_ML_ROADMAP.md)).
 | `ecg12/model.py`, `experiments_ecg12.py` | **M4 statements**: 12-lead 1D ResNet, 71 SCP statements + 5 superclasses; measurement tuning and agreement |
 | `data/chapman.py`, `data/ningbo.py` | Chapman–Shaoxing (external test, GE MUSE measurements) and Chapman–Shaoxing–Ningbo loaders; fixed label maps to SCP statements |
 | `ecg12/rules.py` | Rate / interval statements from our own measurements (compared with the learned model) |
+| `runner.py`, `export.py` | Models as back-end-neutral functions (PyTorch here, ONNX in the engine); ONNX export checked against PyTorch |
 | `ecg12/analyze.py` | 12-lead end to end: per-lead quality → measurements → calibrated statements |
 | `pipeline.py` | End to end: quality gate → beats → classification → rhythm → measurements → findings (JSON + plot) |
 | `experiments_rhythm.py` | Rhythm training, cross-dataset AF test on MIT-BIH, beat calibration |
@@ -32,7 +33,7 @@ models from here (see [docs/AI_ML_ROADMAP.md](../docs/AI_ML_ROADMAP.md)).
 
 ```bash
 python -m venv .venv && .venv/bin/pip install --index-url https://download.pytorch.org/whl/cpu torch
-.venv/bin/pip install -e "ml[dev]"
+.venv/bin/pip install -e "ml[research,dev]"
 cd ml
 ../.venv/bin/python -m cardiotic_ml.cli download        # PhysioNet → data/raw (gitignored)
 ../.venv/bin/python -m cardiotic_ml.cli eval-qrs        # heartbeat detection benchmark, 48 records
@@ -58,6 +59,7 @@ cd ml
 ../.venv/bin/python -m cardiotic_ml.cli eval-ecg12-rules
 # Chapman–Shaoxing–Ningbo (https://physionet.org/content/ecg-arrhythmia/1.0.0/) unzipped into data/raw/ningbo/:
 ../.venv/bin/python -m cardiotic_ml.cli train-ecg12 --version v0.2                    # PTB-XL + Ningbo part
+../.venv/bin/python -m cardiotic_ml.cli export-engine   # adopted models -> engine/cardiotic_engine/models (ONNX)
 ../.venv/bin/python -m cardiotic_ml.cli report          # writes reports/RESULTS.md
 ../.venv/bin/python -m cardiotic_ml.cli analyze --record 233 --start 600 --seconds 60 --plot strip.png
 ../.venv/bin/pytest -q                                   # fast tests, no download needed

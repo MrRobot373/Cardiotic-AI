@@ -3,18 +3,23 @@ name = "cardiotic-ml"
 version = "0.1.0"
 description = "Cardiotic AI — ECG signal processing and machine-learning research code (training and evaluation; not the shipped engine)"
 requires-python = ">=3.11"
+# Core (needed by the engine): signal processing only. Research extras: data, training, plots.
 dependencies = [
   "numpy>=1.26",
   "scipy>=1.11",
+]
+
+[project.optional-dependencies]
+research = [
   "wfdb>=4.1",
   "neurokit2>=0.2.10",
   "scikit-learn>=1.4",
   "torch>=2.2",
   "matplotlib>=3.8",
-  "openpyxl>=3.1",  # Chapman–Shaoxing label sheet (.xlsx)
+  "openpyxl>=3.1",   # Chapman–Shaoxing label sheet (.xlsx)
+  "onnx>=1.16",      # model export for the engine
+  "onnxruntime>=1.18",
 ]
-
-[project.optional-dependencies]
 dev = ["pytest>=8"]
 
 [project.scripts]

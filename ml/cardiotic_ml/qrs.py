@@ -1,6 +1,9 @@
 """QRS (heartbeat) detection and EC57-style beat-by-beat scoring.
 
-Detectors come from NeuroKit2 (MIT licence). Scoring follows ANSI/AAMI EC57 conventions as
+Benchmark detectors come from NeuroKit2 (MIT licence). The product detector (Pan-Tompkins) is
+implemented here without NeuroKit2 (`pantompkins`), reproducing NeuroKit2 0.2.13's
+`pantompkins1985` cleaning and detection exactly (it adapts py-ecg-detectors, GPL-free), so the
+engine needs only NumPy and SciPy. A test checks both give identical beats. Scoring follows ANSI/AAMI EC57 conventions as
 implemented by PhysioNet's `bxb`: a detection matches a reference beat if it lies within
 150 ms, and scoring starts 5 minutes into each record.
 """
@@ -9,16 +12,67 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import neurokit2 as nk
 import numpy as np
+from scipy import ndimage
+from scipy import signal as sps
 
 from cardiotic_ml import dsp
 
 DETECTORS = ("neurokit", "pantompkins1985", "hamilton2002", "elgendi2010")
 
 
+def pantompkins(x: np.ndarray, fs: int) -> np.ndarray:
+    """Pan & Tompkins (1985) QRS detection: 5–15 Hz band-pass, derivative, squaring, 120 ms moving
+    window integration, adaptive thresholds with search-back. Returns integration-peak indices."""
+    x = np.asarray(x, dtype=np.float64)
+    if np.isnan(x).any():
+        idx = np.arange(len(x)); ok = ~np.isnan(x)
+        x = np.interp(idx, idx[ok], x[ok]) if ok.any() else np.zeros_like(x)
+    sos = sps.butter(1, [5, 15], btype="bandpass", output="sos", fs=fs)
+    clean = sps.sosfilt(sos, x, zi=sps.sosfilt_zi(sos) * np.mean(x))[0]
+    d = np.diff(clean)
+    sq = d * d
+    n = int(0.12 * fs)
+    mwa = ndimage.uniform_filter1d(sq, n, origin=(n - 1) // 2)
+    head = min(n - 1, len(sq))
+    mwa[:head] = np.cumsum(sq[:head]) / np.linspace(1, head, head)
+    mwa[: int(0.2 * fs)] = 0
+    return _peakdetect(mwa, fs)
+
+
+def _peakdetect(det: np.ndarray, fs: int) -> np.ndarray:
+    min_dist, min_missed = int(0.3 * fs), int(0.25 * fs)
+    out: list[int] = []
+    spki = npki = 0.0
+    last_peak, last_index = 0, -1
+    peaks, _ = sps.find_peaks(det, plateau_size=(1, 1))
+    for index, peak in enumerate(peaks):
+        v = det[peak]
+        th1 = npki + 0.25 * (spki - npki)
+        if v > th1 and peak > last_peak + min_dist:
+            out.append(peak)
+            if len(out) > 9:  # search back for a missed beat after an unusually long RR
+                rr_missed = int(1.66 * ((out[-2] - out[-10]) // 8))
+                if peak - last_peak > rr_missed:
+                    missed = peaks[last_index + 1:index]
+                    missed = missed[(missed > last_peak + min_missed) & (missed < peak - min_missed)]
+                    missed = missed[det[missed] > 0.5 * th1]
+                    if len(missed):
+                        out[-1] = missed[np.argmax(det[missed])]
+                        out.append(peak)
+            last_peak, last_index = peak, index
+            spki = 0.125 * v + 0.875 * spki
+        else:
+            npki = 0.125 * v + 0.875 * npki
+    return np.asarray(out, dtype=np.int64)
+
+
 def detect_qrs(x: np.ndarray, fs: int, method: str = "neurokit") -> np.ndarray:
     """Return R-peak sample indices."""
+    if method == "pantompkins1985":
+        return pantompkins(x, fs)
+    import neurokit2 as nk
+
     clean_method = method if method in ("neurokit", "pantompkins1985", "hamilton2002", "elgendi2010") else "neurokit"
     cleaned = nk.ecg_clean(x, sampling_rate=fs, method=clean_method)
     _, info = nk.ecg_peaks(cleaned, sampling_rate=fs, method=method, correct_artifacts=False)

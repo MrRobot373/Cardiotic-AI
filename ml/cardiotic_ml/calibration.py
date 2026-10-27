@@ -7,10 +7,11 @@ validation data only, then checked on test data.
 from __future__ import annotations
 
 import numpy as np
-import torch
 
 
 def fit_temperature(logits: np.ndarray, y: np.ndarray, iters: int = 300) -> float:
+    import torch
+
     lt = torch.from_numpy(logits.astype(np.float32))
     yt = torch.from_numpy(y.astype(np.int64))
     log_t = torch.zeros(1, requires_grad=True)

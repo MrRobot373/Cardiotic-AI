@@ -11,16 +11,13 @@ import json
 from dataclasses import dataclass
 
 import numpy as np
-import torch
 
 from cardiotic_ml import __version__, calibration as cal, dsp, qrs
 from cardiotic_ml.beats import dataset as beat_data
-from cardiotic_ml.beats.model import BeatNet
 from cardiotic_ml.paths import ARTIFACTS_DIR
 from cardiotic_ml.quality import dataset as q_data
-from cardiotic_ml.quality.model import QualityNet
 from cardiotic_ml.rhythm import dataset as rd
-from cardiotic_ml.rhythm.model import RhythmNet
+from cardiotic_ml.runner import TorchRunner, run_batched
 
 FS = 360
 # Best detector on the MIT-BIH benchmark (reports/qrs_detection.json).
@@ -35,13 +32,21 @@ RHYTHM_NAMES = {"N": "sinus rhythm", "A": "atrial fibrillation", "O": "other rhy
 
 @dataclass
 class Models:
-    quality: QualityNet
-    beats: BeatNet
-    rhythm: RhythmNet | None
+    """Runners (cardiotic_ml.runner) plus the model cards, keyed by model name (e.g. beat_net_v0.1)."""
+    quality: object
+    beats: object
+    rhythm: object | None
     cards: dict
 
 
 def load_models(directory=ARTIFACTS_DIR) -> Models:
+    """PyTorch back-end (research). The engine builds Models from ONNX files instead."""
+    import torch
+
+    from cardiotic_ml.beats.model import BeatNet
+    from cardiotic_ml.quality.model import QualityNet
+    from cardiotic_ml.rhythm.model import RhythmNet
+
     cards = {n: json.loads((directory / f"{n}.card.json").read_text()) for n in (QUALITY_MODEL, BEAT_MODEL)}
     q, b = QualityNet(len(q_data.LABELS)), BeatNet(len(beat_data.CLASSES))
     q.load_state_dict(torch.load(directory / f"{QUALITY_MODEL}.pt", weights_only=True))
@@ -51,26 +56,14 @@ def load_models(directory=ARTIFACTS_DIR) -> Models:
         cards[RHYTHM_MODEL] = json.loads((directory / f"{RHYTHM_MODEL}.card.json").read_text())
         r = RhythmNet(len(RHYTHM_LABELS), n_rrf=cards[RHYTHM_MODEL].get("n_rrf", rd.N_RRF))
         r.load_state_dict(torch.load(directory / f"{RHYTHM_MODEL}.pt", weights_only=True))
-        r.eval()
-    q.eval(); b.eval()
-    return Models(q, b, r, cards)
+        r = TorchRunner(r)
+    return Models(TorchRunner(q), TorchRunner(b), r, cards)
 
 
 confidence_level = cal.confidence_level
-BATCH = 256  # bounded memory on long (e.g. 24 h Holter) recordings
+_batched = run_batched
 
 
-@torch.no_grad()
-def _batched(model, *arrays: np.ndarray) -> np.ndarray:
-    """Run a model over arrays in fixed-size chunks; returns raw outputs (logits)."""
-    n = len(arrays[0])
-    if n == 0:
-        return np.zeros((0, model.head[-1].out_features), dtype=np.float32)
-    return np.concatenate([model(*(torch.from_numpy(np.ascontiguousarray(a[i:i + BATCH])) for a in arrays)).numpy()
-                           for i in range(0, n, BATCH)])
-
-
-@torch.no_grad()
 def _rhythm(signal: np.ndarray, fs: float, usable: np.ndarray, models: Models,
             beat_times_s: np.ndarray, beat_cls: np.ndarray) -> list[dict]:
     if models.rhythm is None or len(signal) < 9 * fs:
@@ -97,7 +90,6 @@ def _rhythm(signal: np.ndarray, fs: float, usable: np.ndarray, models: Models,
     return out
 
 
-@torch.no_grad()
 def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
     raw = np.asarray(signal, dtype=np.float32)
     x = dsp.resample(raw, fs, FS)

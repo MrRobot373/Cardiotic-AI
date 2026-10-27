@@ -313,3 +313,12 @@ def test_measurement_rules():
     assert rules.rule_statements(m, False)["SBRAD"] is False
     assert not rules.sinus({"ok": True, "pr_ms": None}, 0.0, 0.0, 0.5, 0.5)
     assert not any(rules.rule_statements({"ok": False}, True).values())
+
+
+def test_native_pantompkins_matches_neurokit2():
+    """The engine's detector must give exactly NeuroKit2 0.2.x's pantompkins1985 beats."""
+    for fs, hr, seed in ((360, 70, 5), (500, 110, 6), (250, 50, 7)):
+        x = nk.ecg_simulate(duration=60, sampling_rate=fs, heart_rate=hr, noise=0.05, random_state=seed)
+        cleaned = nk.ecg_clean(x, sampling_rate=fs, method="pantompkins1985")
+        _, info = nk.ecg_peaks(cleaned, sampling_rate=fs, method="pantompkins1985", correct_artifacts=False)
+        assert np.array_equal(qrs.pantompkins(x, fs), np.asarray(info["ECG_R_Peaks"]))

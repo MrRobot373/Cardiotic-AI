@@ -21,6 +21,7 @@
   eval-ecg12-rules  measurement rules (bradycardia, tachycardia, 1st-degree AV block, long QT) vs the statement model
   select-ecg12    apply the pre-declared v0.1 / v0.2 rule (validation data only)
   analyze-12lead  run the 12-lead pipeline on one PTB-XL ECG (--ecg-id) and save JSON (+ optional plot)
+  export-engine   export the adopted models to ONNX for the engine (checked against PyTorch) + manifest
   report          regenerate ml/reports/RESULTS.md from the JSON results
 """
 
@@ -60,6 +61,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("select-ecg12")
     a12 = sub.add_parser("analyze-12lead"); a12.add_argument("--ecg-id", type=int, required=True)
     a12.add_argument("--out", default="analysis_12lead.json"); a12.add_argument("--plot", default=None)
+    sub.add_parser("export-engine")
     sub.add_parser("report")
     args = ap.parse_args(argv)
 
@@ -151,6 +153,9 @@ def main(argv: list[str] | None = None) -> None:
             plot_12lead(sig, 500, res, args.plot, title=f"(PTB-XL ECG {rec.ecg_id}, test fold)" if rec.fold == 10 else f"(PTB-XL ECG {rec.ecg_id})")
         print(json.dumps({"measurements": {k: v for k, v in res["measurements"].items() if k.endswith(("ms", "bpm", "deg"))},
                           "statements": [s["statement"] for s in res["statements"]], "notes": res["notes"]}, default=float))
+    elif args.cmd == "export-engine":
+        from cardiotic_ml.export import export_engine
+        export_engine()
     elif args.cmd == "report":
         from cardiotic_ml.report import write_results
         print(write_results())

@@ -16,7 +16,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from cardiotic_ml.data import mitdb, noise
 
 LABELS = ["good", "noisy", "unusable"]
 FS = 360
@@ -33,6 +32,8 @@ class QualitySet:
 
 def clean_windows(record_ids: list[int], step: int = WIN) -> np.ndarray:
     """Non-overlapping windows that contain no MIT-BIH signal-quality ('~') or unreadable marks."""
+    from cardiotic_ml.data import mitdb
+
     out = []
     for rid in record_ids:
         rec = mitdb.load_record(rid)
@@ -127,6 +128,8 @@ def signal_windows(signal: np.ndarray, fs: float) -> np.ndarray:
 
 
 def noise_pools() -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
+    from cardiotic_ml.data import noise
+
     train, test = {}, {}
     for kind in noise.NOISE_TYPES:
         a, b = noise.split_noise(noise.load_noise(kind))
