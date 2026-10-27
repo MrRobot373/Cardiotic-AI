@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Document** | Product plan and review of the "AI-Powered ECG Monitoring and Cardiac Risk Detection System" research (Oct 2026) |
-| **Status** | Draft v0.2, for leadership review. Section 14 lists the decisions we need from you |
-| **Product** | **Cardiotic AI** (by GMS): a standalone product, separate from MED AI (GMS Clinical AI). MED AI is the reference for UI design language and for safety patterns only |
+| **Status** | Draft v0.3. Leadership decisions of 27 Oct 2026 recorded in section 0; open questions in section 14 |
+| **Product** | **Cardiotic AI**: a standalone product, separate from MED AI (GMS Clinical AI). MED AI is the reference for UI design language and for safety patterns only |
 | **Scope** | Product definition, regulatory path, data, AI/ML, architecture, UI, roadmap, team, risks |
 | **UI concept** | [`ui-concept/index.html`](ui-concept/index.html) (open it in a browser). Screenshots are in [`ui-concept/`](ui-concept/) |
 
@@ -12,6 +12,17 @@
 > validated performance claim. Where a number is a **hypothesis** or **target**, it is
 > labelled as one. A regulatory consultant must confirm device classification in each target
 > market before anything is submitted.
+
+---
+
+## 0. Decisions (27 Oct 2026)
+
+| Topic | Decision | What it changes |
+|---|---|---|
+| **Markets** | All three eventually; **India (CDSCO) and USA (FDA) first**, EU (MDR) later | One shared quality system and technical file, two submissions (section 6) |
+| **First buyers** | **Hospitals** (ECG reading rooms first) **and medical-equipment manufacturers** (ECG carts, monitors, Holter) | The ECG engine must ship both inside our hospital application and as an embeddable engine for manufacturers (sections 5.1, 9) |
+| **Branding** | **"Cardiotic AI" alone** (no parent-company name in the product) | Product name, UI and documents updated; own logo needed; trademark search in India and the USA before launch |
+| **Deployment** | **On-premise in the hospital** | Offline install, no internet dependency, CPU-only sizing (measured: section 9.7) |
 
 ---
 
@@ -88,10 +99,10 @@ That is a separate, much harder claim. It needs outcome-labelled prospective dat
 classification up a risk class. Until we have that evidence, the product **detects and
 measures what is in the signal**. It does not predict outcomes.
 
-- Product: **Cardiotic AI** (by GMS). Run a trademark search before public launch.
+- Product: **Cardiotic AI**, used alone. Run trademark searches in India and the USA before public launch.
 - Product A: **ECG Review**. Product B: **Live Assist**. Product C: **Periop Insight**.
 
-### 3.2 A standalone product that looks like a GMS product
+### 3.2 A standalone product that shares MED AI's design language
 Cardiotic AI is **a separate product**: separate repository, separate releases, separate
 regulatory file. Reasons:
 
@@ -173,7 +184,7 @@ neonatal use, home-use or consumer devices, and diagnosis from photos of paper E
 
 ## 5. Market and commercial strategy
 
-### 5.1 Beachhead options (decision needed: Q1/Q4 in section 14)
+### 5.1 Beachhead (decided: hospitals + equipment manufacturers)
 
 | Option | Buyer | Why attractive | Main risk |
 |---|---|---|---|
@@ -181,9 +192,19 @@ neonatal use, home-use or consumer devices, and diagnosis from photos of paper E
 | **2. Perioperative case review** (post-op ECG + vitals review, artifact-aware) | Anaesthesia departments, OT quality committees, clinical engineering | Distinctive (VitalDB-style data), little direct competition, natural path to C | Smaller budget line, and value must be shown with data |
 | **3. OEM algorithm licensing** | Monitor / ECG-cart manufacturers | Large volume per deal | Long sales cycles; OEMs demand EC57 / IEC evidence and a QMS first |
 
-**Recommendation:** lead with **Option 1** for revenue and regulatory learning, and run
-**Option 2** as a co-development pilot with one hospital partner from month 6. Together they
-form the data and evidence engine for Products B/C and for later OEM conversations (Option 3).
+**Decision (27 Oct 2026): Options 1 and 3 together**, Option 2 as a later pilot. Both buyers use the
+**same ECG engine**; what differs is how it is delivered:
+
+| | Hospitals (Option 1) | Equipment manufacturers (Option 3) |
+|---|---|---|
+| What they buy | The Cardiotic AI application on their own server: worklist, review, signed reports, HIS link | The **engine**: an embeddable, offline library their ECG cart, monitor or Holter software calls |
+| What they need from us | Workflow, integration (HL7/FHIR/DICOM), on-prem install and support, local clearance | Stable API, deterministic outputs, **EC57 / IEC 60601-2-25 / -27 / -47 test reports**, IEC 62304 software documentation they can put in their own submission |
+| Commercial model | Annual licence per site | Per-unit royalty or annual platform fee |
+| First AI capability that matters | 12-lead measurements and statements, rhythm review | Same 12-lead set for carts; arrhythmia/beat analysis for monitors and Holter |
+
+Consequence for engineering: the regulated `ecg-engine` is packaged as its own component from
+day one (exported models + versioned API), and **12-lead measurements and statements (model M4)
+move to the top of the AI roadmap**, because both buyers need them.
 
 ### 5.2 Competitive landscape (to be expanded in discovery)
 - **Monitor / cart incumbents with built-in algorithms:** Philips, GE HealthCare, Mindray,
@@ -211,7 +232,7 @@ form the data and evidence engine for Products B/C and for later OEM conversatio
 ## 6. Regulatory and quality strategy
 
 > Classes below are **working assumptions** from public guidance and predicate searches.
-> A consultant confirms them in Phase 0.
+> A consultant confirms them in Phase 0. Decision (27 Oct 2026): **India and USA first, EU later.**
 
 | Market | Likely pathway for Product A | Notes |
 |---|---|---|
@@ -233,9 +254,42 @@ form the data and evidence engine for Products B/C and for later OEM conversatio
 | IEC 60601-1-8 | Alarm-system principles (relevant to how Product B displays advisory flags) |
 | HL7 FHIR, HL7 v2, DICOM | Interoperability |
 
-**Regulatory sequencing:** release an **RUO build** first (research partners, no clinical claims) →
-retrospective clinical validation → submission for Product A → post-market surveillance →
-Product B, starting with a silent-mode prospective study.
+### 6.1 One quality system, two submissions
+Build once, use for both: the ISO 13485 QMS (accepted by FDA's QMSR and aligned with CDSCO's
+Medical Devices Rules 2017 QMS requirements), IEC 62304 software file, ISO 14971 risk file (with
+AAMI CR34971 for AI), IEC 62366-1 usability file, IEC 81001-5-1 security file with SBOM,
+EC57 / IEC 60601-2-25 performance reports, the clinical validation report, and a change-control
+plan for model updates. Each market then adds its own forms and local data.
+
+### 6.2 India (CDSCO) track
+1. **Classification:** confirm the class (likely B or C) with the consultant; request CDSCO clarification if unclear.
+2. **Test licence:** Form **MD-12** application → **MD-13** licence, to manufacture the software for clinical
+   investigation, testing and evaluation at the Indian partner hospital.
+3. **Indian clinical performance evaluation:** at least one Indian hospital, ethics-committee approval, Indian
+   patients and the ECG machines used locally. Whether formal clinical-investigation permission is needed
+   depends on class and novelty (consultant).
+4. **Manufacturing licence** on the SUGAM portal: Class A/B — Form **MD-3** → licence **MD-5** (State Licensing
+   Authority); Class C/D — Form **MD-7** → licence **MD-9** (Central Licensing Authority). QMS audit.
+5. **Post-market:** vigilance and complaint handling. Patient data: DPDP Act 2023; on-prem deployment keeps
+   data inside the hospital.
+
+### 6.3 USA (FDA) track
+1. **Predicate:** ECG analysis software under product code **DQK** (21 CFR 870.1425) for Product A; **DSI**
+   (21 CFR 870.1025) later for real-time arrhythmia alarms (Product B).
+2. **Pre-Submission (Q-Sub) meeting early:** agree the validation plan — datasets, endpoints, subgroup
+   analyses, and the change-control plan (PCCP) for model updates.
+3. **Validation:** EC57 testing on the recognised databases (MIT-BIH, AHA, NST), IEC 60601-2-25 measurement
+   accuracy for 12-lead claims, and clinical data **representative of the US population** (multi-site). Indian
+   data alone will not be enough for FDA; a US data source is needed (section 14).
+4. **510(k) via eSTAR:** software documentation, AI-specific content per FDA's AI-enabled device software
+   guidance (draft, Jan 2025), Section 524B cybersecurity (SBOM, threat model, vulnerability handling), PCCP.
+5. **Registration:** US agent, establishment registration and device listing; QMSR compliance.
+
+### 6.4 Sequencing
+Research-use build to partners → India test licence and Indian validation, with an FDA Pre-Sub in parallel →
+India manufacturing licence → FDA 510(k) → post-market surveillance in both → EU (MDR Notified Body, Class
+IIa likely, plus EU AI Act obligations) reusing the same core file. Product B starts later with a
+silent-mode prospective study.
 
 ---
 
@@ -249,6 +303,9 @@ Product B, starting with a silent-mode prospective study.
 | MIT-BIH Noise Stress Test | Calibrated noise added to clean ECG | **Signal-quality robustness, EC57 noise testing** | ODC-By 1.0 | ✅ |
 | MIT-BIH AF / Long-Term AF | Long AF recordings | AF episode detection | ODC-By 1.0 | ✅ |
 | PTB-XL 1.0.3 | 21,799 × 10 s 12-lead, 18,869 patients | 12-lead diagnostic statements | CC BY 4.0 | ✅ with attribution |
+| Chapman–Shaoxing (figshare 4560497) | 10,646 × 10 s 12-lead, 500 Hz, China, GE MUSE, with MUSE measurements | **External test** of statements and measurements (never trained on) | CC0 | ✅ |
+| Chapman–Shaoxing–Ningbo (PhysioNet `ecg-arrhythmia` 1.0.0) | 45,152 × 10 s 12-lead (includes the 10,646 above) | Training data from a second country (Ningbo part only) | CC BY 4.0 | ✅ with attribution |
+| PTB-XL+ 1.0.1 | Measurements of the same ECGs by GE 12SL and Uni-G (intervals, axes, amplitudes) | **Reference for our interval measurements** (not ground truth) | CC BY 4.0 | ✅ with attribution |
 | **PhysioNet/CinC 2015** | ~1,250 ICU alarms (asystole, brady, tachy, VT, VF/flutter), ECG + ABP/PPG | **False-alarm reduction: our exact thesis** | ODC-By 1.0 | ✅ |
 | PhysioNet/CinC 2017 | ~8.5k single-lead AF recordings | AF vs other vs noise | Verify | Verify |
 | PhysioNet/CinC 2020/2021 | ~88k 12-lead from many countries | Multi-source generalisation | Mixed per source, so verify each | Verify per source |
@@ -383,7 +440,7 @@ validation passes.
         │                              │
         ▼                       ┌──────┴──────────────────────────────────────────────┐
  ┌──────────────┐  raw files    │ api (FastAPI): auth & roles · patients · worklist ·  │
- │ ingest       │──────────────▶│ recordings · reviews · reports · audit · integrations│◀── web (React, GMS design system)
+ │ ingest       │──────────────▶│ recordings · reviews · reports · audit · integrations│◀── web (React, shared design system)
  │ parsers,     │  standardised └──────┬───────────────────────────────▲──────────────┘     REST + WebSocket
  │ identity     │  ECGRecord           │ jobs (queue)                  │ results (append-only)
  │ check        │               ┌──────▼────────────────┐       ┌──────┴──────────────┐
@@ -408,7 +465,7 @@ validation passes.
 
 ```text
 cardiotic-ai/
-  apps/web/            React + Vite + Tailwind + Radix, GMS design tokens (copied from MED AI's UI kit)
+  apps/web/            React + Vite + Tailwind + Radix, design tokens (copied from MED AI's UI kit)
   apps/api/            FastAPI: auth, patients, worklist, recordings, reviews, reports, audit, integrations
   services/ingest/     format parsers, identity check, standardisation (ECGRecord)
   services/engine/     ecg-engine: quality, delineation, measurements, classifiers (regulated)
@@ -454,6 +511,20 @@ algorithm's output.
   within seconds. It never shows stale data as live.
 - WebGL / canvas waveform rendering (SVG does not scale to multi-bed 500 Hz streams).
 
+### 9.7 On-premise deployment (decided)
+- **Measured** with the research pipeline, **one CPU core, no GPU** (MIT-BIH and AF Database recordings):
+  10 s ECG strip **23 ms**; 30-min Holter **3.3 s**; 10-hour Holter **33 s**, **1.3 GB** peak memory
+  (after batching model calls; it was 5 GB before). The 12-lead model (M4) is not built yet and will add cost,
+  so re-measure then.
+- **Implication (estimate):** a single CPU-only hospital server (for example 8 cores, 32 GB RAM) has ample
+  capacity for a hospital's daily ECG and Holter volume; no GPU purchase is needed.
+- **Packaging:** Docker Compose bundle for a Linux server, installable **fully offline**; local PostgreSQL and
+  object storage; offline licence file; backups; health page; role-based access and audit.
+- **Integration inside the hospital network only:** HL7 v2 / FHIR to the HIS, DICOM and vendor exports from ECG
+  management systems. No patient data leaves the hospital.
+- **Updates:** signed release packages, installed in a window the hospital chooses, under the change-control
+  plan; every model change is traceable to its validation report.
+
 ### 9.6 Engineering practices from day 1
 - Requirements carry IDs (e.g. `REQ-QUAL-003`). Tests reference them, and CI produces the
   traceability matrix.
@@ -461,7 +532,7 @@ algorithm's output.
 - Protected `main`, reviewed PRs, signed release tags. Every release has release notes and a V&V record.
 - The locked clinical test set is never in the repo. It sits in a separate, access-controlled store.
 
-## 10. UI plan: GMS design language, ECG-specific workflow
+## 10. UI plan: shared design language, ECG-specific workflow
 
 Cardiotic AI uses **the same design language as MED AI's current UI**: colour tokens, glass
 cards, top pill navigation with an icon rail, the patient header with context chips, tab pills,
@@ -565,20 +636,21 @@ partnership costs, pen-testing, liability insurance, GPU training compute.
 
 ---
 
-## 14. Decisions needed from you (my open questions)
+## 14. Open questions
 
-1. **Target market first:** India (CDSCO), USA (FDA), EU (MDR), or several? This sets the
-   regulator, data-privacy law and timeline.
-2. **Branding:** show as "Cardiotic AI" alone, or "Cardiotic AI by GMS"? (A trademark search is still needed.)
+Decided on 27 Oct 2026 (section 0): markets (India + USA first), buyers (hospitals + equipment
+manufacturers), branding ("Cardiotic AI" alone), deployment (on-premise). Still open:
+
 3. **Hospital partner:** do we have one (or two)? Which **monitors and ECG carts** do they use
    (Philips / GE / Mindray / Nihon Kohden / Schiller / BPL)? Can they export raw waveforms?
-4. **Beachhead buyer:** hospital ECG review (recommended), perioperative case review, or OEM
-   licensing to device manufacturers?
 5. **QMS status:** does GMS already hold ISO 13485 or have any medical-device QMS? If not, do we
    hire a regulatory lead or use a consultant?
-6. **Deployment:** on-prem / local-first (as MED AI does today, recommended) or cloud?
 7. **Team and budget:** is the team in section 12 realistic? What timeline does leadership expect?
 8. **RUO first:** may we release a Research-Use-Only build to research partners in Phase 1?
+9. **US clinical data source (new):** FDA will expect US-representative validation data. Options: a US
+   hospital partner, a contract research organisation, or licensed US ECG datasets.
+10. **Target manufacturers (new):** which ECG-cart, monitor or Holter makers should we approach first
+    (Indian makers such as BPL, or global ones)? This decides the engine's first API and test reports.
 
 ---
 

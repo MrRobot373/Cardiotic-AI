@@ -1,0 +1,27 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T16:42:59+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "ecg12_selection",
+  "rule": "Adopt a candidate over the current model only if, on VALIDATION data: PTB-XL macro-AUC (all statements) drops by at most 0.005, and Ningbo-validation macro-AUC on the mapped statements improves (both models scored with the same, current label map).",
+  "label_map": "v0.3",
+  "current": "v0.2",
+  "candidate": "v0.3",
+  "ptbxl_val_all": {
+    "v0.1": 0.928447608497913,
+    "v0.2": 0.9316497037987868,
+    "v0.3": 0.9313628914501311
+  },
+  "ningbo_val_mapped": {
+    "v0.1": 0.883868263446056,
+    "v0.2": 0.9471321229243738,
+    "v0.3": 0.9801936231714046
+  },
+  "chosen": "v0.3",
+  "history": "v0.2 was adopted over v0.1 by this rule with the v0.2 label map; its external-test PVC drop led to finding the label-map error fixed in v0.3."
+}

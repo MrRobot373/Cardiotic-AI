@@ -1,0 +1,135 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T04:15:34+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "rhythm_cross_dataset_af",
+  "train_data": "CinC 2017 only",
+  "test_data": "MIT-BIH Arrhythmia (all non-paced records), MLII",
+  "protocol": "30 s non-overlapping windows; AF = window entirely inside an (AFIB episode; mixed windows skipped",
+  "windows_af": 214.0,
+  "windows_non_af": 2388.0,
+  "af_sensitivity": 0.9766355140186916,
+  "af_ppv": 0.5679347826086957,
+  "af_specificity": 0.9334170854271356,
+  "predictions_on_non_af_windows": {
+    "O": 1193,
+    "N": 1027,
+    "~": 9,
+    "A": 159
+  },
+  "per_record": [
+    {
+      "record": 118,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 2.0
+    },
+    {
+      "record": 200,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 16.0
+    },
+    {
+      "record": 201,
+      "af_windows": 18.0,
+      "af_detected": 18.0,
+      "false_af_windows": 0.0
+    },
+    {
+      "record": 202,
+      "af_windows": 17.0,
+      "af_detected": 17.0,
+      "false_af_windows": 1.0
+    },
+    {
+      "record": 203,
+      "af_windows": 33.0,
+      "af_detected": 33.0,
+      "false_af_windows": 9.0
+    },
+    {
+      "record": 207,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 1.0
+    },
+    {
+      "record": 208,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 1.0
+    },
+    {
+      "record": 209,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 3.0
+    },
+    {
+      "record": 210,
+      "af_windows": 54.0,
+      "af_detected": 54.0,
+      "false_af_windows": 0
+    },
+    {
+      "record": 214,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 2.0
+    },
+    {
+      "record": 215,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 33.0
+    },
+    {
+      "record": 219,
+      "af_windows": 42.0,
+      "af_detected": 42.0,
+      "false_af_windows": 4.0
+    },
+    {
+      "record": 220,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 1.0
+    },
+    {
+      "record": 221,
+      "af_windows": 50.0,
+      "af_detected": 45.0,
+      "false_af_windows": 0
+    },
+    {
+      "record": 222,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 6.0
+    },
+    {
+      "record": 223,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 3.0
+    },
+    {
+      "record": 228,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 23.0
+    },
+    {
+      "record": 232,
+      "af_windows": 0,
+      "af_detected": 0,
+      "false_af_windows": 54.0
+    }
+  ]
+}

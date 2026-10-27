@@ -1,0 +1,181 @@
+{
+ "models": [
+  {
+   "id": "qrs",
+   "name": "Heartbeat detection",
+   "version": "Pan-Tompkins + R-peak refinement",
+   "kind": "Signal processing",
+   "task": "Find every heartbeat",
+   "tested_on": "All 48 MIT-BIH Arrhythmia records (EC57-style scoring)",
+   "metrics": [
+    [
+     "Sensitivity",
+     "99.5%"
+    ],
+    [
+     "Positive predictivity",
+     "99.3%"
+    ],
+    [
+     "Beats",
+     "91,285"
+    ]
+   ],
+   "limits": [
+    "Paced and very noisy records are hardest (record 108: Se 82%)."
+   ]
+  },
+  {
+   "id": "quality",
+   "name": "Signal quality (M1)",
+   "version": "quality_net v0.3",
+   "kind": "1D-CNN",
+   "task": "Good / noisy / unusable, per 2.5 s",
+   "tested_on": "Unseen MIT-BIH patients with calibrated noise; CinC 2017 expert labels",
+   "metrics": [
+    [
+     "Unusable caught",
+     "98.7%"
+    ],
+    [
+     "Clean ECG rated unusable",
+     "0.06%"
+    ]
+   ],
+   "limits": [
+    "Trained on Holter lead II, not 12-lead: rates ~20% of clean 12-lead leads 'noisy'."
+   ]
+  },
+  {
+   "id": "beats",
+   "name": "Beat classifier (M2)",
+   "version": "beat_net v0.1",
+   "kind": "1D-CNN + RR features",
+   "task": "Normal / supraventricular / ventricular / fusion",
+   "tested_on": "22 unseen MIT-BIH patients (inter-patient, end to end)",
+   "metrics": [
+    [
+     "Ventricular Se / +P",
+     "87.0% / 95.7%"
+    ],
+    [
+     "Normal Se / +P",
+     "95.5% / 95.7%"
+    ],
+    [
+     "Beats analysed",
+     "99.1%"
+    ]
+   ],
+   "limits": [
+    "Supraventricular beats weak (Se 32%); fusion beats not recognised."
+   ]
+  },
+  {
+   "id": "rhythm",
+   "name": "Rhythm / AF (M3)",
+   "version": "rhythm_net v0.1",
+   "kind": "1D ResNet + RR irregularity",
+   "task": "Sinus / AF / other / too noisy, per 30 s",
+   "tested_on": "CinC 2017 test split; fresh MIT-BIH AF Database patients; MIT-BIH test records",
+   "metrics": [
+    [
+     "AF sensitivity (AFDB)",
+     "97.4%"
+    ],
+    [
+     "AF PPV (AFDB)",
+     "95.5%"
+    ],
+    [
+     "CinC 2017 F1",
+     "83.1%"
+    ],
+    [
+     "Calibration error",
+     "3.1% \u2192 1.6%"
+    ]
+   ],
+   "limits": [
+    "Over-calls AF when ectopic beats are frequent (MIT-BIH test PPV 60%)."
+   ]
+  },
+  {
+   "id": "ecg12",
+   "name": "12-lead diagnostic statements (M4)",
+   "version": "ecg12_net v0.3",
+   "kind": "1D ResNet, 71 SCP-ECG statements",
+   "task": "Diagnoses and descriptions from a 10 s 12-lead ECG",
+   "tested_on": "PTB-XL test fold (Germany); Chapman\u2013Shaoxing held out (China)",
+   "metrics": [
+    [
+     "Macro-AUC, all statements",
+     "0.921"
+    ],
+    [
+     "Macro-AUC, diagnostic",
+     "0.935"
+    ],
+    [
+     "AF AUC (Chapman)",
+     "0.988"
+    ],
+    [
+     "PVC AUC (Chapman)",
+     "0.990"
+    ],
+    [
+     "LBBB AUC (Chapman)",
+     "0.993"
+    ]
+   ],
+   "limits": [
+    "Atrial flutter weak (Chapman sensitivity 9%).",
+    "Women 0.917 vs men 0.939 (superclass AUC) \u2014 under investigation.",
+    "Yes/no thresholds must be set per hospital."
+   ]
+  },
+  {
+   "id": "measure",
+   "name": "12-lead measurements (M4)",
+   "version": "measurement v0.2",
+   "kind": "Signal processing (median beat)",
+   "task": "Heart rate, PR, QRS, QT/QTc, axes",
+   "tested_on": "PTB-XL test fold vs GE 12SL; Chapman\u2013Shaoxing vs GE MUSE",
+   "metrics": [
+    [
+     "QRS vs GE 12SL (ms)",
+     "+0.3 \u00b1 11.2"
+    ],
+    [
+     "QT vs GE 12SL (ms)",
+     "-2.0 \u00b1 22.7"
+    ],
+    [
+     "PR vs GE 12SL (ms)",
+     "-6.4 \u00b1 15.9"
+    ],
+    [
+     "QRS vs GE MUSE (ms)",
+     "+0.6 \u00b1 15.1"
+    ],
+    [
+     "QT vs GE MUSE (ms)",
+     "-1.7 \u00b1 27.1"
+    ]
+   ],
+   "limits": [
+    "Compared with other algorithms, not a referee: the CSE database is needed for IEC 60601-2-25."
+   ]
+  }
+ ],
+ "engine": {
+  "version": "0.1.0",
+  "models_version": "2026.10.1",
+  "passed": true,
+  "ecgs": 800,
+  "beats": 49438,
+  "max_prob_diff": 1.7881393432617188e-06
+ },
+ "source": "ml/reports/RESULTS.md and engine/validation/equivalence.json"
+}

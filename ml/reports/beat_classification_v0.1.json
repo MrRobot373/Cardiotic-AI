@@ -1,0 +1,850 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-26T17:46:37+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "beat_classification",
+  "split": "de Chazal inter-patient: DS1 train (minus val patients), DS2 test",
+  "sizes": {
+    "train": [
+      38683,
+      647,
+      3042,
+      414
+    ],
+    "val": [
+      7166,
+      297,
+      746,
+      0
+    ],
+    "test": [
+      44240,
+      1837,
+      3220,
+      388
+    ]
+  },
+  "test": {
+    "accuracy": 0.9183254503371239,
+    "macro_f1": 0.5377349205287368,
+    "per_class": {
+      "N": {
+        "support": 44240,
+        "sensitivity": 0.956125678119349,
+        "ppv": 0.956168904561689,
+        "f1": 0.9561472908519631
+      },
+      "S": {
+        "support": 1837,
+        "sensitivity": 0.321720195971693,
+        "ppv": 0.2563991323210412,
+        "f1": 0.2853693867696765
+      },
+      "V": {
+        "support": 3220,
+        "sensitivity": 0.8493788819875776,
+        "ppv": 0.9654076950229439,
+        "f1": 0.9036841235750868
+      },
+      "F": {
+        "support": 388,
+        "sensitivity": 0.005154639175257732,
+        "ppv": 0.006472491909385114,
+        "f1": 0.005738880918220947
+      }
+    },
+    "confusion": [
+      [
+        42299,
+        1565,
+        81,
+        295
+      ],
+      [
+        1224,
+        591,
+        15,
+        7
+      ],
+      [
+        338,
+        142,
+        2735,
+        5
+      ],
+      [
+        377,
+        7,
+        2,
+        2
+      ]
+    ],
+    "labels": [
+      "N",
+      "S",
+      "V",
+      "F"
+    ]
+  },
+  "test_per_record": {
+    "100": {
+      "N": {
+        "support": 2237,
+        "sensitivity": 0.9982118909253465,
+        "ppv": 0.9991051454138703,
+        "f1": 0.9986583184257604
+      },
+      "S": {
+        "support": 33,
+        "sensitivity": 0.9393939393939394,
+        "ppv": 0.8857142857142857,
+        "f1": 0.9117647058823529
+      },
+      "V": {
+        "support": 1,
+        "sensitivity": 1.0,
+        "ppv": 1.0,
+        "f1": 1.0
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "103": {
+      "N": {
+        "support": 2081,
+        "sensitivity": 0.9975973089860644,
+        "ppv": 0.9995185363505056,
+        "f1": 0.9985569985569985
+      },
+      "S": {
+        "support": 2,
+        "sensitivity": 0.5,
+        "ppv": 0.2,
+        "f1": 0.28571428571428575
+      },
+      "V": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      }
+    },
+    "105": {
+      "N": {
+        "support": 2526,
+        "sensitivity": 0.9750593824228029,
+        "ppv": 0.9943480016148567,
+        "f1": 0.9846092344593244
+      },
+      "S": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      },
+      "V": {
+        "support": 41,
+        "sensitivity": 0.024390243902439025,
+        "ppv": 0.02,
+        "f1": 0.021978021978021983
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      }
+    },
+    "111": {
+      "N": {
+        "support": 2123,
+        "sensitivity": 0.9962317475270843,
+        "ppv": 1.0,
+        "f1": 0.998112317130722
+      },
+      "S": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      },
+      "V": {
+        "support": 1,
+        "sensitivity": 1.0,
+        "ppv": 0.1111111111111111,
+        "f1": 0.19999999999999998
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "113": {
+      "N": {
+        "support": 1788,
+        "sensitivity": 0.9558165548098434,
+        "ppv": 1.0,
+        "f1": 0.9774092078924793
+      },
+      "S": {
+        "support": 6,
+        "sensitivity": 1.0,
+        "ppv": 0.07058823529411765,
+        "f1": 0.13186813186813187
+      },
+      "V": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "117": {
+      "N": {
+        "support": 1533,
+        "sensitivity": 1.0,
+        "ppv": 1.0,
+        "f1": 1.0
+      },
+      "S": {
+        "support": 1,
+        "sensitivity": 1.0,
+        "ppv": 1.0,
+        "f1": 1.0
+      },
+      "V": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "121": {
+      "N": {
+        "support": 1860,
+        "sensitivity": 0.9989247311827957,
+        "ppv": 1.0,
+        "f1": 0.9994620763851533
+      },
+      "S": {
+        "support": 1,
+        "sensitivity": 1.0,
+        "ppv": 1.0,
+        "f1": 1.0
+      },
+      "V": {
+        "support": 1,
+        "sensitivity": 1.0,
+        "ppv": 0.3333333333333333,
+        "f1": 0.5
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "123": {
+      "N": {
+        "support": 1514,
+        "sensitivity": 0.9815059445178336,
+        "ppv": 1.0,
+        "f1": 0.9906666666666667
+      },
+      "S": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      },
+      "V": {
+        "support": 3,
+        "sensitivity": 0.0,
+        "ppv": NaN,
+        "f1": NaN
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "200": {
+      "N": {
+        "support": 1742,
+        "sensitivity": 0.9971297359357061,
+        "ppv": 0.9714765100671141,
+        "f1": 0.9841359773371106
+      },
+      "S": {
+        "support": 30,
+        "sensitivity": 0.23333333333333334,
+        "ppv": 0.20588235294117646,
+        "f1": 0.21874999999999997
+      },
+      "V": {
+        "support": 826,
+        "sensitivity": 0.937046004842615,
+        "ppv": 1.0,
+        "f1": 0.9675
+      },
+      "F": {
+        "support": 2,
+        "sensitivity": 0.0,
+        "ppv": 0.0,
+        "f1": NaN
+      }
+    },
+    "202": {
+      "N": {
+        "support": 2060,
+        "sensitivity": 0.8490291262135923,
+        "ppv": 0.9965811965811966,
+        "f1": 0.9169069462647446
+      },
+      "S": {
+        "support": 55,
+        "sensitivity": 0.8909090909090909,
+        "ppv": 0.1396011396011396,
+        "f1": 0.24137931034482757
+      },
+      "V": {
+        "support": 19,
+        "sensitivity": 0.9473684210526315,
+        "ppv": 0.9473684210526315,
+        "f1": 0.9473684210526315
+      },
+      "F": {
+        "support": 1,
+        "sensitivity": 0.0,
+        "ppv": 0.0,
+        "f1": NaN
+      }
+    },
+    "210": {
+      "N": {
+        "support": 2421,
+        "sensitivity": 0.8781495249896737,
+        "ppv": 0.9797235023041475,
+        "f1": 0.9261598780222174
+      },
+      "S": {
+        "support": 22,
+        "sensitivity": 0.5909090909090909,
+        "ppv": 0.04126984126984127,
+        "f1": 0.0771513353115727
+      },
+      "V": {
+        "support": 195,
+        "sensitivity": 0.7846153846153846,
+        "ppv": 0.95625,
+        "f1": 0.8619718309859153
+      },
+      "F": {
+        "support": 10,
+        "sensitivity": 0.1,
+        "ppv": 0.3333333333333333,
+        "f1": 0.15384615384615383
+      }
+    },
+    "212": {
+      "N": {
+        "support": 2747,
+        "sensitivity": 0.9992719330178377,
+        "ppv": 1.0,
+        "f1": 0.9996358339402768
+      },
+      "S": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      },
+      "V": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "213": {
+      "N": {
+        "support": 2640,
+        "sensitivity": 0.9996212121212121,
+        "ppv": 0.8338072669826224,
+        "f1": 0.9092161929371232
+      },
+      "S": {
+        "support": 28,
+        "sensitivity": 0.39285714285714285,
+        "ppv": 0.8461538461538461,
+        "f1": 0.5365853658536585
+      },
+      "V": {
+        "support": 220,
+        "sensitivity": 0.3181818181818182,
+        "ppv": 0.9722222222222222,
+        "f1": 0.47945205479452047
+      },
+      "F": {
+        "support": 362,
+        "sensitivity": 0.0,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "214": {
+      "N": {
+        "support": 2001,
+        "sensitivity": 0.9855072463768116,
+        "ppv": 0.9994931576279777,
+        "f1": 0.9924509310518369
+      },
+      "S": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      },
+      "V": {
+        "support": 256,
+        "sensitivity": 0.82421875,
+        "ppv": 0.9906103286384976,
+        "f1": 0.8997867803837953
+      },
+      "F": {
+        "support": 1,
+        "sensitivity": 0.0,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "219": {
+      "N": {
+        "support": 2082,
+        "sensitivity": 0.8496637848222862,
+        "ppv": 0.9966197183098592,
+        "f1": 0.9172932330827068
+      },
+      "S": {
+        "support": 7,
+        "sensitivity": 0.2857142857142857,
+        "ppv": 0.006329113924050633,
+        "f1": 0.01238390092879257
+      },
+      "V": {
+        "support": 64,
+        "sensitivity": 0.921875,
+        "ppv": 0.9365079365079365,
+        "f1": 0.9291338582677166
+      },
+      "F": {
+        "support": 1,
+        "sensitivity": 0.0,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "221": {
+      "N": {
+        "support": 2031,
+        "sensitivity": 0.9675036927621861,
+        "ppv": 1.0,
+        "f1": 0.9834834834834835
+      },
+      "S": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      },
+      "V": {
+        "support": 396,
+        "sensitivity": 0.9924242424242424,
+        "ppv": 1.0,
+        "f1": 0.9961977186311787
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "222": {
+      "N": {
+        "support": 2272,
+        "sensitivity": 0.7988556338028169,
+        "ppv": 0.9918032786885246,
+        "f1": 0.8849341784495368
+      },
+      "S": {
+        "support": 209,
+        "sensitivity": 0.8947368421052632,
+        "ppv": 0.3070607553366174,
+        "f1": 0.45721271393643037
+      },
+      "V": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      }
+    },
+    "228": {
+      "N": {
+        "support": 1688,
+        "sensitivity": 0.995260663507109,
+        "ppv": 0.9988109393579072,
+        "f1": 0.9970326409495549
+      },
+      "S": {
+        "support": 3,
+        "sensitivity": 0.3333333333333333,
+        "ppv": 0.16666666666666666,
+        "f1": 0.2222222222222222
+      },
+      "V": {
+        "support": 362,
+        "sensitivity": 0.9917127071823204,
+        "ppv": 0.9917127071823204,
+        "f1": 0.9917127071823204
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      }
+    },
+    "231": {
+      "N": {
+        "support": 1567,
+        "sensitivity": 0.9917038927887684,
+        "ppv": 0.9987146529562982,
+        "f1": 0.995196926032661
+      },
+      "S": {
+        "support": 1,
+        "sensitivity": 0.0,
+        "ppv": 0.0,
+        "f1": NaN
+      },
+      "V": {
+        "support": 2,
+        "sensitivity": 0.5,
+        "ppv": 0.25,
+        "f1": 0.3333333333333333
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "232": {
+      "N": {
+        "support": 398,
+        "sensitivity": 0.9974874371859297,
+        "ppv": 0.2651970607882432,
+        "f1": 0.41899736147757255
+      },
+      "S": {
+        "support": 1382,
+        "sensitivity": 0.1975397973950796,
+        "ppv": 0.9963503649635036,
+        "f1": 0.32971014492753625
+      },
+      "V": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": NaN,
+        "f1": NaN
+      }
+    },
+    "233": {
+      "N": {
+        "support": 2229,
+        "sensitivity": 0.8909825033647375,
+        "ppv": 0.9416785206258891,
+        "f1": 0.9156293222683264
+      },
+      "S": {
+        "support": 7,
+        "sensitivity": 0.5714285714285714,
+        "ppv": 0.1111111111111111,
+        "f1": 0.18604651162790697
+      },
+      "V": {
+        "support": 830,
+        "sensitivity": 0.8349397590361446,
+        "ppv": 0.9985590778097982,
+        "f1": 0.9094488188976377
+      },
+      "F": {
+        "support": 11,
+        "sensitivity": 0.09090909090909091,
+        "ppv": 0.004201680672268907,
+        "f1": 0.008032128514056224
+      }
+    },
+    "234": {
+      "N": {
+        "support": 2700,
+        "sensitivity": 0.997037037037037,
+        "ppv": 0.9831994156318481,
+        "f1": 0.99006987863185
+      },
+      "S": {
+        "support": 50,
+        "sensitivity": 0.08,
+        "ppv": 0.2857142857142857,
+        "f1": 0.125
+      },
+      "V": {
+        "support": 3,
+        "sensitivity": 0.0,
+        "ppv": NaN,
+        "f1": NaN
+      },
+      "F": {
+        "support": 0,
+        "sensitivity": NaN,
+        "ppv": 0.0,
+        "f1": NaN
+      }
+    }
+  },
+  "training": {
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.33778055250269945,
+        "val_macro_f1": 0.525059603051548,
+        "val_accuracy": 0.7681812644658302,
+        "seconds": 14.9
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.15130236651195536,
+        "val_macro_f1": 0.5326794009936305,
+        "val_accuracy": 0.7205506151784626,
+        "seconds": 13.8
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.10674090333133539,
+        "val_macro_f1": 0.7001973312631241,
+        "val_accuracy": 0.7813375563406018,
+        "seconds": 13.1
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.09031599266589098,
+        "val_macro_f1": 0.5084593197196802,
+        "val_accuracy": 0.6899744183213546,
+        "seconds": 13.3
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.06949015057354975,
+        "val_macro_f1": 0.6021774166937398,
+        "val_accuracy": 0.7692776221220612,
+        "seconds": 13.2
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.06488807137589053,
+        "val_macro_f1": 0.5746526491712869,
+        "val_accuracy": 0.7706176148130102,
+        "seconds": 12.9
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.05288874866596396,
+        "val_macro_f1": 0.5748434182478611,
+        "val_accuracy": 0.7847484468266537,
+        "seconds": 13.8
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.044258923434358596,
+        "val_macro_f1": 0.5968473169597318,
+        "val_accuracy": 0.7882811548300646,
+        "seconds": 13.8
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.03941302015274385,
+        "val_macro_f1": 0.578491591608818,
+        "val_accuracy": 0.7862102570349616,
+        "seconds": 13.2
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.03401843270739062,
+        "val_macro_f1": 0.617668264750348,
+        "val_accuracy": 0.7825557315141918,
+        "seconds": 13.2
+      },
+      {
+        "epoch": 11,
+        "train_loss": 0.03149831213622287,
+        "val_macro_f1": 0.6219824923677238,
+        "val_accuracy": 0.7840175417224997,
+        "seconds": 12.6
+      },
+      {
+        "epoch": 12,
+        "train_loss": 0.027977808003417405,
+        "val_macro_f1": 0.5746173577073134,
+        "val_accuracy": 0.7819466439273968,
+        "seconds": 12.5
+      },
+      {
+        "epoch": 13,
+        "train_loss": 0.026258545242456664,
+        "val_macro_f1": 0.5904972615310347,
+        "val_accuracy": 0.7826775490315507,
+        "seconds": 12.4
+      },
+      {
+        "epoch": 14,
+        "train_loss": 0.025546394675671304,
+        "val_macro_f1": 0.5908170545286526,
+        "val_accuracy": 0.7824339139968327,
+        "seconds": 11.8
+      }
+    ],
+    "best_val_macro_f1": 0.7001973312631241
+  },
+  "model_card": {
+    "name": "beat_net",
+    "task": "AAMI beat class N / S / V / F from MLII beat window + RR features",
+    "input": "234 samples @ 360 Hz (0.25 s before to 0.40 s after R), monitoring filter 0.5\u201340 Hz",
+    "labels": [
+      "N",
+      "S",
+      "V",
+      "F"
+    ],
+    "intended_use": "Research use only. Not validated on clinical data or other devices.",
+    "train_patients": [
+      101,
+      108,
+      109,
+      112,
+      114,
+      115,
+      116,
+      119,
+      122,
+      124,
+      201,
+      203,
+      205,
+      208,
+      209,
+      215,
+      223,
+      230
+    ],
+    "val_patients": [
+      106,
+      118,
+      207,
+      220
+    ],
+    "test_patients": [
+      100,
+      103,
+      105,
+      111,
+      113,
+      117,
+      121,
+      123,
+      200,
+      202,
+      210,
+      212,
+      213,
+      214,
+      219,
+      221,
+      222,
+      228,
+      231,
+      232,
+      233,
+      234
+    ],
+    "class_weights": [
+      0.18211145462285544,
+      1.4081379298227743,
+      0.6494081465234378,
+      1.7603424690309326
+    ],
+    "file": "beat_net_v0.1.pt",
+    "sha256": "2cb6111fa4ccfce3db9ec3fa6e28c39dae3dec56f28a6d19e6a309e1ad0182e6",
+    "parameters": 161764,
+    "version": "v0.1",
+    "recipe": {
+      "dropout": 0.3,
+      "augment": false,
+      "label_smoothing": 0.0,
+      "epochs": 14
+    }
+  },
+  "version": "v0.1"
+}

@@ -1,0 +1,32 @@
+{
+  "task": "ningbo_af_label_check",
+  "method": "150 random ECGs per group; RR irregular = median |successive RR change| / median RR >= 0.10; P(AFIB) from statement model v0.1",
+  "groups": {
+    "Chapman AFIB": {
+      "rr_irregular_share": 0.89,
+      "median_p_afib": 0.93
+    },
+    "Chapman AFLT": {
+      "rr_irregular_share": 0.48,
+      "median_p_afib": 0.66
+    },
+    "Chapman SR": {
+      "rr_irregular_share": 0.01,
+      "median_p_afib": 0.0
+    },
+    "Ningbo AFLT (as coded)": {
+      "rr_irregular_share": 0.8,
+      "median_p_afib": 0.9
+    },
+    "Ningbo SR": {
+      "rr_irregular_share": 0.02,
+      "median_p_afib": 0.0
+    }
+  },
+  "ningbo_part_counts": {
+    "AFIB code 164889003": 0,
+    "AFLT code 164890007": 7615,
+    "ecgs": 34905
+  },
+  "decision": "Do not use Ningbo AFIB/AFLT labels for training (masked)."
+}

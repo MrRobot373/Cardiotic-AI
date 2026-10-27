@@ -1,0 +1,36 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T06:21:22+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "rhythm_selection",
+  "rule": "Adopt a candidate over v0.1 only if, on VALIDATION data: (1) AF sensitivity drops by at most 2 points on AFDB-val and on MIT-BIH-val, and no AFDB-val AF patient's AF sensitivity drops by more than 10 points; (2) CinC val challenge F1 drops by at most 1 point; (3) false-AF windows on AFDB-val + MIT-BIH-val are fewer than v0.1's. Among passing candidates, fewest false-AF windows wins. Fixed before any AFDB result.",
+  "baseline": "v0.1",
+  "candidates": [
+    {
+      "version": "v0.4",
+      "passes": false,
+      "afdb_af_se_drop": 0.041635502368486677,
+      "mitdb_af_se_drop": 0.0,
+      "worst_patient_af_se_drop": 0.1612377850162866,
+      "cinc_val_f1_drop": -0.011064848237534175,
+      "false_af": 100,
+      "false_af_baseline": 200
+    },
+    {
+      "version": "v0.5",
+      "passes": false,
+      "afdb_af_se_drop": 0.06606831214161057,
+      "mitdb_af_se_drop": 0.0,
+      "worst_patient_af_se_drop": 0.2662866449511401,
+      "cinc_val_f1_drop": -0.0014083717121678996,
+      "false_af": 132,
+      "false_af_baseline": 200
+    }
+  ],
+  "chosen": "v0.1"
+}

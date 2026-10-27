@@ -1,0 +1,261 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-26T17:52:55+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "end_to_end_pipeline",
+  "beat_model": "beat_net_v0.1",
+  "qrs_method": "pantompkins1985",
+  "test_patients": [
+    100,
+    103,
+    105,
+    111,
+    113,
+    117,
+    121,
+    123,
+    200,
+    202,
+    210,
+    212,
+    213,
+    214,
+    219,
+    221,
+    222,
+    228,
+    231,
+    232,
+    233,
+    234
+  ],
+  "test": {
+    "accuracy": 0.9166369565673301,
+    "macro_f1": 0.5335835519600192,
+    "per_class": {
+      "N": {
+        "support": 42357,
+        "sensitivity": 0.9544349222088439,
+        "ppv": 0.9553370985655883,
+        "f1": 0.9548857972931478
+      },
+      "S": {
+        "support": 1767,
+        "sensitivity": 0.298811544991511,
+        "ppv": 0.22906724511930585,
+        "f1": 0.2593320235756385
+      },
+      "V": {
+        "support": 3173,
+        "sensitivity": 0.8673179955877718,
+        "ppv": 0.9724381625441696,
+        "f1": 0.9168748958853906
+      },
+      "F": {
+        "support": 386,
+        "sensitivity": 0.0025906735751295338,
+        "ppv": 0.004329004329004329,
+        "f1": 0.003241491085899514
+      }
+    },
+    "confusion": [
+      [
+        40427,
+        1649,
+        59,
+        222
+      ],
+      [
+        1222,
+        528,
+        16,
+        1
+      ],
+      [
+        289,
+        125,
+        2752,
+        7
+      ],
+      [
+        379,
+        3,
+        3,
+        1
+      ]
+    ],
+    "labels": [
+      "N",
+      "S",
+      "V",
+      "F"
+    ]
+  },
+  "totals": {
+    "matched": 47683,
+    "missed": 183,
+    "in_unusable_segments": 1839,
+    "unmatched_detections": 154
+  },
+  "per_record": {
+    "100": {
+      "matched": 2271,
+      "missed": 2,
+      "in_unusable_segments": 0,
+      "unmatched_detections": 0,
+      "usable_fraction": 0.9996923076923077
+    },
+    "103": {
+      "matched": 2073,
+      "missed": 4,
+      "in_unusable_segments": 7,
+      "unmatched_detections": 1,
+      "usable_fraction": 0.9969230769230769
+    },
+    "105": {
+      "matched": 2401,
+      "missed": 9,
+      "in_unusable_segments": 157,
+      "unmatched_detections": 20,
+      "usable_fraction": 0.9401538461538461
+    },
+    "111": {
+      "matched": 2106,
+      "missed": 0,
+      "in_unusable_segments": 18,
+      "unmatched_detections": 1,
+      "usable_fraction": 0.9913846153846154
+    },
+    "113": {
+      "matched": 1794,
+      "missed": 1,
+      "in_unusable_segments": 0,
+      "unmatched_detections": 2,
+      "usable_fraction": 0.9996923076923077
+    },
+    "117": {
+      "matched": 1438,
+      "missed": 94,
+      "in_unusable_segments": 3,
+      "unmatched_detections": 93,
+      "usable_fraction": 0.9983076923076923
+    },
+    "121": {
+      "matched": 1774,
+      "missed": 1,
+      "in_unusable_segments": 88,
+      "unmatched_detections": 0,
+      "usable_fraction": 0.9581538461538461
+    },
+    "123": {
+      "matched": 1514,
+      "missed": 4,
+      "in_unusable_segments": 0,
+      "unmatched_detections": 0,
+      "usable_fraction": 0.9996923076923077
+    },
+    "200": {
+      "matched": 2589,
+      "missed": 5,
+      "in_unusable_segments": 7,
+      "unmatched_detections": 3,
+      "usable_fraction": 0.9969230769230769
+    },
+    "202": {
+      "matched": 2125,
+      "missed": 8,
+      "in_unusable_segments": 3,
+      "unmatched_detections": 2,
+      "usable_fraction": 0.9983076923076923
+    },
+    "210": {
+      "matched": 2617,
+      "missed": 26,
+      "in_unusable_segments": 7,
+      "unmatched_detections": 4,
+      "usable_fraction": 0.9969230769230769
+    },
+    "212": {
+      "matched": 2743,
+      "missed": 1,
+      "in_unusable_segments": 4,
+      "unmatched_detections": 0,
+      "usable_fraction": 0.9983076923076923
+    },
+    "213": {
+      "matched": 3249,
+      "missed": 2,
+      "in_unusable_segments": 0,
+      "unmatched_detections": 0,
+      "usable_fraction": 0.9996923076923077
+    },
+    "214": {
+      "matched": 2255,
+      "missed": 5,
+      "in_unusable_segments": 0,
+      "unmatched_detections": 2,
+      "usable_fraction": 0.9996923076923077
+    },
+    "219": {
+      "matched": 2146,
+      "missed": 0,
+      "in_unusable_segments": 8,
+      "unmatched_detections": 0,
+      "usable_fraction": 0.9941538461538462
+    },
+    "221": {
+      "matched": 2419,
+      "missed": 8,
+      "in_unusable_segments": 0,
+      "unmatched_detections": 1,
+      "usable_fraction": 0.9996923076923077
+    },
+    "222": {
+      "matched": 1308,
+      "missed": 2,
+      "in_unusable_segments": 1173,
+      "unmatched_detections": 0,
+      "usable_fraction": 0.5123076923076924
+    },
+    "228": {
+      "matched": 1709,
+      "missed": 1,
+      "in_unusable_segments": 343,
+      "unmatched_detections": 15,
+      "usable_fraction": 0.8321538461538461
+    },
+    "231": {
+      "matched": 1569,
+      "missed": 2,
+      "in_unusable_segments": 0,
+      "unmatched_detections": 1,
+      "usable_fraction": 0.9996923076923077
+    },
+    "232": {
+      "matched": 1776,
+      "missed": 2,
+      "in_unusable_segments": 2,
+      "unmatched_detections": 9,
+      "usable_fraction": 0.965076923076923
+    },
+    "233": {
+      "matched": 3064,
+      "missed": 6,
+      "in_unusable_segments": 9,
+      "unmatched_detections": 0,
+      "usable_fraction": 0.9969230769230769
+    },
+    "234": {
+      "matched": 2743,
+      "missed": 0,
+      "in_unusable_segments": 10,
+      "unmatched_detections": 0,
+      "usable_fraction": 0.9955384615384615
+    }
+  }
+}

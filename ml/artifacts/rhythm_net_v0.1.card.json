@@ -1,0 +1,24 @@
+{
+  "name": "rhythm_net",
+  "version": "v0.1",
+  "task": "30 s single-lead rhythm: N normal / A atrial fibrillation / O other rhythm / ~ too noisy",
+  "input": "4500 samples @ 150 Hz (monitoring band-pass, per-window std normalisation) + 10 RR features",
+  "labels": [
+    "N",
+    "A",
+    "O",
+    "~"
+  ],
+  "temperature": 1.2046066522598267,
+  "intended_use": "Research use only. Trained on handheld single-lead ECGs; not validated on clinical monitors.",
+  "data": "PhysioNet/CinC Challenge 2017 training set (ODC-By 1.0), REFERENCE-v3 labels, stratified 70/10/20 by record",
+  "file": "rhythm_net_v0.1.pt",
+  "sha256": "b1b8db640c4160fbd23c1b9bc0ef45321deb62a1a9f58ca68d9e9c2d233012db",
+  "parameters": 1032676,
+  "recipe": {
+    "ectopy_features": false,
+    "mitdb_train": false,
+    "epochs": 14
+  },
+  "n_rrf": 10
+}

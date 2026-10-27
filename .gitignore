@@ -6,7 +6,11 @@ node_modules/
 dist/
 .env
 # clinical data never goes in git
-data/
+/data/
 *.dat
 *.hea
 *.edf
+ml/artifacts/*.pt.tmp
+*.egg-info/
+ml/cache/
+build/

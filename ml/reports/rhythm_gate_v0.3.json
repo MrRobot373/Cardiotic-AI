@@ -1,0 +1,417 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T04:54:14+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "rhythm_gate_selection",
+  "version": "v0.3",
+  "base_model": "rhythm_net_v0.1",
+  "chosen": {
+    "pvc_min": 0.02,
+    "tau": 0.16,
+    "leads": [
+      "MLII",
+      "II"
+    ]
+  },
+  "validation_records": [
+    201,
+    215,
+    207,
+    209,
+    220
+  ],
+  "validation_af_windows": 18,
+  "baseline_false_af_windows": 38,
+  "grid": [
+    {
+      "pvc_min": 0.02,
+      "tau": 0.04,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 38
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.05,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 29
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.06,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 22
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.07,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 18
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.08,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 16
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.09,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 15
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.1,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 14
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.11,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 10
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.12,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 7
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.13,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 7
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.14,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 7
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.15,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 7
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.16,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 6
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.17,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 6
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.18,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 6
+    },
+    {
+      "pvc_min": 0.02,
+      "tau": 0.19,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 6
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.04,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 38
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.05,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 29
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.06,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 24
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.07,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 22
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.08,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 21
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.09,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 20
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.1,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 20
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.11,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 17
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.12,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 16
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.13,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 16
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.14,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 16
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.15,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 16
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.16,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 15
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.17,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 15
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.18,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 15
+    },
+    {
+      "pvc_min": 0.05,
+      "tau": 0.19,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 15
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.04,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 38
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.05,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.06,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.07,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.08,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.09,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.1,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.11,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.12,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.13,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.14,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.15,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.16,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.17,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.18,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.1,
+      "tau": 0.19,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.04,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 38
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.05,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.06,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.07,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.08,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.09,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.1,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.11,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.12,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.13,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.14,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.15,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.16,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.17,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.18,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    },
+    {
+      "pvc_min": 0.15,
+      "tau": 0.19,
+      "af_sensitivity": 1.0,
+      "false_af_windows": 37
+    }
+  ],
+  "why_lead_restricted": "On CinC 2017 validation (handheld lead I) the beat classifier labels many AF beats as ventricular (75th percentile PVC share 10.8% in true-AF windows), so any gate setting lost more than 2 points of AF sensitivity there."
+}

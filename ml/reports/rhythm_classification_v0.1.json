@@ -1,0 +1,301 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T04:15:06+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)",
+    "cinc2017": "PhysioNet/CinC Challenge 2017 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "rhythm_classification",
+  "dataset": "CinC 2017 (REFERENCE-v3)",
+  "split": "stratified by record 70/10/20 (no patient IDs published)",
+  "sizes": {
+    "train": {
+      "records": 5968,
+      "windows": 7902
+    },
+    "val": {
+      "records": 853,
+      "windows": 1147
+    },
+    "test": {
+      "records": 1707,
+      "windows": 2142
+    }
+  },
+  "test": {
+    "accuracy": 0.8547158758055068,
+    "macro_f1": 0.7855673138351016,
+    "per_class": {
+      "N": {
+        "support": 1016,
+        "sensitivity": 0.9163385826771654,
+        "ppv": 0.903883495145631,
+        "f1": 0.9100684261974584
+      },
+      "A": {
+        "support": 152,
+        "sensitivity": 0.8881578947368421,
+        "ppv": 0.7377049180327869,
+        "f1": 0.8059701492537314
+      },
+      "O": {
+        "support": 483,
+        "sensitivity": 0.7308488612836439,
+        "ppv": 0.8266978922716628,
+        "f1": 0.7758241758241758
+      },
+      "~": {
+        "support": 56,
+        "sensitivity": 0.7142857142857143,
+        "ppv": 0.5970149253731343,
+        "f1": 0.6504065040650405
+      }
+    },
+    "confusion": [
+      [
+        931,
+        11,
+        58,
+        16
+      ],
+      [
+        3,
+        135,
+        10,
+        4
+      ],
+      [
+        89,
+        34,
+        353,
+        7
+      ],
+      [
+        7,
+        3,
+        6,
+        40
+      ]
+    ],
+    "labels": [
+      "N",
+      "A",
+      "O",
+      "~"
+    ]
+  },
+  "test_challenge_f1": 0.8306209170917885,
+  "calibration": {
+    "temperature": 1.2046066522598267,
+    "ece_before": 0.03052975440765584,
+    "ece_after": 0.016100872694293732,
+    "confidence_levels": {
+      "high": {
+        "share": 0.5295840656121851,
+        "accuracy": 0.9535398230088495
+      },
+      "moderate": {
+        "share": 0.30052724077328646,
+        "accuracy": 0.8323586744639376
+      },
+      "low": {
+        "share": 0.1698886936145284,
+        "accuracy": 0.5862068965517241
+      }
+    }
+  },
+  "training": {
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.9751536882970642,
+        "val_macro_f1": 0.5661492766917285,
+        "val_accuracy": 0.6896251089799477,
+        "seconds": 39.9
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.6694448603252555,
+        "val_macro_f1": 0.7067687069218306,
+        "val_accuracy": 0.7916303400174368,
+        "seconds": 38.7
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.5793253373297158,
+        "val_macro_f1": 0.7427063928870705,
+        "val_accuracy": 0.8204010462074979,
+        "seconds": 37.3
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.5172273010822587,
+        "val_macro_f1": 0.7971259943982929,
+        "val_accuracy": 0.8421970357454228,
+        "seconds": 38.2
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.5030723483584797,
+        "val_macro_f1": 0.7959533298498727,
+        "val_accuracy": 0.8474280732345248,
+        "seconds": 38.6
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.46308584238978406,
+        "val_macro_f1": 0.7894392706754683,
+        "val_accuracy": 0.8491717523975588,
+        "seconds": 38.1
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.4358914538037472,
+        "val_macro_f1": 0.8172204346579347,
+        "val_accuracy": 0.8491717523975588,
+        "seconds": 37.5
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.3986773936092567,
+        "val_macro_f1": 0.8052224083760126,
+        "val_accuracy": 0.8561464690496948,
+        "seconds": 38.0
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.3606685716588115,
+        "val_macro_f1": 0.7888896215011456,
+        "val_accuracy": 0.8491717523975588,
+        "seconds": 37.5
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.32702083324848985,
+        "val_macro_f1": 0.8177203651164462,
+        "val_accuracy": 0.8535309503051438,
+        "seconds": 36.7
+      },
+      {
+        "epoch": 11,
+        "train_loss": 0.28283717375228873,
+        "val_macro_f1": 0.7934945739018541,
+        "val_accuracy": 0.8404533565823888,
+        "seconds": 37.5
+      },
+      {
+        "epoch": 12,
+        "train_loss": 0.25558513857026366,
+        "val_macro_f1": 0.7990278582672858,
+        "val_accuracy": 0.8544027898866609,
+        "seconds": 36.9
+      },
+      {
+        "epoch": 13,
+        "train_loss": 0.2316451471113187,
+        "val_macro_f1": 0.8034382497198195,
+        "val_accuracy": 0.8578901482127289,
+        "seconds": 37.3
+      },
+      {
+        "epoch": 14,
+        "train_loss": 0.21402754519776857,
+        "val_macro_f1": 0.8067321966739965,
+        "val_accuracy": 0.8544027898866609,
+        "seconds": 37.3
+      }
+    ],
+    "best_val_macro_f1": 0.8177203651164462
+  },
+  "model_card": {
+    "name": "rhythm_net",
+    "version": "v0.1",
+    "task": "30 s single-lead rhythm: N normal / A atrial fibrillation / O other rhythm / ~ too noisy",
+    "input": "4500 samples @ 150 Hz (monitoring band-pass, per-window std normalisation) + 10 RR features",
+    "labels": [
+      "N",
+      "A",
+      "O",
+      "~"
+    ],
+    "temperature": 1.2046066522598267,
+    "intended_use": "Research use only. Trained on handheld single-lead ECGs; not validated on clinical monitors.",
+    "data": "PhysioNet/CinC Challenge 2017 training set (ODC-By 1.0), REFERENCE-v3 labels, stratified 70/10/20 by record",
+    "file": "rhythm_net_v0.1.pt",
+    "sha256": "b1b8db640c4160fbd23c1b9bc0ef45321deb62a1a9f58ca68d9e9c2d233012db",
+    "parameters": 1032676,
+    "recipe": {
+      "ectopy_features": false,
+      "mitdb_train": false,
+      "epochs": 14
+    },
+    "n_rrf": 10
+  },
+  "val": {
+    "accuracy": 0.8628370457209847,
+    "macro_f1": 0.8216067436106321,
+    "per_class": {
+      "N": {
+        "support": 507,
+        "sensitivity": 0.9132149901380671,
+        "ppv": 0.9096267190569745,
+        "f1": 0.9114173228346456
+      },
+      "A": {
+        "support": 76,
+        "sensitivity": 0.9210526315789473,
+        "ppv": 0.7777777777777778,
+        "f1": 0.8433734939759038
+      },
+      "O": {
+        "support": 242,
+        "sensitivity": 0.743801652892562,
+        "ppv": 0.8144796380090498,
+        "f1": 0.7775377969762418
+      },
+      "~": {
+        "support": 28,
+        "sensitivity": 0.8214285714285714,
+        "ppv": 0.696969696969697,
+        "f1": 0.7540983606557378
+      }
+    },
+    "confusion": [
+      [
+        463,
+        3,
+        34,
+        7
+      ],
+      [
+        0,
+        70,
+        6,
+        0
+      ],
+      [
+        42,
+        17,
+        180,
+        3
+      ],
+      [
+        4,
+        0,
+        1,
+        23
+      ]
+    ],
+    "labels": [
+      "N",
+      "A",
+      "O",
+      "~"
+    ]
+  },
+  "val_challenge_f1": 0.8441095379289303,
+  "version": "v0.1"
+}

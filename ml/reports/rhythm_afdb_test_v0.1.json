@@ -1,0 +1,88 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T06:23:34+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)",
+    "afdb": "PhysioNet MIT-BIH Atrial Fibrillation Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "rhythm_afdb_af",
+  "version": "v0.1",
+  "split": "test",
+  "records": [
+    "04048",
+    "04126",
+    "07910",
+    "08219",
+    "07879",
+    "04936",
+    "06426"
+  ],
+  "protocol": "30 s non-overlapping windows on AFDB channel 0; AF = window entirely (AFIB; non-AF = no AFIB; mixed skipped",
+  "windows_af": 3204,
+  "windows_non_af": 5163,
+  "false_af_windows": 148,
+  "af_sensitivity": 0.9740948813982522,
+  "af_ppv": 0.954726215968186,
+  "af_specificity": 0.9713344954483827,
+  "per_record": [
+    {
+      "record": "04048",
+      "af_windows": 6,
+      "af_detected": 6,
+      "false_af_windows": 0,
+      "non_af_windows": 1209,
+      "af_sensitivity": 1.0
+    },
+    {
+      "record": "04126",
+      "af_windows": 40,
+      "af_detected": 40,
+      "false_af_windows": 24,
+      "non_af_windows": 1175,
+      "af_sensitivity": 1.0
+    },
+    {
+      "record": "07910",
+      "af_windows": 194,
+      "af_detected": 193,
+      "false_af_windows": 8,
+      "non_af_windows": 1026,
+      "af_sensitivity": 0.9948453608247423
+    },
+    {
+      "record": "08219",
+      "af_windows": 223,
+      "af_detected": 214,
+      "false_af_windows": 85,
+      "non_af_windows": 928,
+      "af_sensitivity": 0.9596412556053812
+    },
+    {
+      "record": "07879",
+      "af_windows": 739,
+      "af_detected": 739,
+      "false_af_windows": 1,
+      "non_af_windows": 486,
+      "af_sensitivity": 1.0
+    },
+    {
+      "record": "04936",
+      "af_windows": 854,
+      "af_detected": 821,
+      "false_af_windows": 21,
+      "non_af_windows": 307,
+      "af_sensitivity": 0.9613583138173302
+    },
+    {
+      "record": "06426",
+      "af_windows": 1148,
+      "af_detected": 1108,
+      "false_af_windows": 9,
+      "non_af_windows": 32,
+      "af_sensitivity": 0.9651567944250871
+    }
+  ]
+}

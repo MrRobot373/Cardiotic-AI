@@ -1,0 +1,185 @@
+{
+  "created_utc": "2026-10-27T17:32:04+00:00",
+  "engine": {
+    "engine": "cardiotic-engine",
+    "version": "0.1.0",
+    "models_version": "2026.10.1",
+    "intended_use": "Research use only. Not a medical device. Not validated for clinical use.",
+    "models": {
+      "quality": {
+        "model": "quality_net_v0.3",
+        "sha256": "13e938a92e644100df66b4c33ee314b9a884958bc1fc1bc3fe522ece15fd87f2"
+      },
+      "beats": {
+        "model": "beat_net_v0.1",
+        "sha256": "c806440dc023f07bcb1c122cfe5c9718b33aa84ec316a96c29ca7bfcf7f42649"
+      },
+      "rhythm": {
+        "model": "rhythm_net_v0.1",
+        "sha256": "f92cf406a38cc3acf26cadcc622a048653df1508104204400f2599733e70a890"
+      },
+      "ecg12": {
+        "model": "ecg12_net_v0.3",
+        "sha256": "0a7c47c974c686ad608a6a8562a543a56070f709c2969c515f73c0ce240bc68c"
+      }
+    }
+  },
+  "criterion": "identical discrete outputs; probabilities within 0.0001",
+  "sets": {
+    "PTB-XL test fold (500 Hz)": {
+      "ecgs": 400,
+      "mismatching": 0,
+      "max_prob_diff": 8.642673492431641e-07,
+      "engine_ms_per_ecg": 30.10549028249841,
+      "pytorch_ms_per_ecg": 39.15499440000161
+    },
+    "Chapman\u2013Shaoxing (500 Hz)": {
+      "ecgs": 400,
+      "mismatching": 0,
+      "max_prob_diff": 1.0132789611816406e-06,
+      "engine_ms_per_ecg": 29.808695194999753,
+      "pytorch_ms_per_ecg": 37.92785851500071
+    },
+    "MIT-BIH DS2, full 30 min records": {
+      "records": 22,
+      "mismatching": 0,
+      "max_prob_diff": 1.7881393432617188e-06,
+      "beats": 49438,
+      "per_record": [
+        {
+          "record": 100,
+          "same": true,
+          "beats": 2271,
+          "max_prob_diff": 8.344650268554688e-07
+        },
+        {
+          "record": 103,
+          "same": true,
+          "beats": 2079,
+          "max_prob_diff": 6.556510925292969e-07
+        },
+        {
+          "record": 105,
+          "same": true,
+          "beats": 2555,
+          "max_prob_diff": 1.3113021850585938e-06
+        },
+        {
+          "record": 111,
+          "same": true,
+          "beats": 2117,
+          "max_prob_diff": 6.556510925292969e-07
+        },
+        {
+          "record": 113,
+          "same": true,
+          "beats": 1795,
+          "max_prob_diff": 3.2782554626464844e-07
+        },
+        {
+          "record": 117,
+          "same": true,
+          "beats": 1530,
+          "max_prob_diff": 1.3709068298339844e-06
+        },
+        {
+          "record": 121,
+          "same": true,
+          "beats": 1818,
+          "max_prob_diff": 1.3113021850585938e-06
+        },
+        {
+          "record": 123,
+          "same": true,
+          "beats": 1514,
+          "max_prob_diff": 9.5367431640625e-07
+        },
+        {
+          "record": 200,
+          "same": true,
+          "beats": 2592,
+          "max_prob_diff": 1.6093254089355469e-06
+        },
+        {
+          "record": 202,
+          "same": true,
+          "beats": 2127,
+          "max_prob_diff": 1.6093254089355469e-06
+        },
+        {
+          "record": 210,
+          "same": true,
+          "beats": 2627,
+          "max_prob_diff": 1.0132789611816406e-06
+        },
+        {
+          "record": 212,
+          "same": true,
+          "beats": 2743,
+          "max_prob_diff": 7.748603820800781e-07
+        },
+        {
+          "record": 213,
+          "same": true,
+          "beats": 3248,
+          "max_prob_diff": 8.940696716308594e-07
+        },
+        {
+          "record": 214,
+          "same": true,
+          "beats": 2257,
+          "max_prob_diff": 5.364418029785156e-07
+        },
+        {
+          "record": 219,
+          "same": true,
+          "beats": 2154,
+          "max_prob_diff": 1.0132789611816406e-06
+        },
+        {
+          "record": 221,
+          "same": true,
+          "beats": 2419,
+          "max_prob_diff": 7.748603820800781e-07
+        },
+        {
+          "record": 222,
+          "same": true,
+          "beats": 2411,
+          "max_prob_diff": 8.940696716308594e-07
+        },
+        {
+          "record": 228,
+          "same": true,
+          "beats": 2014,
+          "max_prob_diff": 1.2516975402832031e-06
+        },
+        {
+          "record": 231,
+          "same": true,
+          "beats": 1569,
+          "max_prob_diff": 1.2516975402832031e-06
+        },
+        {
+          "record": 232,
+          "same": true,
+          "beats": 1787,
+          "max_prob_diff": 1.7881393432617188e-06
+        },
+        {
+          "record": 233,
+          "same": true,
+          "beats": 3069,
+          "max_prob_diff": 8.940696716308594e-07
+        },
+        {
+          "record": 234,
+          "same": true,
+          "beats": 2742,
+          "max_prob_diff": 9.5367431640625e-07
+        }
+      ]
+    }
+  },
+  "passed": true
+}
