@@ -104,26 +104,40 @@ def write_results() -> str:
                 "N = normal or bundle-branch beats · S = supraventricular ectopic · V = ventricular ectopic · F = fusion. "
                 "In this protocol S and F are known to be hard (few training examples, S beats often look normal). "
                 "Accuracy is dominated by N and is not the number to judge the model by: read Se and +P for S and V.", ""]
-    rh = _load("rhythm_classification_v0.1")
-    if rh:
-        rep = rh["test"]
+    rvers = [(v, _load(f"rhythm_classification_{v}")) for v in ("v0.1", "v0.2")]
+    rvers = [(v, r) for v, r in rvers if r]
+    rh = None
+    if rvers:
+        from cardiotic_ml.pipeline import RHYTHM_MODEL
+        adopted_r = RHYTHM_MODEL.removeprefix("rhythm_net_")
         out += ["## 4. Rhythm classifier (AI model #3)", "",
-                f"Trained on CinC 2017 handheld single-lead ECGs ({rh['sizes']['train']['records']:,} records), tested on "
-                f"{rh['sizes']['test']['records']:,} held-out records (stratified split by record; the dataset has no patient IDs). "
-                f"Record-level result (average of 30 s windows). **Challenge F1 (mean of N, A, O): {_pct(rh['test_challenge_f1'])}**. "
-                "For context, the best 2017 challenge entries scored about 83% on the hidden test set (not directly comparable).", ""]
+                "Trained on CinC 2017 handheld single-lead ECGs, tested on held-out CinC records (stratified by record; "
+                "the dataset has no patient IDs) and on MIT-BIH Holter recordings. Record-level CinC score = average of 30 s "
+                "windows; challenge F1 = mean F1 of normal, AF and other rhythm. The best 2017 challenge entries scored about "
+                "83% on their hidden test set (not directly comparable).", "",
+                "MIT-BIH split for rhythm work: **validation** records 201, 215, 207, 209, 220 (used only to choose versions); "
+                "**test** = the 22 DS2 records, never used for training by any version. v0.2 also trains on 17 other DS1 records.", "",
+                "| Version | Recipe | CinC val F1 | CinC test F1 | MIT-BIH val: AF found · false-AF windows | MIT-BIH test: AF Se · false-AF windows · AF PPV · specificity |",
+                "|---|---|---:|---:|---:|---:|"]
+        for v, r in rvers:
+            mv, mt = _load(f"rhythm_mitdb_val_{v}"), _load(f"rhythm_mitdb_test_{v}")
+            mv_s = f"{int(mv['windows_af'] * mv['af_sensitivity'] + 0.5)}/{int(mv['windows_af'])} · {int(mv['false_af_windows'])}" if mv else "—"
+            mt_s = (f"{_pct(mt['af_sensitivity'])} · {int(mt['false_af_windows'])} · {_pct(mt['af_ppv'])} · {_pct(mt['af_specificity'])}"
+                    if mt else "—")
+            out.append(f"| {v}{' (adopted)' if v == adopted_r else ''} | {r['model_card'].get('recipe', {})} | "
+                       f"{_pct(r.get('val_challenge_f1'))} | {_pct(r['test_challenge_f1'])} | {mv_s} | {mt_s} |")
+        v, rh = next((v, r) for v, r in rvers if v == adopted_r)
+        rep = rh["test"]
+        out += ["", f"**Adopted: {v}.** CinC test detail:", ""]
         out += _class_table(rep) + [""] + _confusion(rep) + ["", "N normal sinus · A atrial fibrillation · O other rhythm · ~ too noisy to classify.", ""]
-    x = _load("rhythm_cross_dataset_mitdb")
-    if x:
-        out += ["### Cross-dataset test: same model on MIT-BIH (never seen in training)", "",
-                f"Different device (Holter vs handheld), lead (MLII vs lead I), sampling rate and decade. {x['protocol']}.", "",
-                f"- AF windows: {int(x['windows_af']):,} · non-AF windows: {int(x['windows_non_af']):,}",
-                f"- **AF sensitivity {_pct(x['af_sensitivity'])}**, **AF positive predictivity {_pct(x['af_ppv'])}**, "
-                f"specificity {_pct(x['af_specificity'])}",
-                "- What the model said on non-AF windows: " + ", ".join(f"{k} {int(v):,}" for k, v in x["predictions_on_non_af_windows"].items()), "",
-                "| Record | AF windows | AF detected | False AF windows |", "|---|---:|---:|---:|"]
-        out += [f"| {r['record']} | {int(r['af_windows'])} | {int(r['af_detected'])} | {int(r['false_af_windows'])} |" for r in x["per_record"]]
-        out.append("")
+        x = _load(f"rhythm_mitdb_test_{v}")
+        if x:
+            out += [f"MIT-BIH test (DS2) detail for {v}. {x['protocol']}.", "",
+                    f"- AF windows: {int(x['windows_af']):,} · non-AF windows: {int(x['windows_non_af']):,}",
+                    "- What the model said on non-AF windows: " + ", ".join(f"{k} {int(n):,}" for k, n in x["predictions_on_non_af_windows"].items()), "",
+                    "| Record | AF windows | AF detected | False AF windows |", "|---|---:|---:|---:|"]
+            out += [f"| {r['record']} | {int(r['af_windows'])} | {int(r['af_detected'])} | {int(r['false_af_windows'])} |" for r in x["per_record"]]
+            out.append("")
     cb = _load("beat_calibration")
     if rh or cb:
         out += ["## 5. Confidence calibration (M5)", "",
@@ -135,7 +149,7 @@ def write_results() -> str:
             return f"{_pct(d[k]['share'])} / {_pct(d[k]['accuracy'])}"
         if rh:
             c = rh["calibration"]
-            out.append(f"| rhythm_net v0.1 (records) | {c['temperature']:.2f} | {_pct(c['ece_before'])} | {_pct(c['ece_after'])} | "
+            out.append(f"| rhythm_net {rh['version'] if 'version' in rh else 'v0.1'} (records) | {c['temperature']:.2f} | {_pct(c['ece_before'])} | {_pct(c['ece_after'])} | "
                        f"{lv(c['confidence_levels'], 'high')} | {lv(c['confidence_levels'], 'moderate')} | {lv(c['confidence_levels'], 'low')} |")
         if cb:
             c = cb["confidence_levels_after"]

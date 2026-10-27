@@ -49,7 +49,7 @@ def load_models(directory=ARTIFACTS_DIR) -> Models:
     r = None
     if (directory / f"{RHYTHM_MODEL}.pt").exists():
         cards[RHYTHM_MODEL] = json.loads((directory / f"{RHYTHM_MODEL}.card.json").read_text())
-        r = RhythmNet(len(RHYTHM_LABELS))
+        r = RhythmNet(len(RHYTHM_LABELS), n_rrf=cards[RHYTHM_MODEL].get("n_rrf", rd.N_RRF))
         r.load_state_dict(torch.load(directory / f"{RHYTHM_MODEL}.pt", weights_only=True))
         r.eval()
     q.eval(); b.eval()
@@ -60,11 +60,18 @@ confidence_level = cal.confidence_level
 
 
 @torch.no_grad()
-def _rhythm(signal: np.ndarray, fs: float, usable: np.ndarray, models: Models) -> list[dict]:
+def _rhythm(signal: np.ndarray, fs: float, usable: np.ndarray, models: Models,
+            beat_times_s: np.ndarray, beat_cls: np.ndarray) -> list[dict]:
     if models.rhythm is None or len(signal) < 9 * fs:
         return []
-    x, beats = rd.prepare(np.asarray(signal, dtype=np.float32), fs)
-    w, r, starts = rd.windows(x, beats)
+    if models.cards[RHYTHM_MODEL].get("recipe", {}).get("ectopy_features"):
+        # reuse the pipeline's own beats and beat classes: ventricular / fusion beats are ectopic
+        x = dsp.resample(dsp.bandpass(np.asarray(signal, dtype=np.float32), fs, "monitoring"), fs, rd.FS_MODEL)
+        ect = np.isin(beat_cls, [beat_data.CLASSES.index("V"), beat_data.CLASSES.index("F")])
+        w, r, starts = rd.windows(x, beat_times_s, ectopic=ect)
+    else:
+        x, beats, _ = rd.prepare(np.asarray(signal, dtype=np.float32), fs)
+        w, r, starts = rd.windows(x, beats)
     logits = models.rhythm(torch.from_numpy(w), torch.from_numpy(r)).numpy()
     p = cal.softmax(logits, models.cards[RHYTHM_MODEL].get("temperature", 1.0))
     out = []
@@ -110,7 +117,7 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
               "confidence": confidence_level(float(bp[i, c]))}
              for i, (p, c) in enumerate(zip(peaks[ok], bp.argmax(1)))]
     # 4. rhythm, per 30 s window
-    rhythm = _rhythm(raw, fs, usable, models)
+    rhythm = _rhythm(raw, fs, usable, models, peaks[ok] / FS, bp.argmax(1))
     # 5. measurements: rate from normal-to-normal intervals only
     cls = bp.argmax(1)
     t = peaks[ok] / FS

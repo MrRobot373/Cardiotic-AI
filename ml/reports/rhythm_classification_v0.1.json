@@ -226,7 +226,13 @@
     "data": "PhysioNet/CinC Challenge 2017 training set (ODC-By 1.0), REFERENCE-v3 labels, stratified 70/10/20 by record",
     "file": "rhythm_net_v0.1.pt",
     "sha256": "b1b8db640c4160fbd23c1b9bc0ef45321deb62a1a9f58ca68d9e9c2d233012db",
-    "parameters": 1032676
+    "parameters": 1032676,
+    "recipe": {
+      "ectopy_features": false,
+      "mitdb_train": false,
+      "epochs": 14
+    },
+    "n_rrf": 10
   },
   "val": {
     "accuracy": 0.8628370457209847,
@@ -290,5 +296,6 @@
       "~"
     ]
   },
-  "val_challenge_f1": 0.8441095379289303
+  "val_challenge_f1": 0.8441095379289303,
+  "version": "v0.1"
 }

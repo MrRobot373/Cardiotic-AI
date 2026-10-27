@@ -85,7 +85,15 @@ N = normal or bundle-branch beats · S = supraventricular ectopic · V = ventric
 
 ## 4. Rhythm classifier (AI model #3)
 
-Trained on CinC 2017 handheld single-lead ECGs (5,968 records), tested on 1,707 held-out records (stratified split by record; the dataset has no patient IDs). Record-level result (average of 30 s windows). **Challenge F1 (mean of N, A, O): 83.1%**. For context, the best 2017 challenge entries scored about 83% on the hidden test set (not directly comparable).
+Trained on CinC 2017 handheld single-lead ECGs, tested on held-out CinC records (stratified by record; the dataset has no patient IDs) and on MIT-BIH Holter recordings. Record-level CinC score = average of 30 s windows; challenge F1 = mean F1 of normal, AF and other rhythm. The best 2017 challenge entries scored about 83% on their hidden test set (not directly comparable).
+
+MIT-BIH split for rhythm work: **validation** records 201, 215, 207, 209, 220 (used only to choose versions); **test** = the 22 DS2 records, never used for training by any version. v0.2 also trains on 17 other DS1 records.
+
+| Version | Recipe | CinC val F1 | CinC test F1 | MIT-BIH val: AF found · false-AF windows | MIT-BIH test: AF Se · false-AF windows · AF PPV · specificity |
+|---|---|---:|---:|---:|---:|
+| v0.1 (adopted) | {} | 84.4% | 83.1% | 18/18 · 38 | 96.9% · 106 · 59.8% · 90.6% |
+
+**Adopted: v0.1.** CinC test detail:
 
 | Class | Test beats/windows | Sensitivity (Se) | Positive predictivity (+P) | F1 |
 |---|---:|---:|---:|---:|
@@ -103,32 +111,20 @@ Trained on CinC 2017 handheld single-lead ECGs (5,968 records), tested on 1,707 
 
 N normal sinus · A atrial fibrillation · O other rhythm · ~ too noisy to classify.
 
-### Cross-dataset test: same model on MIT-BIH (never seen in training)
+MIT-BIH test (DS2) detail for v0.1. 30 s non-overlapping windows; AF = window entirely inside an (AFIB episode; mixed windows skipped.
 
-Different device (Holter vs handheld), lead (MLII vs lead I), sampling rate and decade. 30 s non-overlapping windows; AF = window entirely inside an (AFIB episode; mixed windows skipped.
-
-- AF windows: 214 · non-AF windows: 2,388
-- **AF sensitivity 97.7%**, **AF positive predictivity 56.8%**, specificity 93.3%
-- What the model said on non-AF windows: O 1,193, N 1,027, ~ 9, A 159
+- AF windows: 163 · non-AF windows: 1,122
+- What the model said on non-AF windows: O 521, N 494, ~ 1, A 106
 
 | Record | AF windows | AF detected | False AF windows |
 |---|---:|---:|---:|
-| 118 | 0 | 0 | 2 |
 | 200 | 0 | 0 | 16 |
-| 201 | 18 | 18 | 0 |
 | 202 | 17 | 17 | 1 |
-| 203 | 33 | 33 | 9 |
-| 207 | 0 | 0 | 1 |
-| 208 | 0 | 0 | 1 |
-| 209 | 0 | 0 | 3 |
 | 210 | 54 | 54 | 0 |
 | 214 | 0 | 0 | 2 |
-| 215 | 0 | 0 | 33 |
 | 219 | 42 | 42 | 4 |
-| 220 | 0 | 0 | 1 |
 | 221 | 50 | 45 | 0 |
 | 222 | 0 | 0 | 6 |
-| 223 | 0 | 0 | 3 |
 | 228 | 0 | 0 | 23 |
 | 232 | 0 | 0 | 54 |
 
