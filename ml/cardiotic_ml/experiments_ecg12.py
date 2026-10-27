@@ -34,10 +34,13 @@ ECG12_VERSIONS = {
     "v0.1": {"epochs": 30, "width": 64, "lr": 1e-3, "weight_decay": 1e-2, "batch": 128},
     # + Ningbo part of Chapman–Shaoxing–Ningbo (China): more flutter, PACs, bradycardia, AV block. Loss is masked:
     # Ningbo rows only teach the statements its labels map to unambiguously (data/ningbo.py).
-    "v0.2": {"epochs": 20, "width": 64, "lr": 1e-3, "weight_decay": 1e-2, "batch": 128, "ningbo": True},
+    "v0.2": {"epochs": 20, "width": 64, "lr": 1e-3, "weight_decay": 1e-2, "batch": 128, "ningbo": True, "ningbo_map": "v0.2"},
+    # v0.3: same recipe, corrected Ningbo label map (data/ningbo.py: PVC, complete/incomplete RBBB, LBBB, LAFB, pacing…)
+    "v0.3": {"epochs": 20, "width": 64, "lr": 1e-3, "weight_decay": 1e-2, "batch": 128, "ningbo": True, "ningbo_map": "v0.3"},
 }
-ECG12_SELECTION_RULE = ("Adopt v0.2 over v0.1 only if, on VALIDATION data: PTB-XL macro-AUC (all statements) drops by "
-                        "at most 0.005, and Ningbo-validation macro-AUC on the mapped statements improves.")
+ECG12_SELECTION_RULE = ("Adopt a candidate over the current model only if, on VALIDATION data: PTB-XL macro-AUC (all "
+                        "statements) drops by at most 0.005, and Ningbo-validation macro-AUC on the mapped statements "
+                        "improves (both models scored with the same, current label map).")
 DATASET = "PhysioNet PTB-XL 1.0.3 (CC BY 4.0)"
 NINGBO_DATASET = "PhysioNet Chapman–Shaoxing–Ningbo 12-lead ECG database 1.0.0 (CC BY 4.0)"
 DATASET_PLUS = "PhysioNet PTB-XL+ 1.0.1 (CC BY 4.0): GE 12SL and Uni-G measurements"
@@ -77,6 +80,15 @@ def _augment(xb: torch.Tensor, rng: np.random.Generator) -> torch.Tensor:
 def _logits(model: nn.Module, x: np.ndarray, batch: int = 256) -> np.ndarray:
     model.eval()
     return np.concatenate([model(torch.from_numpy(x[i:i + batch])).numpy() for i in range(0, len(x), batch)])
+
+
+def _masked_macro_auc(y: np.ndarray, p: np.ndarray, unknown: np.ndarray, cols: list[int]) -> float:
+    aucs = []
+    for j in cols:
+        keep = unknown[:, j] == 0
+        if 0 < y[keep, j].sum() < keep.sum():
+            aucs.append(roc_auc_score(y[keep, j], p[keep, j]))
+    return float(np.mean(aucs)) if aucs else float("nan")
 
 
 def macro_auc(y: np.ndarray, p: np.ndarray, cols: list[int] | None = None) -> float:
@@ -162,18 +174,23 @@ def train_ecg12(version: str = "v0.1") -> dict:
     nb = None
     if spec.get("ningbo"):
         from cardiotic_ml.data import ningbo
-        print("loading Ningbo 100 Hz…", flush=True)
+        map_v = spec["ningbo_map"]
+        print(f"loading Ningbo 100 Hz… (label map {map_v})", flush=True)
         nb = {}
         for part in ("train", "val", "test"):
             nrecs = ningbo.ningbo_part(part)
             xn = ((preprocess(ningbo.load_lr(nrecs)) - mean) / std).astype(np.float32)
             yn = np.zeros((len(nrecs), len(labels_all)), dtype=np.float32)
+            un = np.zeros_like(yn)
             for i, r in enumerate(nrecs):
-                for c in r.scp():
+                for c in r.scp(map_v):
                     yn[i, labels_all.index(c)] = 1
-            nb[part] = (xn, yn)
-        nb_cols = [labels_all.index(c) for c in ningbo.MAPPED]
+                for c in r.unknown(map_v):
+                    un[i, labels_all.index(c)] = 1
+            nb[part] = (xn, yn, un)
+        nb_cols = [labels_all.index(c) for c in ningbo.mapped(map_v)]
         mn = np.zeros_like(nb["train"][1]); mn[:, nb_cols] = 1
+        mn *= 1 - nb["train"][2]
         xtr = torch.cat([xtr, torch.from_numpy(nb["train"][0])])
         ytr = torch.cat([ytr, torch.from_numpy(nb["train"][1])])
         mtr = torch.cat([mtr, torch.from_numpy(mn)])
@@ -196,7 +213,7 @@ def train_ecg12(version: str = "v0.1") -> dict:
             opt.step(); sched.step()
             total += loss.item() * len(idx)
         auc = macro_auc(y[va], _sigmoid(_logits(model, x[va])))
-        nb_auc = macro_auc(nb["val"][1], _sigmoid(_logits(model, nb["val"][0])), nb_cols) if nb else None
+        nb_auc = _masked_macro_auc(nb["val"][1], _sigmoid(_logits(model, nb["val"][0])), nb["val"][2], nb_cols) if nb else None
         history.append({"epoch": epoch + 1, "train_loss": total / len(xtr), "val_macro_auc": auc,
                         "ningbo_val_macro_auc": nb_auc, "seconds": round(time.time() - t0, 1)})
         print(f"epoch {epoch + 1:2d}  loss {total / len(xtr):.4f}  val macro-AUC {auc:.4f}"
@@ -239,10 +256,11 @@ def train_ecg12(version: str = "v0.1") -> dict:
     if nb:
         ningbo_eval = {}
         for part in ("val", "test"):
-            xn, yn = nb[part]
+            xn, yn, un = nb[part]
             pn = _sigmoid(_logits(model, xn) / temperature)
-            ningbo_eval[part] = {"n": len(yn), "macro_auc_mapped": macro_auc(yn, pn, nb_cols),
-                                 "per_label": {labels[j]: {"support": int(yn[:, j].sum()), "auc": float(roc_auc_score(yn[:, j], pn[:, j]))}
+            ningbo_eval[part] = {"n": len(yn), "label_map": map_v, "macro_auc_mapped": _masked_macro_auc(yn, pn, un, nb_cols),
+                                 "per_label": {labels[j]: {"support": int(yn[:, j].sum()),
+                                                           "auc": float(roc_auc_score(yn[un[:, j] == 0, j], pn[un[:, j] == 0, j]))}
                                                for j in nb_cols if 0 < yn[:, j].sum() < len(yn)}}
     card = _save_model(model, f"ecg12_net_{version}", {
         "name": "ecg12_net", "version": version, "recipe": spec, "labels": labels,
@@ -254,7 +272,7 @@ def train_ecg12(version: str = "v0.1") -> dict:
         "intended_use": "Research use only. Not validated on clinical ECG machines.",
         "data": f"{DATASET}: folds 1–8 train ({int(tr.sum())} ECGs), 9 validation, 10 test; patient-wise folds"
                 + (f"; plus {NINGBO_DATASET}, Ningbo part only (Chapman–Shaoxing records excluded), {len(nb['train'][1])} "
-                   f"training ECGs, mapped statements {ningbo.MAPPED} only" if nb else ""),
+                   f"training ECGs, label map {map_v}: statements {ningbo.mapped(map_v)} only" if nb else ""),
     })
     result = _meta(task="ecg12_statements", version=version, sizes={"train": int(tr.sum()), "val": int(va.sum()), "test": int(te.sum())},
                    val=val_tasks, test=test_tasks, per_label=per_label, subgroups=subgroups, calibration=calib,
@@ -543,4 +561,35 @@ def eval_rules(version: str = "v0.1") -> dict:
     result["datasets"] = {"ptbxl": DATASET, "chapman": "Chapman–Shaoxing (figshare, CC0), external"}
     _write(f"ecg12_rules_{version}", result)
     print(json.dumps(chosen), flush=True)
+    return result
+
+
+def select_ecg12(candidate: str = "v0.3", current: str = "v0.2", versions: tuple[str, ...] = ("v0.1", "v0.2", "v0.3")) -> dict:
+    """Apply ECG12_SELECTION_RULE on validation numbers only (PTB-XL fold 9 and the Ningbo validation split).
+    Every version is re-scored on Ningbo validation with the current label map, so all are compared alike."""
+    from cardiotic_ml.data import ningbo
+
+    nrecs = ningbo.ningbo_part("val")
+    xn = ningbo.load_lr(nrecs)
+    ptb, nbv = {}, {}
+    for v in versions:
+        rep = json.loads((REPORTS_DIR / f"ecg12_statements_{v}.json").read_text())
+        ptb[v] = rep["val"]["all"]
+        p, card = predict_statements(xn, FS_LR, v)
+        labels = card["labels"]
+        yn = np.zeros((len(nrecs), len(labels)), dtype=np.float32)
+        un = np.zeros_like(yn)
+        for i, r in enumerate(nrecs):
+            for c in r.scp():
+                yn[i, labels.index(c)] = 1
+            for c in r.unknown():
+                un[i, labels.index(c)] = 1
+        nbv[v] = _masked_macro_auc(yn, p, un, [labels.index(c) for c in ningbo.MAPPED])
+    adopt = ptb[current] - ptb[candidate] <= 0.005 and nbv[candidate] > nbv[current]
+    result = _meta(task="ecg12_selection", rule=ECG12_SELECTION_RULE, label_map=ningbo.MAP_VERSION, current=current,
+                   candidate=candidate, ptbxl_val_all=ptb, ningbo_val_mapped=nbv, chosen=candidate if adopt else current,
+                   history="v0.2 was adopted over v0.1 by this rule with the v0.2 label map; its external-test PVC drop "
+                           "led to finding the label-map error fixed in v0.3.")
+    _write("ecg12_selection", result)
+    print(json.dumps({k: result[k] for k in ("ptbxl_val_all", "ningbo_val_mapped", "chosen")}), flush=True)
     return result

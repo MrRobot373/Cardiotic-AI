@@ -40,6 +40,12 @@ ECG12_MEASURE_NAMES = {"heart_rate_bpm": ("Heart rate", "bpm"), "pr_ms": ("PR in
                        "qrs_axis_deg": ("QRS axis", "°"), "t_axis_deg": ("T axis", "°")}
 
 
+def _ningbo_train_n(result: dict) -> str:
+    import re
+    m = re.search(r"(\d+) training ECGs", result["model_card"]["data"])
+    return f"{int(m.group(1)):,}" if m else "the"
+
+
 def _ecg12_section() -> list[str]:
     out = []
     st = _load("ecg12_statements_v0.1")
@@ -156,6 +162,45 @@ def _ecg12_section() -> list[str]:
                 "No single model or rule matches both. In the product these statements must follow the **site's own "
                 "convention**, chosen and verified on that hospital's data during installation. Long QT is labelled far "
                 "less often than QTc ≥ 460 ms occurs in both datasets.", ""]
+    v2 = _load("ecg12_statements_v0.2")
+    sel = _load("ecg12_selection")
+    if v2 and sel:
+        af = _load("ecg12_ningbo_af_check")
+        out += ["### 7.5 More data: v0.2 adds the Ningbo part of Chapman–Shaoxing–Ningbo (China)", "",
+                f"v0.2 is trained on PTB-XL folds 1–8 plus {_ningbo_train_n(v2)} ECGs from the Ningbo part (80% patient-level "
+                "training split; 10% validation, 10% test). "
+                "The 10,646 Chapman–Shaoxing ECGs inside that database were excluded (46 of 46 sampled ECGs match "
+                "Chapman signal-for-signal), so Chapman stays a held-out test. Loss is masked: Ningbo ECGs teach only the "
+                "statements their labels map to without ambiguity.", ""]
+        if af:
+            g = af["groups"]
+            out += ["**Ningbo atrial-fibrillation labels are not trusted.** The Ningbo part has no fibrillation code and "
+                    f"{af['ningbo_part_counts']['AFLT code 164890007']:,} 'flutter' ECGs (22%). On the signals they behave like "
+                    f"fibrillation: irregular RR in {_pct(g['Ningbo AFLT (as coded)']['rr_irregular_share'])} (Chapman fibrillation "
+                    f"{_pct(g['Chapman AFIB']['rr_irregular_share'])}, Chapman flutter {_pct(g['Chapman AFLT']['rr_irregular_share'])}). "
+                    "Neither label is used.", ""]
+        out += [f"Selection rule: {sel['rule']}", "",
+                "| | PTB-XL validation, all statements | Ningbo validation, mapped statements |", "|---|---:|---:|"]
+        for v in (sel["baseline"], sel["candidate"]):
+            out.append(f"| {v} | {sel['ptbxl_val_all'][v]:.3f} | {sel['ningbo_val_mapped'][v]:.3f} |")
+        out += ["", f"**Chosen: {sel['chosen']}.**", "",
+                "Test results (each scored once):", "",
+                "| Test set | v0.1 | v0.2 |", "|---|---:|---:|"]
+        v1 = _load("ecg12_statements_v0.1")
+        for k in ("superclass", "diagnostic", "form", "rhythm", "all"):
+            out.append(f"| PTB-XL fold 10, {k} macro-AUC | {v1['test'][k]['macro_auc']:.3f} | {v2['test'][k]['macro_auc']:.3f} |")
+        out.append(f"| Ningbo test split, mapped statements macro-AUC | — | {v2['ningbo']['test']['macro_auc_mapped']:.3f} |")
+        e1, e2 = _load("ecg12_external_chapman_v0.1"), _load("ecg12_external_chapman_v0.2")
+        if e1 and e2:
+            out += ["", "Chapman–Shaoxing (held out; same country and ECG system as Ningbo, so no longer fully independent for v0.2):", "",
+                    "| Statement | ECGs | v0.1 AUC | v0.2 AUC | v0.1 sensitivity | v0.2 sensitivity |", "|---|---:|---:|---:|---:|---:|"]
+            for k, a1 in sorted(e1["per_label"].items(), key=lambda kv: -kv[1]["support"]):
+                a2 = e2["per_label"].get(k)
+                if a2:
+                    out.append(f"| {k} | {a1['support']:,} | {a1['auc']:.3f} | {a2['auc']:.3f} | {_pct(a1['sensitivity'])} | {_pct(a2['sensitivity'])} |")
+        sg = v2["subgroups"]
+        out += ["", "v0.2 subgroups (PTB-XL test, superclass macro-AUC): " + "; ".join(
+            f"{g} {v['superclass_macro_auc']:.3f}" for g, v in sg.items()) + ".", ""]
     return out
 
 

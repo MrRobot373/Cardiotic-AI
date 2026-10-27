@@ -31,13 +31,33 @@ from cardiotic_ml.paths import DATA_ROOT
 NINGBO_DIR = DATA_ROOT / "ningbo"
 FS = 500
 N_CHAPMAN = 10646
-SNOMED_TO_SCP = {
+# Label maps are versioned so every trained model stays reproducible. Code meanings from the PhysioNet/CinC
+# Challenge 2021 mapping (github.com/physionetchallenges/evaluation-2021, dx_mapping_*.csv).
+_V02 = {
     "426783006": "SR", "426177001": "SBRAD", "427084000": "STACH",
     "427393009": "SARRH", "426761007": "SVTAC", "270492004": "1AVB", "195042002": "2AVB", "54016002": "2AVB",
     "28189009": "2AVB", "27885002": "3AVB", "59118001": "CRBBB", "17338001": "PVC", "284470004": "PAC",
     "74390002": "WPW", "164873001": "LVH", "89792004": "RVH", "111975006": "LNGQT",
 }
+# v0.3 fixes v0.2: the Ningbo part codes PVCs as 427172004 (never 17338001) and complete RBBB as 713427006
+# (59118001 is plain "RBBB", complete or not), so v0.2 taught "no PVC" on every Ningbo ECG.
+_V03 = {k: v for k, v in _V02.items() if k != "59118001"} | {
+    "427172004": "PVC", "713427006": "CRBBB", "713426002": "IRBBB", "733534002": "CLBBB", "445118002": "LAFB",
+    "10370003": "PACE", "251146004": "LVOLT", "54329005": "AMI",
+}
+# codes that say a finding exists without saying which: the listed statements are unknown for that ECG
+_AMBIGUOUS_V03 = {"59118001": ("CRBBB", "IRBBB"), "164909002": ("CLBBB", "LAFB", "LPFB"),
+                  "6374002": ("CRBBB", "IRBBB", "CLBBB"), "164865005": ("AMI",)}
+MAPS = {"v0.2": (_V02, {}), "v0.3": (_V03, _AMBIGUOUS_V03)}
+MAP_VERSION = "v0.3"
+SNOMED_TO_SCP = MAPS[MAP_VERSION][0]
 MAPPED = sorted(set(SNOMED_TO_SCP.values()))
+
+
+def mapped(version: str = MAP_VERSION) -> list[str]:
+    return sorted(set(MAPS[version][0].values()))
+
+
 UNREADABLE = {"JS23074"}  # header and signal file disagree (wfdb cannot read it); found by reading every record
 
 
@@ -57,8 +77,14 @@ class Record:
     def is_chapman(self) -> bool:
         return self.number <= N_CHAPMAN
 
-    def scp(self) -> set[str]:
-        return {SNOMED_TO_SCP[c] for c in self.dx if c in SNOMED_TO_SCP}
+    def scp(self, version: str = MAP_VERSION) -> set[str]:
+        m = MAPS[version][0]
+        return {m[c] for c in self.dx if c in m}
+
+    def unknown(self, version: str = MAP_VERSION) -> set[str]:
+        """Statements this ECG's labels leave open (ambiguous codes), excluding ones it states."""
+        amb = MAPS[version][1]
+        return {s for c in self.dx if c in amb for s in amb[c]} - self.scp(version)
 
     @property
     def split(self) -> str:

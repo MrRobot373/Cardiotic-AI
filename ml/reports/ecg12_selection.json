@@ -1,0 +1,23 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T14:34:38+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "ecg12_selection",
+  "rule": "Adopt v0.2 over v0.1 only if, on VALIDATION data: PTB-XL macro-AUC (all statements) drops by at most 0.005, and Ningbo-validation macro-AUC on the mapped statements improves.",
+  "baseline": "v0.1",
+  "candidate": "v0.2",
+  "ptbxl_val_all": {
+    "v0.1": 0.928447608497913,
+    "v0.2": 0.9316497037987868
+  },
+  "ningbo_val_mapped": {
+    "v0.1": 0.8978513689094181,
+    "v0.2": 0.9786598106793943
+  },
+  "chosen": "v0.2"
+}

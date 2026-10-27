@@ -1,0 +1,228 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-27T14:37:14+00:00",
+  "torch": "2.14.1+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "chapman": "Chapman University \u2013 Shaoxing People's Hospital 12-lead ECG database (figshare, CC0)"
+  },
+  "task": "ecg12_external_chapman",
+  "version": "v0.2",
+  "measure_version": "v0.2",
+  "n_records": 10646,
+  "per_label": {
+    "1AVB": {
+      "support": 252,
+      "auc": 0.9828285396642141,
+      "sensitivity": 0.7976190476190477,
+      "specificity": 0.9899942274389071,
+      "ppv": 0.659016393442623,
+      "description": "first degree AV block"
+    },
+    "AFIB": {
+      "support": 1780,
+      "auc": 0.9860015030275995,
+      "sensitivity": 0.9719101123595506,
+      "specificity": 0.9277013309271374,
+      "ppv": 0.7296499367355547,
+      "description": "atrial fibrillation"
+    },
+    "AFLT": {
+      "support": 445,
+      "auc": 0.9008429444568663,
+      "sensitivity": 0.09662921348314607,
+      "specificity": 0.9904911283207529,
+      "ppv": 0.30714285714285716,
+      "description": "atrial flutter"
+    },
+    "CLBBB": {
+      "support": 94,
+      "auc": 0.9902932589163292,
+      "sensitivity": 0.7659574468085106,
+      "specificity": 0.9977255496588324,
+      "ppv": 0.75,
+      "description": "complete left bundle branch block"
+    },
+    "CRBBB": {
+      "support": 460,
+      "auc": 0.9899158264967262,
+      "sensitivity": 0.5826086956521739,
+      "specificity": 0.9988219124288239,
+      "ppv": 0.9571428571428572,
+      "description": "complete right bundle branch block"
+    },
+    "LAFB": {
+      "support": 108,
+      "auc": 0.9861576797902476,
+      "sensitivity": 0.8888888888888888,
+      "specificity": 0.9672613399126969,
+      "ppv": 0.21768707482993196,
+      "description": "left anterior fascicular block"
+    },
+    "LNGQT": {
+      "support": 58,
+      "auc": 0.9261623438375258,
+      "sensitivity": 0.3620689655172414,
+      "specificity": 0.9887608613524745,
+      "ppv": 0.15,
+      "description": "long QT-interval"
+    },
+    "NORM": {
+      "support": 1366,
+      "auc": 0.8427397826525975,
+      "sensitivity": 0.8916544655929722,
+      "specificity": 0.6146551724137931,
+      "ppv": 0.25406758448060074,
+      "description": "normal ECG"
+    },
+    "PAC": {
+      "support": 278,
+      "auc": 0.9731124822364332,
+      "sensitivity": 0.7014388489208633,
+      "specificity": 0.9936342592592593,
+      "ppv": 0.7471264367816092,
+      "description": "atrial premature complex"
+    },
+    "PVC": {
+      "support": 310,
+      "auc": 0.9066769449715368,
+      "sensitivity": 0.22258064516129034,
+      "specificity": 0.9988390092879257,
+      "ppv": 0.8518518518518519,
+      "description": "ventricular premature complex"
+    },
+    "SARRH": {
+      "support": 399,
+      "auc": 0.9837566004403024,
+      "sensitivity": 0.9022556390977443,
+      "specificity": 0.9718942129403728,
+      "ppv": 0.5555555555555556,
+      "description": "sinus arrhythmia"
+    },
+    "SBRAD": {
+      "support": 3889,
+      "auc": 0.9993657806102472,
+      "sensitivity": 0.9755721265106712,
+      "specificity": 0.9951161758176705,
+      "ppv": 0.991377057747583,
+      "description": "sinus bradycardia"
+    },
+    "SR": {
+      "support": 1826,
+      "auc": 0.9957340183243798,
+      "sensitivity": 0.9616648411829135,
+      "specificity": 0.9782312925170068,
+      "ppv": 0.9014373716632443,
+      "description": "sinus rhythm"
+    },
+    "STACH": {
+      "support": 1568,
+      "auc": 0.997166493001695,
+      "sensitivity": 0.9630102040816326,
+      "specificity": 0.9910773298083279,
+      "ppv": 0.9490886235072281,
+      "description": "sinus tachycardia"
+    },
+    "SVTAC": {
+      "support": 587,
+      "auc": 0.9916140427355943,
+      "sensitivity": 0.8620102214650767,
+      "specificity": 0.9873744905060146,
+      "ppv": 0.7993680884676145,
+      "description": "supraventricular tachycardia"
+    }
+  },
+  "subgroups": {
+    "female": {
+      "n": 4690,
+      "afib_auc": 0.9842235175213003
+    },
+    "male": {
+      "n": 5956,
+      "afib_auc": 0.9876445197561231
+    }
+  },
+  "measurements": {
+    "failed": 1,
+    "seconds_per_ecg": 0.007860691906163819,
+    "vs_muse": {
+      "heart_rate_bpm": {
+        "n": 10645,
+        "mean_diff": -0.5066520851886356,
+        "sd_diff": 5.969222122301607,
+        "median_abs": 0.35156819839532716,
+        "within": 5,
+        "share_within": 0.9573508689525599
+      },
+      "qrs_ms": {
+        "n": 10645,
+        "mean_diff": 0.5672146547674964,
+        "sd_diff": 15.052484218787127,
+        "median_abs": 6.0,
+        "within": 10,
+        "share_within": 0.8302489431658056
+      },
+      "qt_ms": {
+        "n": 10339,
+        "mean_diff": -1.6525776187252152,
+        "sd_diff": 27.055906159481953,
+        "median_abs": 8.0,
+        "within": 20,
+        "share_within": 0.8465035303220815
+      },
+      "qtc_bazett_ms": {
+        "n": 10339,
+        "mean_diff": -0.43593015946954417,
+        "sd_diff": 32.709862016512155,
+        "median_abs": 9.282494175296847,
+        "within": 20,
+        "share_within": 0.7731888964116452
+      },
+      "qrs_axis_deg": {
+        "n": 10645,
+        "mean_diff": -0.9783675800134922,
+        "sd_diff": 17.453011323642748,
+        "median_abs": 5.384120941162109,
+        "within": 30,
+        "share_within": 0.9533114138093002
+      },
+      "t_axis_deg": {
+        "n": 10339,
+        "mean_diff": -3.00252785559339,
+        "sd_diff": 25.097431492843867,
+        "median_abs": 6.749711036682129,
+        "within": 30,
+        "share_within": 0.9039558951542702
+      }
+    }
+  },
+  "label_mapping": {
+    "rhythm": {
+      "SR": "SR",
+      "SB": "SBRAD",
+      "ST": "STACH",
+      "AFIB": "AFIB",
+      "AF": "AFLT",
+      "SA": "SARRH",
+      "SI": "SARRH",
+      "SVT": "SVTAC"
+    },
+    "condition": {
+      "1AVB": "1AVB",
+      "2AVB": "2AVB",
+      "3AVB": "3AVB",
+      "LBBB": "CLBBB",
+      "RBBB": "CRBBB",
+      "LFBBB": "LAFB",
+      "LVH": "LVH",
+      "VPB": "PVC",
+      "APB": "PAC",
+      "WPW": "WPW",
+      "QTIE": "LNGQT",
+      "MILW": "IMI",
+      "RVH": "RVH"
+    },
+    "NORM": "rhythm SR and no condition label"
+  },
+  "note": "External: different country (China), years (2013\u20132018) and ECG system (GE MUSE) from PTB-XL. Condition labels are not exhaustive, so specificity and PPV are lower bounds."
+}

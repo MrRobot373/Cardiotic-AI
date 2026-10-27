@@ -19,6 +19,7 @@
   eval-ecg12-measure  12-lead interval agreement vs GE 12SL and Uni-G (--version, --split val|test)
   eval-ecg12-external  12-lead statements and measurements on Chapman–Shaoxing (external test, --version)
   eval-ecg12-rules  measurement rules (bradycardia, tachycardia, 1st-degree AV block, long QT) vs the statement model
+  select-ecg12    apply the pre-declared v0.1 / v0.2 rule (validation data only)
   analyze-12lead  run the 12-lead pipeline on one PTB-XL ECG (--ecg-id) and save JSON (+ optional plot)
   report          regenerate ml/reports/RESULTS.md from the JSON results
 """
@@ -51,11 +52,12 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("--seconds", type=float, default=60.0)
     a.add_argument("--out", default="analysis.json")
     a.add_argument("--plot", default=None)
-    e12 = sub.add_parser("train-ecg12"); e12.add_argument("--version", default="v0.2", choices=["v0.1", "v0.2"])
+    e12 = sub.add_parser("train-ecg12"); e12.add_argument("--version", default="v0.3", choices=["v0.1", "v0.2", "v0.3"])
     tm = sub.add_parser("tune-ecg12-measure"); tm.add_argument("--version", default="v0.2")
     em = sub.add_parser("eval-ecg12-measure"); em.add_argument("--version", default="v0.2"); em.add_argument("--split", default="val", choices=["val", "test"])
     ex = sub.add_parser("eval-ecg12-external"); ex.add_argument("--version", default="v0.1")
     sub.add_parser("eval-ecg12-rules")
+    sub.add_parser("select-ecg12")
     a12 = sub.add_parser("analyze-12lead"); a12.add_argument("--ecg-id", type=int, required=True)
     a12.add_argument("--out", default="analysis_12lead.json"); a12.add_argument("--plot", default=None)
     sub.add_parser("report")
@@ -132,6 +134,9 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "eval-ecg12-rules":
         from cardiotic_ml.experiments_ecg12 import eval_rules
         eval_rules()
+    elif args.cmd == "select-ecg12":
+        from cardiotic_ml.experiments_ecg12 import select_ecg12
+        select_ecg12()
     elif args.cmd == "analyze-12lead":
         from cardiotic_ml.data import ptbxl
         from cardiotic_ml.ecg12.analyze import Models12, analyze_12lead, plot_12lead
