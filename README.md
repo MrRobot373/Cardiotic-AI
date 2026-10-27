@@ -1,7 +1,7 @@
 # Cardiotic AI
 
 AI-assisted ECG analysis and cardiac monitoring for hospitals, ICUs and operation theatres.
-By GMS. A separate product from MED AI (GMS Clinical AI), built in the same GMS design language.
+For hospitals and medical-equipment manufacturers. On-premise. Markets: India and USA first, then EU.
 
 > **Status: early AI research.** The first two AI models (signal quality and beat classification)
 > and a heartbeat-detection benchmark are built and measured on public data. See

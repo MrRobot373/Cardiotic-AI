@@ -40,6 +40,16 @@ how it is measured, and the order we build them. Measured results live in
 
 ## 3. Build order
 
+**Priorities after the 27 Oct 2026 decisions** (hospitals + equipment manufacturers, India + USA,
+on-premise):
+1. **M4 — 12-lead measurements and statements.** Both buyers need it: hospital ECG reading rooms read
+   12-lead ECGs, and ECG-cart makers embed 12-lead interpretation. It is also what the UI concept shows.
+2. **Engine packaging (step 6 below) moves up:** manufacturers integrate an engine, not an app, so the
+   exported, deterministic, versioned engine with its own test reports is needed early.
+3. **AF operating point (3d)** and the open AF / beat issues continue alongside.
+4. Multi-signal OT/ICU (M6) and image digitisation (M7) stay later.
+
+
 | Step | Deliverable | Data | Done when |
 |---|---|---|---|
 | 1 | M1 quality + beat detection + M2 beats, end-to-end research pipeline | MIT-BIH, NSTDB | **Done (v0.1)**: end-to-end 91.7% beat accuracy on 22 unseen patients; numbers and known issues in RESULTS.md |

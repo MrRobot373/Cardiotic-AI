@@ -57,6 +57,17 @@ def load_models(directory=ARTIFACTS_DIR) -> Models:
 
 
 confidence_level = cal.confidence_level
+BATCH = 256  # bounded memory on long (e.g. 24 h Holter) recordings
+
+
+@torch.no_grad()
+def _batched(model, *arrays: np.ndarray) -> np.ndarray:
+    """Run a model over arrays in fixed-size chunks; returns raw outputs (logits)."""
+    n = len(arrays[0])
+    if n == 0:
+        return np.zeros((0, model.head[-1].out_features), dtype=np.float32)
+    return np.concatenate([model(*(torch.from_numpy(np.ascontiguousarray(a[i:i + BATCH])) for a in arrays)).numpy()
+                           for i in range(0, n, BATCH)])
 
 
 @torch.no_grad()
@@ -72,7 +83,7 @@ def _rhythm(signal: np.ndarray, fs: float, usable: np.ndarray, models: Models,
     else:
         x, beats, _ = rd.prepare(np.asarray(signal, dtype=np.float32), fs)
         w, r, starts = rd.windows(x, beats)
-    logits = models.rhythm(torch.from_numpy(w), torch.from_numpy(r)).numpy()
+    logits = _batched(models.rhythm, w, r)
     p = cal.softmax(logits, models.cards[RHYTHM_MODEL].get("temperature", 1.0))
     out = []
     for st, prob in zip(starts, p):
@@ -94,7 +105,7 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
     # 1. quality, per 2.5 s window
     starts = np.arange(0, max(len(x) - win, 0) + 1, win)
     wins = np.stack([x[s:s + win] - np.median(x[s:s + win]) for s in starts]) if len(starts) else np.zeros((0, win))
-    qp = torch.softmax(models.quality(torch.from_numpy(np.clip(wins, -10, 10).astype(np.float32))), 1).numpy()
+    qp = cal.softmax(_batched(models.quality, np.clip(wins, -10, 10).astype(np.float32)))
     q_label = qp.argmax(1)
     segments = [{"start_s": float(s / FS), "end_s": float((s + win) / FS), "quality": q_data.LABELS[l],
                  "probability": float(qp[i, l])} for i, (s, l) in enumerate(zip(starts, q_label))]
@@ -111,7 +122,7 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
         return _result(segments, [], [], {}, ["Not analysable: too few beats detected in usable segments."] + review, models)
     # 3. classify beats (calibrated)
     bw, rr, ok = beat_data.from_signal(x, peaks, FS)
-    bp = cal.softmax(models.beats(torch.from_numpy(bw), torch.from_numpy(rr)).numpy(),
+    bp = cal.softmax(_batched(models.beats, bw, rr),
                      models.cards[BEAT_MODEL].get("temperature", 1.0))
     beats = [{"time_s": float(p / FS), "class": beat_data.CLASSES[c], "probability": float(bp[i, c]),
               "confidence": confidence_level(float(bp[i, c]))}
