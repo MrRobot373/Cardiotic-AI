@@ -7,6 +7,11 @@ Records JS00001–JS10646 are the Chapman–Shaoxing database (data/chapman.py) 
 `verify_chapman_overlap` checks this on the signals. They are our external test set, so only the
 Ningbo part is used for training (patient-level split below, fixed before any result).
 
+Atrial fibrillation / flutter are not mapped either: the Ningbo part has no fibrillation code at all
+and 7,615 "atrial flutter" ECGs (22%), and on the signals these behave like fibrillation (80% irregular
+RR, like Chapman fibrillation at 89%, against 48% for Chapman flutter; reports/ecg12_ningbo_af_check.json).
+The source's "AF" abbreviation most likely meant fibrillation. Rather than guess, both are left out.
+
 Several source labels share one SNOMED code (left bundle-branch block, left anterior/posterior
 fascicular block -> 164909002; every MI location -> 164865005), so those are not mapped.
 """
@@ -27,12 +32,13 @@ NINGBO_DIR = DATA_ROOT / "ningbo"
 FS = 500
 N_CHAPMAN = 10646
 SNOMED_TO_SCP = {
-    "426783006": "SR", "426177001": "SBRAD", "427084000": "STACH", "164889003": "AFIB", "164890007": "AFLT",
+    "426783006": "SR", "426177001": "SBRAD", "427084000": "STACH",
     "427393009": "SARRH", "426761007": "SVTAC", "270492004": "1AVB", "195042002": "2AVB", "54016002": "2AVB",
     "28189009": "2AVB", "27885002": "3AVB", "59118001": "CRBBB", "17338001": "PVC", "284470004": "PAC",
     "74390002": "WPW", "164873001": "LVH", "89792004": "RVH", "111975006": "LNGQT",
 }
 MAPPED = sorted(set(SNOMED_TO_SCP.values()))
+UNREADABLE = {"JS23074"}  # header and signal file disagree (wfdb cannot read it); found by reading every record
 
 
 @dataclass(frozen=True)
@@ -66,7 +72,10 @@ def records() -> list[Record]:
     out = []
     for hea in sorted((NINGBO_DIR / "WFDBRecords").glob("*/*/*.hea")):
         text = hea.read_text(errors="replace")
-        if int(text.split()[3]) < 5000:   # a few records are shorter than 10 s
+        first = text.splitlines()[0].split()
+        if len(first) < 4 or not first[3].isdigit() or int(first[3]) < 5000:  # malformed (JS01052) or < 10 s
+            continue
+        if hea.stem in UNREADABLE:
             continue
         meta = dict(re.findall(r"^#(\w+):\s*(.*)$", text, flags=re.M))
         age = meta.get("Age", "").strip()

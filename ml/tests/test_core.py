@@ -296,7 +296,7 @@ def test_chapman_and_ningbo_label_mapping_and_split():
     assert r.scp() == {"AFIB", "CRBBB"}
     assert chapman.Record("f", "SR", (), 40, 1, {}).scp() == {"SR", "NORM"}
     n = ningbo.Record("JS00001", "x", ("164889003", "59118001", "164934002"), 85, 0)
-    assert n.is_chapman and n.scp() == {"AFIB", "CRBBB"}
+    assert n.is_chapman and n.scp() == {"CRBBB"}  # AF / flutter codes are not trusted in this source
     assert not ningbo.Record("JS10647", "x", (), None, None).is_chapman
     assert "164909002" not in ningbo.SNOMED_TO_SCP  # LBBB code is shared with fascicular blocks: never mapped
     splits = [ningbo.Record(f"JS{k:05d}", "x", (), None, None).split for k in range(20000, 22000)]
