@@ -220,7 +220,16 @@ def train_ecg12(version: str = "v0.1") -> dict:
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=spec["lr"], total_steps=steps)
     loss_fn = nn.BCEWithLogitsLoss(reduction="none")
     best, best_auc, history = None, -1.0, []
-    for epoch in range(spec["epochs"]):
+    # resume after an interruption: everything that decides the next epoch is saved after each one
+    ckpt = REPORTS_DIR.parent / "cache" / f"ecg12_net_{version}.resume.pt"
+    start = 0
+    if ckpt.exists():
+        st = torch.load(ckpt, weights_only=False)
+        model.load_state_dict(st["model"]); opt.load_state_dict(st["opt"]); sched.load_state_dict(st["sched"])
+        rng.bit_generator.state = st["numpy_rng"]; torch.set_rng_state(st["torch_rng"])
+        best, best_auc, history, start = st["best"], st["best_auc"], st["history"], st["epoch"]
+        print(f"resuming after epoch {start}", flush=True)
+    for epoch in range(start, spec["epochs"]):
         model.train()
         t0, total = time.time(), 0.0
         order = torch.from_numpy(rng.permutation(len(xtr)))
@@ -240,7 +249,13 @@ def train_ecg12(version: str = "v0.1") -> dict:
         auc = auc if nb_auc is None else (auc + nb_auc) / 2
         if auc > best_auc:
             best_auc, best = auc, copy.deepcopy(model.state_dict())
+        ckpt.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({"model": model.state_dict(), "opt": opt.state_dict(), "sched": sched.state_dict(),
+                    "numpy_rng": rng.bit_generator.state, "torch_rng": torch.get_rng_state(), "best": best,
+                    "best_auc": best_auc, "history": history, "epoch": epoch + 1}, ckpt.with_suffix(".tmp"))
+        ckpt.with_suffix(".tmp").replace(ckpt)
     model.load_state_dict(best)
+    ckpt.unlink(missing_ok=True)
 
     val_logits, test_logits = _logits(model, x[va]), _logits(model, x[te])
     temperature = fit_temperature_binary(val_logits, y[va])
