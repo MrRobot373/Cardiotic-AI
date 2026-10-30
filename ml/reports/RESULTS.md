@@ -56,6 +56,21 @@ Real-data check (test split), share of 2.5 s windows rated:
 
 Synthetic labels are proxies derived from the injected noise level (see `quality/dataset.py`). The CinC 'too noisy' label is for the whole recording, so not every window in such a recording is bad.
 
+### 2.1 On real 12-lead ECGs (PTB-XL) — candidates v0.4–v0.6
+
+The 12-lead review uses the same model per lead. PTB-XL technicians noted baseline drift, static and burst noise and electrode problems per lead (parsed in `data/ptbxl_noise.py`; weak labels). On validation-fold ECGs without any note, v0.3 rated 19% of leads noisy (limb leads up to 46%; 76% of ECGs had at least one 'noisy' lead), driven by small high-frequency hiss on low-amplitude limb leads. Candidates: v0.4 = v0.3 recipe on 40 Hz low-passed input; v0.5 = v0.4 + clean PTB-XL 12-lead leads as training bases; v0.6 = v0.3's weights with a 40 Hz input filter, no retraining (suggested by a diagnostic on validation ECGs, so it also needed a test-fold confirmation).
+
+Rule, fixed before training: clean-lead 'not good' ≤ 5.0%; 12-lead synthetic unusable and not-good sensitivity no more than 2.0% below v0.3; MIT-BIH validation macro-F1 no more than 0.02 below; CinC 'too noisy' recall no more than 5.0% below; clean CinC rated unusable no more than 0.5% above; technician-note AUC no more than 0.03 below.
+
+| Version (validation) | Clean leads not good | Clean ECGs with a not-good lead | 12-lead injected: unusable caught | 12-lead injected: noisy or unusable caught | Note AUC | MIT-BIH val macro-F1 | CinC 'too noisy' caught | Passed |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| v0.3 | 19.1% | 76.2% | 85.9% | 86.1% | 0.745 | 0.867 | 80.2% | current |
+| v0.4 | 14.8% | 67.0% | 96.5% | 87.6% | 0.712 | 0.876 | 90.6% | no |
+| v0.5 | 15.3% | 63.8% | 97.4% | 92.8% | 0.711 | 0.848 | 89.9% | no |
+| v0.6 | 1.8% | 15.7% | 50.5% | 56.5% | 0.679 | 0.681 | 74.3% | no |
+
+**None adopted; v0.3 stays.** Retraining on filtered input (v0.4, v0.5) catches far more real and injected noise, but still flags about 15% of un-annotated limb leads. Filtering v0.3's input (v0.6) removes the false flags but misses half of unusable leads. The limit is the label: 'noisy' is defined by injected noise power, not by whether a cardiologist can read the lead. A 12-lead quality model needs clinician-labelled leads (open issue 17).
+
 ## 3. Beat classifier (AI model #2)
 
 Inter-patient protocol (de Chazal): trained on DS1, model selected on 4 held-out DS1 patients, tested once on the 22 DS2 patients (49,685 beats).
@@ -381,6 +396,43 @@ Chapman–Shaoxing (held out; same country and ECG system as Ningbo, so not full
 
 v0.3 subgroups (PTB-XL test, superclass macro-AUC): female 0.917; male 0.939; age <40 0.936; age 40–65 0.918; age >65 0.918.
 
+### 7.6 Women vs men — where the gap comes from
+
+Validation fold only (1,050 women, mean age 69; 1,133 men, 61). Superclass AUC:
+
+| Superclass | Women | Men | Women, age 40–80 | Men, age 40–80 | Training prevalence women / men |
+|---|---:|---:|---:|---:|---:|
+| NORM | 0.955 | 0.944 | 0.938 | 0.941 | 50.6% / 37.2% |
+| MI | 0.917 | 0.946 | 0.905 | 0.941 | 19.0% / 30.8% |
+| STTC | 0.944 | 0.933 | 0.943 | 0.933 | 25.1% / 23.0% |
+| CD | 0.934 | 0.934 | 0.921 | 0.927 | 17.3% / 27.2% |
+| HYP | 0.913 | 0.900 | 0.895 | 0.906 | 10.7% / 13.5% |
+
+**The gap is myocardial infarction**; the other superclasses are within about 0.01 either way. Largest statement gaps (women vs men): IVCD 0.780 vs 0.847, IMI 0.913 vs 0.941, ABQRS 0.775 vs 0.794. Women are MI-positive less often in training, so the model sees fewer female MI ECGs.
+
+### 7.7 Per-site operating points — simulated installation
+
+Thresholds were set on a random half of Chapman–Shaoxing (5,323 ECGs, policy `max_f1`, statements with fewer than 20 site positives keep the model's threshold) and scored on the other half (5,323). `ecg12/site.py` is the installation tool; a site configuration changes thresholds only, never the model.
+
+| Statement | ECGs (eval half) | PTB-XL threshold: Se / PPV | Site threshold: Se / PPV |
+|---|---:|---:|---:|
+| SBRAD | 2,013 | 98.9% / 98.9% | 99.2% / 98.3% |
+| SR | 901 | 96.7% / 89.7% | 94.6% / 92.6% |
+| AFIB | 857 | 97.4% / 76.4% | 93.5% / 85.2% |
+| STACH | 755 | 95.5% / 96.6% | 96.4% / 95.2% |
+| SVTAC | 306 | 76.5% / 83.6% | 90.5% / 77.8% |
+| CRBBB | 244 | 81.6% / 96.1% | 79.9% / 96.5% |
+| AFLT | 209 | 11.0% / 25.6% | 67.5% / 22.2% |
+| SARRH | 206 | 91.7% / 53.1% | 74.8% / 69.1% |
+| PVC | 144 | 77.8% / 84.2% | 84.0% / 77.6% |
+| 1AVB | 137 | 77.4% / 68.8% | 71.5% / 74.8% |
+| PAC | 128 | 71.1% / 66.9% | 69.5% / 66.9% |
+| LAFB | 57 | 66.7% / 45.8% | 64.9% / 50.0% |
+| CLBBB | 44 | 88.6% / 83.0% | 88.6% / 69.6% |
+| LNGQT | 27 | 11.1% / 8.6% | 11.1% / 15.8% |
+
+Site thresholds help where the hospital's convention differs (AF PPV, SVT and flutter sensitivity) and change little where it does not. They do not make a weak statement strong: atrial flutter reaches 67.5% sensitivity only at 22.2% PPV, and 45.5% of flutter ECGs are also called atrial fibrillation. Long QT stays weak. Chapman's condition labels are not exhaustive, so PPV is a lower bound.
+
 ## 8. Issues found while testing
 
 ### Fixed
@@ -401,9 +453,9 @@ v0.3 subgroups (PTB-XL test, superclass macro-AUC): female 0.917; male 0.939; ag
 11. **Proxy and weak labels.** Synthetic quality labels come from known noise levels; CinC 'too noisy' labels are per recording, not per window. Clinician-labelled windows are needed.
 12. **Public data only.** MIT-BIH (1970s Holter, MLII) and CinC 2017 (handheld, lead I). Performance on modern 12-lead carts and OT/ICU monitors is unknown until tested on partner-hospital data.
 13. **CinC split is by record, not patient** (no patient IDs are published), so some test records may share a patient with training records. The cross-dataset MIT-BIH result is the stronger generalisation evidence.
-14. **Rare 12-lead statements are still weak.** Atrial flutter: Chapman sensitivity 9% (no trustworthy flutter training labels: Ningbo's are mislabelled fibrillation). Long QT: AUC 0.93 on Chapman but sensitivity 22% at the PTB-XL threshold. WPW has 8 PTB-XL test ECGs. Next: flutter data with verified labels (e.g. CODE-15%, MIMIC-IV-ECG; licences in PRODUCT_PLAN §7) and per-site operating points (section 7.4).
-15. **Sex gap in the 12-lead model.** Superclass macro-AUC on PTB-XL test: v0.1 0.914 women vs 0.935 men; v0.3 0.917 vs 0.939 — more data did not close it. Needs investigation (sex-specific criteria such as LVH voltage, class balance) before any claim; subgroup results must be part of every future model card.
+14. **Rare 12-lead statements are still weak.** Atrial flutter: Chapman sensitivity 9% (no trustworthy flutter training labels: Ningbo's are mislabelled fibrillation). Long QT: AUC 0.93 on Chapman but sensitivity 22% at the PTB-XL threshold. WPW has 8 PTB-XL test ECGs. Per-site thresholds raise flutter sensitivity to about 67% but at about 22% PPV (section 7.7), so flutter must not be claimed. Next: flutter data with verified labels (e.g. CODE-15%, MIMIC-IV-ECG; licences in PRODUCT_PLAN §7).
+15. **Sex gap in the 12-lead model.** Superclass macro-AUC on PTB-XL test: v0.1 0.914 women vs 0.935 men; v0.3 0.917 vs 0.939 — more data did not close it. Section 7.6: the gap is myocardial infarction (validation, age 40–80: about 0.905 women vs 0.941 men); other superclasses are even. Subgroup results must be part of every future model card.
 16. **12-lead measurements are checked against other algorithms, not a referee.** IEC 60601-2-25 requires the CSE database (licensed). PR is not measured beyond 300 ms (very long first-degree AV block) and paced ECGs are not handled specially.
-17. **The signal-quality model was trained on Holter lead II, not 12-lead ECGs.** On clean PTB-XL validation ECGs it rates 0.35% of leads unusable (about 1 ECG in 25 gets an 'unusable lead' note) and 20% noisy. Next: train it on 12-lead data, e.g. using PTB-XL's own noise and electrode annotations.
+17. **The signal-quality model was trained on Holter lead II, not 12-lead ECGs.** On clean PTB-XL validation ECGs it rates 0.35% of leads unusable and 19% noisy (76% of ECGs show a 'noisy' lead). Three 12-lead candidates were rejected by a pre-declared rule (section 2.1). Next: clinician-labelled 12-lead leads (readable / noisy / unusable); until then the review screen should show 'noisy' as a soft hint, not a warning.
 18. **Two countries, no Indian or US data yet.** PTB-XL (Schiller devices, Germany, 1989–1996) and Chapman/Ningbo (China, 2013–2018). Performance on today's ECG carts in Indian and US hospitals is unknown until tested on partner data.
-19. **Thresholds are per site.** The same model needs different yes/no thresholds where hospitals label differently (section 7.3–7.4). The product must let each site set and verify its operating points on local data at installation.
+19. **Thresholds are per site.** The same model needs different yes/no thresholds where hospitals label differently (section 7.3–7.4). Tool and simulated installation: section 7.7. Next: wire site configurations into the engine (versioned, approved by the cardiology lead, audit-logged).

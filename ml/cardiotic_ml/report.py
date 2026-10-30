@@ -212,6 +212,85 @@ def _ecg12_section() -> list[str]:
         ch = reps[sel["chosen"]]
         out += ["", f"{sel['chosen']} subgroups (PTB-XL test, superclass macro-AUC): " + "; ".join(
             f"{g} {v['superclass_macro_auc']:.3f}" for g, v in ch["subgroups"].items()) + ".", ""]
+    return out + _sex_and_site_section()
+
+
+def _quality_12lead_section() -> list[str]:
+    sel, v06 = _load("quality_selection"), _load("quality_selection_v06")
+    if not sel:
+        return []
+    rows = dict(sel["validation"])
+    if v06:
+        rows["v0.6"] = v06["validation"]["v0.6"]
+    passed = {**{k: c["passed"] for k, c in sel["candidates"].items()}, **({"v0.6": False} if v06 else {})}
+    rule = sel["rule"]
+    out = ["### 2.1 On real 12-lead ECGs (PTB-XL) — candidates v0.4–v0.6", "",
+           "The 12-lead review uses the same model per lead. PTB-XL technicians noted baseline drift, static and burst noise "
+           "and electrode problems per lead (parsed in `data/ptbxl_noise.py`; weak labels). On validation-fold ECGs without "
+           "any note, v0.3 rated 19% of leads noisy (limb leads up to 46%; 76% of ECGs had at least one 'noisy' lead), driven "
+           "by small high-frequency hiss on low-amplitude limb leads. Candidates: v0.4 = v0.3 recipe on 40 Hz low-passed input; "
+           "v0.5 = v0.4 + clean PTB-XL 12-lead leads as training bases; v0.6 = v0.3's weights with a 40 Hz input filter, no "
+           "retraining (suggested by a diagnostic on validation ECGs, so it also needed a test-fold confirmation).", "",
+           f"Rule, fixed before training: clean-lead 'not good' ≤ {_pct(rule['ptbxl_clean_leads_not_good_max'])}; 12-lead synthetic "
+           f"unusable and not-good sensitivity no more than {_pct(rule['ptbxl_synthetic_unusable_se_drop_max'])} below v0.3; MIT-BIH "
+           f"validation macro-F1 no more than {rule['mitdb_val_macro_f1_drop_max']} below; CinC 'too noisy' recall no more than "
+           f"{_pct(rule['cinc_noisy_not_good_drop_max'])} below; clean CinC rated unusable no more than {_pct(rule['cinc_clean_unusable_rise_max'])} "
+           f"above; technician-note AUC no more than {rule['ptbxl_note_auc_drop_max']} below.", "",
+           "| Version (validation) | Clean leads not good | Clean ECGs with a not-good lead | 12-lead injected: unusable caught | 12-lead injected: noisy or unusable caught | Note AUC | MIT-BIH val macro-F1 | CinC 'too noisy' caught | Passed |",
+           "|---|---:|---:|---:|---:|---:|---:|---:|---|"]
+    for v, c in rows.items():
+        out.append(f"| {v} | {_pct(c['ptbxl_clean_leads_not_good'])} | {_pct(c['ptbxl_clean_ecgs_with_a_not_good_lead'])} | "
+                   f"{_pct(c['ptbxl_synthetic_unusable_se'])} | {_pct(c['ptbxl_synthetic_not_good_se'])} | {c['ptbxl_note_auc']:.3f} | "
+                   f"{c['mitdb_val_macro_f1']:.3f} | {_pct(c['cinc_noisy_not_good'])} | {'current' if v == sel['current'] else 'yes' if passed.get(v) else 'no'} |")
+    out += ["", f"**None adopted; {sel['current']} stays.** Retraining on filtered input (v0.4, v0.5) catches far more real and injected "
+            "noise, but still flags about 15% of un-annotated limb leads. Filtering v0.3's input (v0.6) removes the false flags but "
+            "misses half of unusable leads. The limit is the label: 'noisy' is defined by injected noise power, not by whether a "
+            "cardiologist can read the lead. A 12-lead quality model needs clinician-labelled leads (open issue 17).", ""]
+    return out
+
+
+def _sex_and_site_section() -> list[str]:
+    out = []
+    g = _load("ecg12_sex_gap_v0.3")
+    if g:
+        sc = g["superclass"]
+        out += ["### 7.6 Women vs men — where the gap comes from", "",
+                f"Validation fold only ({g['n']['women']:,} women, mean age {g['mean_age']['women']:.0f}; {g['n']['men']:,} men, "
+                f"{g['mean_age']['men']:.0f}). Superclass AUC:", "",
+                "| Superclass | Women | Men | Women, age 40–80 | Men, age 40–80 | Training prevalence women / men |", "|---|---:|---:|---:|---:|---:|"]
+        for k, v in sc.items():
+            pr = g["train_prevalence"][k]
+            out.append(f"| {k} | {v['women']:.3f} | {v['men']:.3f} | {v['women_40_80']:.3f} | {v['men_40_80']:.3f} | {_pct(pr['women'])} / {_pct(pr['men'])} |")
+        worst = ", ".join(f"{d['statement']} {d['auc_women']:.3f} vs {d['auc_men']:.3f}" for d in g["statements"][:3])
+        out += ["", f"**The gap is myocardial infarction**; the other superclasses are within about 0.01 either way. Largest statement "
+                f"gaps (women vs men): {worst}. Women are MI-positive less often in training, so the model sees fewer female MI ECGs.", ""]
+        sel = _load("ecg12_selection_sex")
+        if sel:
+            c, ref = sel["validation"][sel["candidate"]], sel["validation"][sel["current"]]
+            out += [f"Candidate {sel['candidate']}: {sel['current']} recipe with women's MI-positive training ECGs weighted "
+                    f"{_load('ecg12_statements_' + sel['candidate'])['model_card']['recipe'].get('women_mi_weight')}x on the MI outputs. "
+                    f"Rule (validation, fixed before training): {sel['rule']}.", "",
+                    "| Validation | " + sel["current"] + " | " + sel["candidate"] + " |", "|---|---:|---:|"]
+            for k in ("ptbxl_val_all", "ningbo_val_mapped", "mi_auc_women", "mi_auc_men", "superclass_women", "superclass_men"):
+                out.append(f"| {k} | {ref[k]:.3f} | {c[k]:.3f} |")
+            out += ["", f"**Chosen: {sel['chosen']}.** Checks: " + ", ".join(f"{k} {'pass' if ok else 'fail'}" for k, ok in sel["checks"].items()) + ".", ""]
+    st = _load("ecg12_site_thresholds_v0.3")
+    if st:
+        out += ["### 7.7 Per-site operating points — simulated installation", "",
+                f"Thresholds were set on a random half of Chapman–Shaoxing ({st['n_calibration']:,} ECGs, policy `{st['policy']}`, "
+                f"statements with fewer than {st['min_positives']} site positives keep the model's threshold) and scored on the other "
+                f"half ({st['n_evaluation']:,}). `ecg12/site.py` is the installation tool; a site configuration changes thresholds only, "
+                "never the model.", "",
+                "| Statement | ECGs (eval half) | PTB-XL threshold: Se / PPV | Site threshold: Se / PPV |", "|---|---:|---:|---:|"]
+        for k, v in sorted(st["statements"].items(), key=lambda kv: -kv[1]["support_eval"]):
+            a, b = v["model_threshold"], v["site_threshold"]
+            out.append(f"| {k} | {v['support_eval']:,} | {_pct(a['sensitivity'])} / {_pct(a['ppv'])} | {_pct(b['sensitivity'])} / {_pct(b['ppv'])} |")
+        fc = st["flutter_called_as"]
+        out += ["", f"Site thresholds help where the hospital's convention differs (AF PPV, SVT and flutter sensitivity) and change "
+                "little where it does not. They do not make a weak statement strong: atrial flutter reaches "
+                f"{_pct(st['statements']['AFLT']['site_threshold']['sensitivity'])} sensitivity only at "
+                f"{_pct(st['statements']['AFLT']['site_threshold']['ppv'])} PPV, and {_pct(fc['AFIB'])} of flutter ECGs are also called "
+                "atrial fibrillation. Long QT stays weak. Chapman's condition labels are not exhaustive, so PPV is a lower bound.", ""]
     return out
 
 
@@ -265,6 +344,7 @@ def write_results() -> str:
             out.append("")
         out += ["Synthetic labels are proxies derived from the injected noise level (see `quality/dataset.py`). "
                 "The CinC 'too noisy' label is for the whole recording, so not every window in such a recording is bad.", ""]
+        out += _quality_12lead_section()
 
     versions = [(v, _load(f"beat_classification_{v}")) for v in ("v0.1", "v0.2")]
     versions = [(v, r) for v, r in versions if r]
@@ -451,22 +531,25 @@ def write_results() -> str:
             "with training records. The cross-dataset MIT-BIH result is the stronger generalisation evidence.",
             "14. **Rare 12-lead statements are still weak.** Atrial flutter: Chapman sensitivity 9% (no trustworthy flutter "
             "training labels: Ningbo's are mislabelled fibrillation). Long QT: AUC 0.93 on Chapman but sensitivity 22% at the "
-            "PTB-XL threshold. WPW has 8 PTB-XL test ECGs. Next: flutter data with verified labels (e.g. CODE-15%, MIMIC-IV-ECG; "
-            "licences in PRODUCT_PLAN §7) and per-site operating points (section 7.4).",
+            "PTB-XL threshold. WPW has 8 PTB-XL test ECGs. Per-site thresholds raise flutter sensitivity to about 67% but at about 22% "
+            "PPV (section 7.7), so flutter must not be claimed. Next: flutter data with verified labels (e.g. CODE-15%, "
+            "MIMIC-IV-ECG; licences in PRODUCT_PLAN §7).",
             "15. **Sex gap in the 12-lead model.** Superclass macro-AUC on PTB-XL test: v0.1 0.914 women vs 0.935 men; v0.3 0.917 "
             "vs 0.939 — more data did not close it. "
-            "Needs investigation (sex-specific criteria such as LVH voltage, class balance) before any claim; subgroup results "
-            "must be part of every future model card.",
+            "Section 7.6: the gap is myocardial infarction (validation, age 40–80: about 0.905 women vs 0.941 men); other "
+            "superclasses are even. Subgroup results must be part of every future model card.",
             "16. **12-lead measurements are checked against other algorithms, not a referee.** IEC 60601-2-25 requires the CSE "
             "database (licensed). PR is not measured beyond 300 ms (very long first-degree AV block) and paced ECGs are not "
             "handled specially.",
             "17. **The signal-quality model was trained on Holter lead II, not 12-lead ECGs.** On clean PTB-XL validation ECGs "
-            "it rates 0.35% of leads unusable (about 1 ECG in 25 gets an 'unusable lead' note) and 20% noisy. Next: train it on "
-            "12-lead data, e.g. using PTB-XL's own noise and electrode annotations.",
+            "it rates 0.35% of leads unusable and 19% noisy (76% of ECGs show a 'noisy' lead). Three 12-lead candidates were "
+            "rejected by a pre-declared rule (section 2.1). Next: clinician-labelled 12-lead leads (readable / noisy / unusable); "
+            "until then the review screen should show 'noisy' as a soft hint, not a warning.",
             "18. **Two countries, no Indian or US data yet.** PTB-XL (Schiller devices, Germany, 1989–1996) and Chapman/Ningbo "
             "(China, 2013–2018). Performance on today's ECG carts in Indian and US hospitals is unknown until tested on partner data.",
             "19. **Thresholds are per site.** The same model needs different yes/no thresholds where hospitals label differently "
-            "(section 7.3–7.4). The product must let each site set and verify its operating points on local data at installation.", ""]
+            "(section 7.3–7.4). Tool and simulated installation: section 7.7. Next: wire site configurations into the engine "
+            "(versioned, approved by the cardiology lead, audit-logged).", ""]
     path = REPORTS_DIR / "RESULTS.md"
     path.write_text("\n".join(out))
     return str(path)
