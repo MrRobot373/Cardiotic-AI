@@ -29,6 +29,10 @@ class InputError(ValueError):
     """The request cannot be analysed as given; the message says why."""
 
 
+class SiteConfigError(ValueError):
+    """The per-site operating-point file does not belong to these models or is not signed off."""
+
+
 @dataclass
 class _Loaded:
     manifest: dict
@@ -70,7 +74,9 @@ def _array(values, name: str) -> np.ndarray:
 
 
 class Engine:
-    def __init__(self, models_dir=MODELS_DIR):
+    def __init__(self, models_dir=MODELS_DIR, site_config=None):
+        """site_config: path to a signed-off per-site operating-point file (ecg12/site.py), or None for the
+        model's own thresholds. Default: the CARDIOTIC_SITE_CONFIG environment variable, if set."""
         from cardiotic_ml import pipeline
         from cardiotic_ml.ecg12 import analyze as a12
 
@@ -80,7 +86,24 @@ class Engine:
         run = {role: OnnxRunner(models_dir / m[role]["file"]) for role in m}
         cards = {f"{e['name']}_{e['version']}": e for e in m.values()}
         single = pipeline.Models(run["quality"], run["beats"], run["rhythm"], cards)
-        ecg12 = a12.Models12(net=run["ecg12"], card=m["ecg12"], quality=run["quality"], q_card=m["quality"])
+        import hashlib
+        import json
+        import os
+        from pathlib import Path
+
+        site_config = site_config or os.environ.get("CARDIOTIC_SITE_CONFIG")
+        site, self._site_info = None, None
+        if site_config:
+            raw = Path(site_config).read_bytes()
+            site = json.loads(raw)
+        try:
+            ecg12 = a12.Models12(net=run["ecg12"], card=m["ecg12"], quality=run["quality"], q_card=m["quality"], site=site)
+        except ValueError as e:
+            raise SiteConfigError(f"site configuration refused: {e}") from None
+        if site:
+            self._site_info = {"site_id": site["site_id"], "config_version": site["config_version"], "approved_by": site["approved_by"],
+                               "approved_at": site["approved_at"], "sha256": hashlib.sha256(raw).hexdigest(),
+                               "statements": sorted(site["statements"])}
         self._m = _Loaded(manifest, ecg12, single)
 
     # ------------------------------------------------------------------ info
@@ -88,7 +111,8 @@ class Engine:
         return {"engine": "cardiotic-engine", "version": __version__,
                 "models_version": self._m.manifest["engine_models_version"],
                 "intended_use": self._m.manifest["intended_use"],
-                "models": {role: {"model": v["model"], "sha256": v["sha256"]} for role, v in self.integrity.items()}}
+                "models": {role: {"model": v["model"], "sha256": v["sha256"]} for role, v in self.integrity.items()},
+                **({"site_config": self._site_info} if self._site_info else {})}
 
     def _envelope(self, analysis: str, body: dict, t0: float, notes: list[str]) -> dict:
         body.pop("engine", None)

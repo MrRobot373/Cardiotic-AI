@@ -1,0 +1,136 @@
+{
+ "_comment": "EXAMPLE from the simulated Chapman\u2013Shaoxing installation (ml/reports RESULTS 7.7). Never deploy a site configuration that was not chosen and approved on that site's own ECGs.",
+ "site_id": "example-chapman-simulation",
+ "config_version": "0.1",
+ "model": "ecg12_net_v0.3",
+ "approved_by": "Example only \u2014 set by the site's cardiology lead",
+ "approved_at": "2026-10-30",
+ "statements": {
+  "1AVB": {
+   "threshold": 0.3897343575954437,
+   "source": "site",
+   "site_positives": 115,
+   "policy": "max_f1",
+   "site_sensitivity": 0.7739130434782608,
+   "site_ppv": 0.689922480620155,
+   "model_threshold": 0.30000000000000004
+  },
+  "AFIB": {
+   "threshold": 0.7761345505714417,
+   "source": "site",
+   "site_positives": 923,
+   "policy": "max_f1",
+   "site_sensitivity": 0.9176598049837487,
+   "site_ppv": 0.8486973947895792,
+   "model_threshold": 0.54
+  },
+  "AFLT": {
+   "threshold": 0.008690232411026955,
+   "source": "site",
+   "site_positives": 236,
+   "policy": "max_f1",
+   "site_sensitivity": 0.652542372881356,
+   "site_ppv": 0.23547400611620795,
+   "model_threshold": 0.56
+  },
+  "CLBBB": {
+   "threshold": 0.09925022721290588,
+   "source": "site",
+   "site_positives": 50,
+   "policy": "max_f1",
+   "site_sensitivity": 0.96,
+   "site_ppv": 0.8,
+   "model_threshold": 0.32
+  },
+  "CRBBB": {
+   "threshold": 0.3851349353790283,
+   "source": "site",
+   "site_positives": 216,
+   "policy": "max_f1",
+   "site_sensitivity": 0.8055555555555556,
+   "site_ppv": 0.9775280898876404,
+   "model_threshold": 0.24
+  },
+  "LAFB": {
+   "threshold": 0.4196145236492157,
+   "source": "site",
+   "site_positives": 51,
+   "policy": "max_f1",
+   "site_sensitivity": 0.6862745098039216,
+   "site_ppv": 0.6140350877192983,
+   "model_threshold": 0.34
+  },
+  "LNGQT": {
+   "threshold": 0.4209892451763153,
+   "source": "site",
+   "site_positives": 31,
+   "policy": "max_f1",
+   "site_sensitivity": 0.2903225806451613,
+   "site_ppv": 0.5,
+   "model_threshold": 0.24
+  },
+  "PAC": {
+   "threshold": 0.2211000919342041,
+   "source": "site",
+   "site_positives": 150,
+   "policy": "max_f1",
+   "site_sensitivity": 0.7933333333333333,
+   "site_ppv": 0.7828947368421053,
+   "model_threshold": 0.19999999999999998
+  },
+  "PVC": {
+   "threshold": 0.30071544647216797,
+   "source": "site",
+   "site_positives": 166,
+   "policy": "max_f1",
+   "site_sensitivity": 0.8614457831325302,
+   "site_ppv": 0.8411764705882353,
+   "model_threshold": 0.54
+  },
+  "SARRH": {
+   "threshold": 0.40680956840515137,
+   "source": "site",
+   "site_positives": 193,
+   "policy": "max_f1",
+   "site_sensitivity": 0.7927461139896373,
+   "site_ppv": 0.7251184834123223,
+   "model_threshold": 0.19999999999999998
+  },
+  "SBRAD": {
+   "threshold": 0.3508569896221161,
+   "source": "site",
+   "site_positives": 1876,
+   "policy": "max_f1",
+   "site_sensitivity": 0.9936034115138592,
+   "site_ppv": 0.9857218402961396,
+   "model_threshold": 0.46
+  },
+  "SR": {
+   "threshold": 0.5670228004455566,
+   "source": "site",
+   "site_positives": 925,
+   "policy": "max_f1",
+   "site_sensitivity": 0.932972972972973,
+   "site_ppv": 0.9452354874041621,
+   "model_threshold": 0.42000000000000004
+  },
+  "STACH": {
+   "threshold": 0.4237135648727417,
+   "source": "site",
+   "site_positives": 813,
+   "policy": "max_f1",
+   "site_sensitivity": 0.971709717097171,
+   "site_ppv": 0.9518072289156626,
+   "model_threshold": 0.5800000000000001
+  },
+  "SVTAC": {
+   "threshold": 0.0726911872625351,
+   "source": "site",
+   "site_positives": 281,
+   "policy": "max_f1",
+   "site_sensitivity": 0.896797153024911,
+   "site_ppv": 0.7636363636363637,
+   "model_threshold": 0.18
+  }
+ }
+}

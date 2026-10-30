@@ -18,9 +18,12 @@ def main(argv: list[str] | None = None) -> int:
     a = sub.add_parser("analyze", help="analyse one request file (same JSON as the HTTP API)")
     a.add_argument("file")
     a.add_argument("--kind", choices=["ecg12", "rhythm"], default="ecg12")
+    for p in (s, a):
+        p.add_argument("--site-config", help="per-site operating-point file (default: $CARDIOTIC_SITE_CONFIG)")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+    from cardiotic_engine.api import SiteConfigError
     from cardiotic_engine.registry import IntegrityError, verify
 
     try:
@@ -31,10 +34,10 @@ def main(argv: list[str] | None = None) -> int:
         from cardiotic_engine.server import _json_default, serve
 
         if args.cmd == "serve":
-            serve(args.host, args.port).serve_forever()
+            serve(args.host, args.port, Engine(site_config=args.site_config)).serve_forever()
             return 0
         req = json.load(open(args.file))
-        eng = Engine()
+        eng = Engine(site_config=args.site_config)
         try:
             out = (eng.analyze_ecg12(req.get("leads"), req.get("fs"), req.get("units", "mV")) if args.kind == "ecg12"
                    else eng.analyze_rhythm(req.get("signal"), req.get("fs"), req.get("units", "mV"), req.get("lead")))
@@ -46,6 +49,9 @@ def main(argv: list[str] | None = None) -> int:
     except IntegrityError as e:
         print(f"MODEL INTEGRITY CHECK FAILED: {e}", file=sys.stderr)
         return 3
+    except SiteConfigError as e:  # refuse to start with a configuration for other models or not signed off
+        print(f"SITE CONFIGURATION REFUSED: {e}", file=sys.stderr)
+        return 4
 
 
 if __name__ == "__main__":

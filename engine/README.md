@@ -34,6 +34,24 @@ from I and II, and the result says so. Units: mV or µV.
   own implementation, which gives the same beats as NeuroKit2's on 109,802 MIT-BIH beats, 1,800 PTB-XL
   leads, 1 h of AF Holter and 300 handheld ECGs.
 
+## Per-site operating points
+
+The statement model ranks ECGs well across hospitals, but its yes/no thresholds do not transfer: sites
+label differently (ml/reports/RESULTS.md §7.3, §7.7). At installation, thresholds are chosen on the site's
+own cardiologist-labelled ECGs with `cardiotic_ml.ecg12.site.choose`, signed off by the cardiology lead,
+and given to the engine as a file:
+
+```bash
+cardiotic-engine serve --site-config /etc/cardiotic/site_config.json   # or CARDIOTIC_SITE_CONFIG=...
+```
+
+The file changes thresholds only, never the model. The engine refuses to start if the file is for a
+different statement model, names unknown statements, or has no `approved_by` / `approved_at`
+(`SiteConfigError`, exit code 4). With a file loaded, `/v1/models` and every result show the site ID,
+configuration version and its SHA-256, and each statement says whether its threshold came from the site
+or the model. `examples/site_config.example.json` comes from the simulated Chapman–Shaoxing installation
+and is for illustration only.
+
 ## Run it
 
 ```bash

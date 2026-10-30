@@ -29,7 +29,7 @@ class Models12:
     """Statement and quality runners plus their cards. Default: PyTorch weights from ARTIFACTS_DIR
     (research); the engine passes ONNX runners and its manifest entries instead."""
 
-    def __init__(self, directory=ARTIFACTS_DIR, net=None, card=None, quality=None, q_card=None):
+    def __init__(self, directory=ARTIFACTS_DIR, net=None, card=None, quality=None, q_card=None, site=None):
         if net is None:
             import torch
 
@@ -44,6 +44,10 @@ class Models12:
             q.load_state_dict(torch.load(directory / f"{QUALITY_MODEL}.pt", weights_only=True))
             net, quality = TorchRunner(m), TorchRunner(q)
         self.net, self.card, self.quality, self.q_card = net, card, quality, q_card
+        # per-site operating points (ecg12/site.py): thresholds only, never the model
+        from cardiotic_ml.ecg12 import site as site_cfg
+        self.site = site_cfg.validate(site, card) if site else None
+        self.thresholds = site_cfg.thresholds(self.site, card["thresholds"])
 
 
 def lead_quality(signal: np.ndarray, fs: float, models: Models12) -> dict[str, str]:
@@ -64,9 +68,14 @@ def statements(signal: np.ndarray, fs: float, models: Models12) -> list[dict]:
     x = (x - np.array(c["lead_mean"])[:, None]) / np.array(c["lead_std"])[:, None]
     z = run_batched(models.net, x[None].astype(np.float32))[0] / c["temperature"]
     p = 1 / (1 + np.exp(-z))
-    out = [{"statement": name, "probability": float(pi), "threshold": c["thresholds"][name],
+    th = models.thresholds
+    out = [{"statement": name, "probability": float(pi), "threshold": th[name],
             "confidence": cal.confidence_level(float(pi))}  # how sure the finding is present
-           for name, pi in zip(c["labels"], p) if pi >= c["thresholds"][name]]
+           for name, pi in zip(c["labels"], p) if pi >= th[name]]
+    if models.site:
+        site = models.site["statements"]
+        for d in out:
+            d["threshold_source"] = "site" if d["statement"] in site else "model"
     return sorted(out, key=lambda d: -d["probability"])
 
 
@@ -90,7 +99,9 @@ def analyze_12lead(signal: np.ndarray, fs: float, models: Models12) -> dict:
     return {"engine": {"name": "cardiotic-ml research pipeline (12-lead)", "version": __version__, "use": "research use only",
                        "models": {ECG12_MODEL: {"sha256": models.card["sha256"][:12], "temperature": models.card["temperature"]},
                                   QUALITY_MODEL: {"sha256": models.q_card["sha256"][:12]}}},
-            "lead_quality": quality, "measurements": meas, "statements": stm, "notes": notes}
+            "lead_quality": quality, "measurements": meas, "statements": stm, "notes": notes,
+            **({"operating_points": {"site_id": models.site["site_id"], "config_version": models.site["config_version"],
+                                     "statements_set_by_site": len(models.site["statements"])}} if models.site else {})}
 
 
 def plot_12lead(signal: np.ndarray, fs: float, result: dict, path, title: str = "") -> None:

@@ -61,3 +61,33 @@ def thresholds(config: dict | None, model_thresholds: dict[str, float]) -> dict[
     """Thresholds the analysis uses: the site's where it set one, the model's otherwise."""
     site = (config or {}).get("statements", {})
     return {k: float(site[k]["threshold"]) if k in site else float(v) for k, v in model_thresholds.items()}
+
+
+REQUIRED = ("site_id", "config_version", "model", "approved_by", "approved_at", "statements")
+
+
+def validate(config: dict, card: dict) -> dict:
+    """Refuse a site configuration that does not belong to this exact statement model, or is not signed off.
+    Returns the configuration unchanged when it is valid."""
+    missing = [k for k in REQUIRED if not config.get(k)]
+    if missing:
+        raise ValueError(f"site configuration is missing {missing}")
+    model = f"{card['name']}_{card['version']}"
+    if config["model"] != model:
+        raise ValueError(f"site configuration is for {config['model']}, the engine runs {model}: re-validate the site's thresholds")
+    unknown = sorted(set(config["statements"]) - set(card["thresholds"]))
+    if unknown:
+        raise ValueError(f"site configuration names statements the model does not have: {unknown}")
+    for k, v in config["statements"].items():
+        th = v.get("threshold") if isinstance(v, dict) else None
+        if not isinstance(th, (int, float)) or not 0 < th < 1:
+            raise ValueError(f"site threshold for {k} must be a number between 0 and 1")
+    return config
+
+
+def make_config(chosen: dict[str, dict], card: dict, site_id: str, config_version: str, approved_by: str,
+                approved_at: str) -> dict:
+    """A site configuration file from `choose` output: only the thresholds the site's data set."""
+    return {"site_id": site_id, "config_version": config_version, "model": f"{card['name']}_{card['version']}",
+            "approved_by": approved_by, "approved_at": approved_at,
+            "statements": {k: v for k, v in chosen.items() if v["source"] == "site"}}

@@ -133,3 +133,39 @@ def test_http_service(engine, data):
         assert e.value.code == 400 and "missing leads" in json.load(e.value)["error"]
     finally:
         httpd.shutdown()
+
+
+def _site_config(tmp_path, **over):
+    from cardiotic_engine.registry import load_manifest
+    m = load_manifest()["models"]["ecg12"]
+    cfg = {"site_id": "test-site", "config_version": "1", "model": f"{m['name']}_{m['version']}",
+           "approved_by": "Cardiology lead", "approved_at": "2026-10-30",
+           "statements": {"AFIB": {"threshold": 0.999999}}} | over
+    path = tmp_path / "site.json"
+    path.write_text(json.dumps(cfg))
+    return path
+
+
+def test_site_config_changes_only_the_thresholds_it_names(engine, data, tmp_path):
+    x, _, _ = data
+    base = engine.analyze_ecg12(_leads(x), 500)
+    eng = Engine(site_config=_site_config(tmp_path))
+    out = eng.analyze_ecg12(_leads(x), 500)
+    assert out["engine"]["site_config"]["site_id"] == "test-site" and out["result"]["operating_points"]["statements_set_by_site"] == 1
+    stm = {s["statement"]: s for s in out["result"]["statements"]}
+    assert "AFIB" not in stm  # threshold raised to ~1
+    others = {s["statement"]: s["probability"] for s in base["result"]["statements"] if s["statement"] != "AFIB"}
+    assert {k: v["probability"] for k, v in stm.items()} == others
+    assert all(s["threshold_source"] == "model" for s in stm.values())
+    assert out["result"]["measurements"] == base["result"]["measurements"]
+    assert "site_config" not in base["engine"] and "operating_points" not in base["result"]
+
+
+def test_site_config_for_other_model_or_unsigned_is_refused(tmp_path):
+    from cardiotic_engine.api import SiteConfigError
+    with pytest.raises(SiteConfigError, match="is for"):
+        Engine(site_config=_site_config(tmp_path, model="ecg12_net_v0.1"))
+    with pytest.raises(SiteConfigError, match="missing"):
+        Engine(site_config=_site_config(tmp_path, approved_by=""))
+    with pytest.raises(SiteConfigError, match="does not have"):
+        Engine(site_config=_site_config(tmp_path, statements={"XYZ": {"threshold": 0.5}}))
