@@ -3,6 +3,7 @@
   download        fetch MIT-BIH (mitdb) and NSTDB noise records from PhysioNet into data/raw
   eval-qrs        score QRS detectors on all 48 MIT-BIH records (EC57-style)
   train-quality   train + test the signal-quality model (--version v0.1 | v0.2)
+  select-quality  train v0.4 / v0.5 if needed and choose a 12-lead-ready quality model on validation
   quality-real    add CinC 2017 real-data checks to an existing quality report (--version)
   train-rhythm    train + test the rhythm model on CinC 2017 (also fits its calibration)
   eval-rhythm-mitdb  AF test of a rhythm model on MIT-BIH (--version, --split val|test|all)
@@ -19,6 +20,9 @@
   eval-ecg12-measure  12-lead interval agreement vs GE 12SL and Uni-G (--version, --split val|test)
   eval-ecg12-external  12-lead statements and measurements on Chapman–Shaoxing (external test, --version)
   eval-ecg12-rules  measurement rules (bradycardia, tachycardia, 1st-degree AV block, long QT) vs the statement model
+  ecg12-sex-gap   where the women / men gap comes from (validation fold only, --version)
+  select-ecg12-sex  train v0.4 (women's MI weighted) if needed and apply the pre-declared sex-gap rule
+  site-thresholds  simulate installation: thresholds from half of Chapman, scored on the other half
   select-ecg12    apply the pre-declared v0.1 / v0.2 rule (validation data only)
   analyze-12lead  run the 12-lead pipeline on one PTB-XL ECG (--ecg-id) and save JSON (+ optional plot)
   export-engine   export the adopted models to ONNX for the engine (checked against PyTorch) + manifest
@@ -37,7 +41,10 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("download")
     sub.add_parser("eval-qrs")
     sub.add_parser("eval-pipeline")
-    q = sub.add_parser("train-quality"); q.add_argument("--version", default="v0.3", choices=["v0.1", "v0.2", "v0.3"])
+    q = sub.add_parser("train-quality"); q.add_argument("--version", default="v0.3", choices=["v0.1", "v0.2", "v0.3", "v0.4", "v0.5"])
+    sub.add_parser("select-quality")
+    sub.add_parser("select-ecg12-sex")
+    stc = sub.add_parser("site-thresholds"); stc.add_argument("--version", default="v0.3"); stc.add_argument("--policy", default="max_f1")
     qr = sub.add_parser("quality-real"); qr.add_argument("--version", default="v0.1")
     tr = sub.add_parser("train-rhythm"); tr.add_argument("--version", default="v0.4", choices=["v0.1", "v0.2", "v0.4", "v0.5"])
     ea = sub.add_parser("eval-rhythm-afdb"); ea.add_argument("--version", default="v0.1"); ea.add_argument("--split", default="val", choices=["val", "test"])
@@ -53,12 +60,13 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("--seconds", type=float, default=60.0)
     a.add_argument("--out", default="analysis.json")
     a.add_argument("--plot", default=None)
-    e12 = sub.add_parser("train-ecg12"); e12.add_argument("--version", default="v0.3", choices=["v0.1", "v0.2", "v0.3"])
+    e12 = sub.add_parser("train-ecg12"); e12.add_argument("--version", default="v0.3", choices=["v0.1", "v0.2", "v0.3", "v0.4", "v0.5"])
     tm = sub.add_parser("tune-ecg12-measure"); tm.add_argument("--version", default="v0.2")
     em = sub.add_parser("eval-ecg12-measure"); em.add_argument("--version", default="v0.2"); em.add_argument("--split", default="val", choices=["val", "test"])
     ex = sub.add_parser("eval-ecg12-external"); ex.add_argument("--version", default="v0.1")
     sub.add_parser("eval-ecg12-rules")
     sub.add_parser("select-ecg12")
+    sg = sub.add_parser("ecg12-sex-gap"); sg.add_argument("--version", default="v0.3")
     a12 = sub.add_parser("analyze-12lead"); a12.add_argument("--ecg-id", type=int, required=True)
     a12.add_argument("--out", default="analysis_12lead.json"); a12.add_argument("--plot", default=None)
     sub.add_parser("export-engine")
@@ -79,6 +87,18 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "train-quality":
         from cardiotic_ml.experiments import train_quality
         train_quality(version=args.version)
+    elif args.cmd == "ecg12-sex-gap":
+        from cardiotic_ml.experiments_ecg12 import sex_gap_analysis
+        sex_gap_analysis(args.version)
+    elif args.cmd == "select-ecg12-sex":
+        from cardiotic_ml.experiments_ecg12 import select_sex_weighted
+        select_sex_weighted()
+    elif args.cmd == "site-thresholds":
+        from cardiotic_ml.experiments_ecg12 import site_thresholds_chapman
+        site_thresholds_chapman(args.version, args.policy)
+    elif args.cmd == "select-quality":
+        from cardiotic_ml.experiments import select_quality_12
+        select_quality_12()
     elif args.cmd == "quality-real":
         from cardiotic_ml.experiments import quality_real_data_for
         quality_real_data_for(args.version)

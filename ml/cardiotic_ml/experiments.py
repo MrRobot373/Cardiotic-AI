@@ -89,13 +89,95 @@ QUALITY_VERSIONS = {
     # v0.3: v0.2 became lenient on real noisy handheld recordings (validation), so it also sees
     # windows from CinC train-split recordings labelled "too noisy" as noisy examples.
     "v0.3": {"extra_p": 0.3, "low_amp_p": 0.3, "real_noisy_p": 0.1, "epochs": 10},
+    # v0.4 / v0.5 target 12-lead ECGs: v0.3 rated 19% of leads in un-annotated PTB-XL validation
+    # ECGs noisy (limb leads up to 46%), driven by high-frequency hiss on low-amplitude leads.
+    # v0.4: v0.3 recipe on 40 Hz low-passed input. v0.5: also clean 12-lead PTB-XL leads (training
+    # folds, records without any technician noise note) as bases, clean and with injected noise.
+    "v0.4": {"extra_p": 0.3, "low_amp_p": 0.3, "real_noisy_p": 0.1, "epochs": 10, "lowpass_hz": 40},
+    "v0.5": {"extra_p": 0.3, "low_amp_p": 0.3, "real_noisy_p": 0.1, "epochs": 10, "lowpass_hz": 40, "ptbxl_p": 0.4},
 }
+# Pre-declared before any v0.4/v0.5 result was seen. A candidate replaces v0.3 only if, on
+# VALIDATION data, all hold (v0.3's own value as reference):
+QUALITY_12_RULE = {
+    "ptbxl_clean_leads_not_good_max": 0.05,         # PTB-XL fold 9, ECGs without noise notes (v0.3: 0.188)
+    "ptbxl_synthetic_unusable_se_drop_max": 0.02,   # PTB-XL fold 9 leads with injected noise / failures
+    "ptbxl_synthetic_not_good_se_drop_max": 0.02,
+    "mitdb_val_macro_f1_drop_max": 0.02,            # Holter use must not get worse
+    "cinc_noisy_not_good_drop_max": 0.05,           # CinC 'too noisy' windows rated noisy or unusable
+    "cinc_clean_unusable_rise_max": 0.005,          # CinC normal / AF / other windows rated unusable
+    "ptbxl_note_auc_drop_max": 0.03,                # technician noise notes (weak labels)
+    "tie_break": "lowest PTB-XL clean-lead not-good rate; equal within 0.5 points -> the simpler recipe (v0.4)",
+}
+QUALITY_12_CANDIDATES = ("v0.4", "v0.5")
 QUALITY_VAL_PATIENTS = [106, 118, 207, 220]
 
 
-def _cinc_quality_bases(records: list[str], signals: dict[str, np.ndarray]) -> np.ndarray:
+def _cinc_quality_bases(records: list[str], signals: dict[str, np.ndarray], lowpass_hz: float | None = None) -> np.ndarray:
     from cardiotic_ml.data import cinc2017
-    return np.concatenate([q_data.signal_windows(signals[r], cinc2017.FS) for r in records])
+    return np.concatenate([q_data.signal_windows(signals[r], cinc2017.FS, lowpass_hz) for r in records])
+
+
+def _ptbxl_lead_windows(folds: tuple[int, ...], max_records: int | None = None, seed: int = 0) -> dict:
+    """Raw (not preprocessed) 2.5 s windows at 360 Hz of every lead of PTB-XL 500 Hz records:
+    {"x": (records, 12, 4, WIN), "note": (records, 12) technician noise note, "ecg_id": ...}. Cached."""
+    from cardiotic_ml import dsp
+    from cardiotic_ml.data import ptbxl, ptbxl_noise
+
+    tag = "-".join(map(str, folds)) + (f"_n{max_records}_s{seed}" if max_records else "")
+    cache = Path(__file__).resolve().parents[1] / "cache" / f"ptbxl_quality_windows_{tag}.npz"
+    if cache.exists():
+        d = np.load(cache)
+        return {"x": d["x"].astype(np.float32), "note": d["note"], "ecg_id": d["ecg_id"]}
+    recs = ptbxl.split(folds)
+    if max_records:
+        rng = np.random.default_rng(seed)
+        recs = [recs[i] for i in sorted(rng.choice(len(recs), min(max_records, len(recs)), replace=False))]
+    xs, notes = [], []
+    for r in recs:
+        sig = dsp.resample(ptbxl.load_signal(r, hr=True), 500, q_data.FS)
+        xs.append(np.stack([q_data.raw_windows(lead)[1] for lead in sig]))
+        notes.append(ptbxl_noise.any_note(r.ecg_id))
+    out = {"x": np.stack(xs).astype(np.float32), "note": np.stack(notes), "ecg_id": np.array([r.ecg_id for r in recs])}
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(cache, x=out["x"].astype(np.float16), note=out["note"], ecg_id=out["ecg_id"])
+    return out
+
+
+def _clean_ptbxl_bases(d: dict) -> np.ndarray:
+    """Median-removed windows of every lead of records with no technician noise note."""
+    w = d["x"][~d["note"].any(1)].reshape(-1, q_data.WIN)
+    return w - np.median(w, axis=1, keepdims=True)
+
+
+@torch.no_grad()
+def quality_12lead(model: QualityNet, d: dict, lowpass_hz: float | None) -> dict:
+    """How a quality model rates real 12-lead leads (PTB-XL), with the analysis path's per-lead rule
+    (unusable if most windows are unusable, noisy if most are noisy or unusable)."""
+    from sklearn.metrics import roc_auc_score
+
+    from cardiotic_ml.data.ptbxl import LEADS
+    model.eval()
+    n, L, W, _ = d["x"].shape
+    w = np.clip(q_data.preprocess(d["x"].reshape(-1, q_data.WIN), lowpass_hz), -10, 10)
+    p = predict(model, (torch.from_numpy(w),)).reshape(n, L, W, 3)
+    a = p.argmax(-1)
+    lab = np.where((a == 2).mean(-1) > 0.5, 2, np.where((a >= 1).mean(-1) > 0.5, 1, 0))
+    clean = ~d["note"].any(1)
+    cl = lab[clean]
+    return {"records": int(n), "records_without_notes": int(clean.sum()),
+            "clean_leads_not_good": float((cl >= 1).mean()), "clean_leads_unusable": float((cl == 2).mean()),
+            "clean_ecgs_with_a_not_good_lead": float((cl >= 1).any(1).mean()),
+            "clean_ecgs_with_an_unusable_lead": float((cl == 2).any(1).mean()),
+            "clean_not_good_by_lead": {ld: float(v) for ld, v in zip(LEADS, (cl >= 1).mean(0))},
+            "noted_leads_not_good": float((lab[d["note"]] >= 1).mean()),
+            "note_auc": float(roc_auc_score(d["note"].ravel(), p[..., 1:].sum(-1).mean(-1).ravel()))}
+
+
+def _synthetic_scores(model: QualityNet, s: q_data.QualitySet) -> dict:
+    pred = predict(model, (torch.from_numpy(s.x),)).argmax(1)
+    rep = class_report(s.y, pred, q_data.LABELS)
+    return {"macro_f1": rep["macro_f1"], "unusable_sensitivity": float((pred[s.y == 2] == 2).mean()),
+            "not_good_sensitivity": float((pred[s.y >= 1] >= 1).mean()), "good_kept": float((pred[s.y == 0] == 0).mean())}
 
 
 @torch.no_grad()
@@ -106,7 +188,8 @@ def rate_windows(model: QualityNet, windows: np.ndarray) -> np.ndarray:
     return model(torch.from_numpy(np.clip(windows, -10, 10))).argmax(1).numpy()
 
 
-def quality_real_data(model: QualityNet, split: str, signals: dict[str, np.ndarray] | None = None) -> dict:
+def quality_real_data(model: QualityNet, split: str, signals: dict[str, np.ndarray] | None = None,
+                      lowpass_hz: float | None = None) -> dict:
     """Real expert-labelled check (CinC 2017): share of windows rated good / noisy / unusable for
     normal, AF, other-rhythm and 'too noisy' recordings — the last one should be rated badly,
     the other three should not. For split='test' also the MIT-BIH DS2 AF / flutter records."""
@@ -116,13 +199,13 @@ def quality_real_data(model: QualityNet, split: str, signals: dict[str, np.ndarr
     out = {}
     for lab in cinc2017.LABELS:
         recs = [r for r in cinc2017.split()[split] if ref[r] == lab]
-        pred = rate_windows(model, _cinc_quality_bases(recs, signals))
+        pred = rate_windows(model, _cinc_quality_bases(recs, signals, lowpass_hz))
         out[f"cinc_{lab}"] = {q: float(np.mean(pred == i)) for i, q in enumerate(q_data.LABELS)} | {"windows": int(len(pred))}
     if split == "test":
         for rid in (201, 203, 210, 219, 221, 222):  # all have AF; 222 also flutter and low amplitude
             if rid in mitdb.DS2:
                 rec = mitdb.load_record(rid)
-                pred = rate_windows(model, q_data.signal_windows(rec.signal, rec.fs))
+                pred = rate_windows(model, q_data.signal_windows(rec.signal, rec.fs, lowpass_hz))
                 out[f"mitdb_{rid}"] = {q: float(np.mean(pred == i)) for i, q in enumerate(q_data.LABELS)}
     return out
 
@@ -141,11 +224,18 @@ def train_quality(version: str = "v0.2", n_train: int = 30000, n_val: int = 5000
     real_noisy = None
     if spec.get("real_noisy_p"):
         real_noisy = _cinc_quality_bases([r for r in cinc2017.split()["train"] if ref[r] == "~"], signals)
+    lp = spec.get("lowpass_hz")
     print(f"building quality datasets… ({version}: {spec})", flush=True)
-    tr = q_data.build(train_ids, pool_train, n_train, seed=1, extra_clean=extra, extra_p=spec["extra_p"], low_amp_p=spec["low_amp_p"],
-                      real_noisy=real_noisy, real_noisy_p=spec.get("real_noisy_p", 0.0))
-    va = q_data.build(val_ids, pool_train, n_val, seed=2)
-    te = q_data.build(mitdb.DS2, pool_test, n_test, seed=3)
+    n_ptb = int(n_train * spec.get("ptbxl_p", 0.0))
+    tr = q_data.build(train_ids, pool_train, n_train - n_ptb, seed=1, extra_clean=extra, extra_p=spec["extra_p"], low_amp_p=spec["low_amp_p"],
+                      real_noisy=real_noisy, real_noisy_p=spec.get("real_noisy_p", 0.0), lowpass_hz=lp)
+    if n_ptb:
+        from cardiotic_ml.data import ptbxl
+        ptb = q_data.build(None, pool_train, n_ptb, seed=5, low_amp_p=spec["low_amp_p"], lowpass_hz=lp,
+                           bases=_clean_ptbxl_bases(_ptbxl_lead_windows(ptbxl.TRAIN_FOLDS, max_records=3000, seed=1)))
+        tr = q_data.QualitySet(np.concatenate([tr.x, ptb.x]), np.concatenate([tr.y, ptb.y]), np.concatenate([tr.kind, "ptbxl:" + ptb.kind]))
+    va = q_data.build(val_ids, pool_train, n_val, seed=2, lowpass_hz=lp)
+    te = q_data.build(mitdb.DS2, pool_test, n_test, seed=3, lowpass_hz=lp)
     model = QualityNet(len(q_data.LABELS))
     cfg = TrainConfig(epochs=spec["epochs"], batch_size=256, lr=2e-3)
     model, info = train(model, (torch.from_numpy(tr.x),), torch.from_numpy(tr.y),
@@ -157,20 +247,92 @@ def train_quality(version: str = "v0.2", n_train: int = 30000, n_val: int = 5000
     card = _save_model(model, f"quality_net_{version}", {
         "name": "quality_net", "version": version, "recipe": spec,
         "task": "single-lead 2.5 s window signal quality: good / noisy / unusable",
-        "input": "900 samples @ 360 Hz, millivolts, median removed", "labels": q_data.LABELS,
+        "input": "900 samples @ 360 Hz, millivolts" + (f", {lp:g} Hz low-pass (zero-phase)" if lp else "") + ", median removed",
+        "labels": q_data.LABELS,
         "intended_use": "Research use only. Gate for downstream analysis; not validated on clinical data.",
         "train_patients": train_ids, "val_patients": val_ids, "test_patients": mitdb.DS2,
         "noise_split": "NSTDB bw/em/ma: first 60% of each recording train, last 40% test",
         "label_source": "proxy labels from known injected SNR and synthetic failure modes (see quality/dataset.py)"
                         + ("; extra good bases from CinC 2017 train-split AF / other-rhythm records" if extra is not None else "")
-                        + ("; real noisy windows from CinC 2017 train-split 'too noisy' records" if real_noisy is not None else ""),
+                        + ("; real noisy windows from CinC 2017 train-split 'too noisy' records" if real_noisy is not None else "")
+                        + ("; clean 12-lead leads from PTB-XL training folds (records without technician noise notes)" if n_ptb else ""),
     })
     print("real-data checks…", flush=True)
     result = _meta(task="signal_quality", version=version, sizes={"train": len(tr.y), "val": len(va.y), "test": len(te.y)},
                    test=rep, val=val_rep, test_accuracy_by_generator=by_kind, training=info, model_card=card,
-                   real_data_val=quality_real_data(model, "val", signals), real_data_test=quality_real_data(model, "test", signals))
+                   real_data_val=quality_real_data(model, "val", signals, lp), real_data_test=quality_real_data(model, "test", signals, lp))
+    if lp is not None:  # 12-lead checks (added with v0.4; v0.3's are computed by select_quality_12)
+        result |= quality_12_checks(model, lp)
     _write(f"signal_quality_{version}", result)
     print(json.dumps({k: rep[k] for k in ("accuracy", "macro_f1")}), flush=True)
+    return result
+
+
+def quality_12_checks(model: QualityNet, lp: float | None) -> dict:
+    """Validation (PTB-XL fold 9) and test (fold 10) checks on real 12-lead ECGs: technician notes
+    and clean leads, plus injected noise on clean 12-lead leads (NSTDB train / test noise split)."""
+    from cardiotic_ml.data import ptbxl
+    pool_train, pool_test = q_data.noise_pools()
+    out = {}
+    for split, folds, pool, seed in (("val", ptbxl.VAL_FOLDS, pool_train, 4), ("test", ptbxl.TEST_FOLDS, pool_test, 6)):
+        d = _ptbxl_lead_windows(folds)
+        syn = q_data.build(None, pool, 5000, seed=seed, bases=_clean_ptbxl_bases(d), lowpass_hz=lp)
+        out[f"ptbxl_{split}"] = quality_12lead(model, d, lp) | {"synthetic": _synthetic_scores(model, syn)}
+    return out
+
+
+def _load_quality(version: str) -> tuple[QualityNet, dict]:
+    card = json.loads((ARTIFACTS_DIR / f"quality_net_{version}.card.json").read_text())
+    model = QualityNet(len(q_data.LABELS))
+    model.load_state_dict(torch.load(ARTIFACTS_DIR / f"quality_net_{version}.pt", weights_only=True))
+    return model, card
+
+
+def select_quality_12(current: str = "v0.3") -> dict:
+    """Apply QUALITY_12_RULE to the candidates on validation data only; writes reports/quality_selection.json."""
+    from cardiotic_ml.data import cinc2017
+    rule = QUALITY_12_RULE
+    pool_train, _ = q_data.noise_pools()
+    signals = cinc2017.load_all()
+    rows = {}
+    for v in (current, *QUALITY_12_CANDIDATES):
+        if not (ARTIFACTS_DIR / f"quality_net_{v}.pt").exists():
+            train_quality(v)
+        model, card = _load_quality(v)
+        lp = q_data.lowpass_of(card)
+        val12 = quality_12_checks(model, lp)["ptbxl_val"]
+        real = quality_real_data(model, "val", signals, lp)
+        mit = _synthetic_scores(model, q_data.build(QUALITY_VAL_PATIENTS, pool_train, 5000, seed=2, lowpass_hz=lp))
+        rows[v] = {"ptbxl_clean_leads_not_good": val12["clean_leads_not_good"],
+                   "ptbxl_clean_ecgs_with_a_not_good_lead": val12["clean_ecgs_with_a_not_good_lead"],
+                   "ptbxl_synthetic_unusable_se": val12["synthetic"]["unusable_sensitivity"],
+                   "ptbxl_synthetic_not_good_se": val12["synthetic"]["not_good_sensitivity"],
+                   "ptbxl_note_auc": val12["note_auc"], "mitdb_val_macro_f1": mit["macro_f1"],
+                   "cinc_noisy_not_good": 1 - real["cinc_~"]["good"],
+                   "cinc_clean_unusable": float(np.mean([real[f"cinc_{k}"]["unusable"] for k in "NAO"]))}
+    ref = rows[current]
+    passed = {}
+    for v in QUALITY_12_CANDIDATES:
+        c = rows[v]
+        checks = {
+            "ptbxl_clean_leads_not_good": c["ptbxl_clean_leads_not_good"] <= rule["ptbxl_clean_leads_not_good_max"],
+            "ptbxl_synthetic_unusable_se": c["ptbxl_synthetic_unusable_se"] >= ref["ptbxl_synthetic_unusable_se"] - rule["ptbxl_synthetic_unusable_se_drop_max"],
+            "ptbxl_synthetic_not_good_se": c["ptbxl_synthetic_not_good_se"] >= ref["ptbxl_synthetic_not_good_se"] - rule["ptbxl_synthetic_not_good_se_drop_max"],
+            "mitdb_val_macro_f1": c["mitdb_val_macro_f1"] >= ref["mitdb_val_macro_f1"] - rule["mitdb_val_macro_f1_drop_max"],
+            "cinc_noisy_not_good": c["cinc_noisy_not_good"] >= ref["cinc_noisy_not_good"] - rule["cinc_noisy_not_good_drop_max"],
+            "cinc_clean_unusable": c["cinc_clean_unusable"] <= ref["cinc_clean_unusable"] + rule["cinc_clean_unusable_rise_max"],
+            "ptbxl_note_auc": c["ptbxl_note_auc"] >= ref["ptbxl_note_auc"] - rule["ptbxl_note_auc_drop_max"],
+        }
+        passed[v] = {"checks": checks, "passed": all(checks.values())}
+    ok = [v for v in QUALITY_12_CANDIDATES if passed[v]["passed"]]
+    chosen = current
+    if ok:
+        best = min(ok, key=lambda v: rows[v]["ptbxl_clean_leads_not_good"])
+        simple = ok[0]  # candidates are listed simplest first
+        chosen = simple if rows[simple]["ptbxl_clean_leads_not_good"] - rows[best]["ptbxl_clean_leads_not_good"] <= 0.005 else best
+    result = _meta(task="quality_selection_12lead", rule=rule, current=current, validation=rows, candidates=passed, chosen=chosen)
+    _write("quality_selection", result)
+    print(json.dumps({"chosen": chosen, "validation": rows}, indent=1), flush=True)
     return result
 
 

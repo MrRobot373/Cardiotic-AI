@@ -1,0 +1,323 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-30T12:42:22+00:00",
+  "torch": "2.15.0+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "ecg12_sex_gap",
+  "version": "v0.3",
+  "split": "PTB-XL validation fold 9",
+  "n": {
+    "women": 1050,
+    "men": 1133
+  },
+  "mean_age": {
+    "women": 68.52857142857142,
+    "men": 60.763459841129745
+  },
+  "superclass": {
+    "NORM": {
+      "women": 0.9546881878209832,
+      "men": 0.9439735267913962,
+      "women_40_80": 0.9378270459997745,
+      "men_40_80": 0.9405688983010059,
+      "positives_women": 470,
+      "positives_men": 485
+    },
+    "MI": {
+      "women": 0.9165800636267232,
+      "men": 0.9458236977227297,
+      "women_40_80": 0.9046616810711566,
+      "men_40_80": 0.9408286140089419,
+      "positives_women": 230,
+      "positives_men": 310
+    },
+    "STTC": {
+      "women": 0.9442227779207883,
+      "men": 0.9329832746316545,
+      "women_40_80": 0.9426170862822446,
+      "men_40_80": 0.9334975369458128,
+      "positives_women": 284,
+      "positives_men": 244
+    },
+    "CD": {
+      "women": 0.9341304347826087,
+      "men": 0.9341970263455351,
+      "women_40_80": 0.920629223495631,
+      "men_40_80": 0.9274530693710217,
+      "positives_women": 230,
+      "positives_men": 265
+    },
+    "HYP": {
+      "women": 0.9126734198442024,
+      "men": 0.899545413454212,
+      "women_40_80": 0.8947770376341805,
+      "men_40_80": 0.9056441494313352,
+      "positives_women": 109,
+      "positives_men": 159
+    }
+  },
+  "statements": [
+    {
+      "statement": "IVCD",
+      "positives_women": 37,
+      "positives_men": 41,
+      "auc_women": 0.7801019183052746,
+      "auc_men": 0.8466452246940052,
+      "gap": -0.06654330638873052
+    },
+    {
+      "statement": "IMI",
+      "positives_women": 106,
+      "positives_men": 160,
+      "auc_women": 0.9129657019507514,
+      "auc_men": 0.940865878725591,
+      "gap": -0.02790017677483958
+    },
+    {
+      "statement": "ABQRS",
+      "positives_women": 148,
+      "positives_men": 174,
+      "auc_women": 0.7745700245700246,
+      "auc_men": 0.7942900291251663,
+      "gap": -0.01972000455514178
+    },
+    {
+      "statement": "NDT",
+      "positives_women": 102,
+      "positives_men": 80,
+      "auc_women": 0.9166356415984115,
+      "auc_men": 0.931908831908832,
+      "gap": -0.015273190310420515
+    },
+    {
+      "statement": "LOWT",
+      "positives_women": 29,
+      "positives_men": 15,
+      "auc_women": 0.9237056300449188,
+      "auc_men": 0.9383422778771616,
+      "gap": -0.014636647832242833
+    },
+    {
+      "statement": "ISC_",
+      "positives_women": 53,
+      "positives_men": 72,
+      "auc_women": 0.9542022293294979,
+      "auc_men": 0.9653497748455336,
+      "gap": -0.011147545516035695
+    },
+    {
+      "statement": "ASMI",
+      "positives_women": 112,
+      "positives_men": 124,
+      "auc_women": 0.9608399329881206,
+      "auc_men": 0.9705473320758335,
+      "gap": -0.009707399087712898
+    },
+    {
+      "statement": "SR",
+      "positives_women": 797,
+      "positives_men": 873,
+      "auc_women": 0.9341602154323774,
+      "auc_men": 0.9430654683232004,
+      "gap": -0.008905252890823001
+    },
+    {
+      "statement": "LPR",
+      "positives_women": 19,
+      "positives_men": 15,
+      "auc_women": 0.9641125121241514,
+      "auc_men": 0.9717352415026833,
+      "gap": -0.007622729378531923
+    },
+    {
+      "statement": "VCLVH",
+      "positives_women": 38,
+      "positives_men": 49,
+      "auc_women": 0.9323902641980446,
+      "auc_men": 0.939528578959259,
+      "gap": -0.007138314761214404
+    },
+    {
+      "statement": "CRBBB",
+      "positives_women": 21,
+      "positives_men": 34,
+      "auc_women": 0.9983803045027535,
+      "auc_men": 0.996333565273243,
+      "gap": 0.002046739229510486
+    },
+    {
+      "statement": "AFIB",
+      "positives_women": 79,
+      "positives_men": 72,
+      "auc_women": 0.9941597465747174,
+      "auc_men": 0.9919232380353964,
+      "gap": 0.0022365085393210027
+    },
+    {
+      "statement": "PVC",
+      "positives_women": 52,
+      "positives_men": 62,
+      "auc_women": 0.9951055958069985,
+      "auc_men": 0.9928164814312822,
+      "gap": 0.002289114375716328
+    },
+    {
+      "statement": "LVH",
+      "positives_women": 85,
+      "positives_men": 125,
+      "auc_women": 0.9397622676013411,
+      "auc_men": 0.9360317460317461,
+      "gap": 0.003730521569594969
+    },
+    {
+      "statement": "SBRAD",
+      "positives_women": 21,
+      "positives_men": 43,
+      "auc_women": 0.9747790272571615,
+      "auc_men": 0.9690420311499893,
+      "gap": 0.005736996107172154
+    },
+    {
+      "statement": "NST_",
+      "positives_women": 41,
+      "positives_men": 34,
+      "auc_women": 0.8710387004762019,
+      "auc_men": 0.8651180217309854,
+      "gap": 0.005920678745216512
+    },
+    {
+      "statement": "PAC",
+      "positives_women": 15,
+      "positives_men": 25,
+      "auc_women": 0.9790016103059581,
+      "auc_men": 0.9729963898916968,
+      "gap": 0.006005220414261325
+    },
+    {
+      "statement": "STACH",
+      "positives_women": 46,
+      "positives_men": 37,
+      "auc_women": 0.9972284773947688,
+      "auc_men": 0.9885825606628527,
+      "gap": 0.00864591673191617
+    },
+    {
+      "statement": "LAFB",
+      "positives_women": 78,
+      "positives_men": 85,
+      "auc_women": 0.9850427350427351,
+      "auc_men": 0.9762123933542883,
+      "gap": 0.008830341688446763
+    },
+    {
+      "statement": "NORM",
+      "positives_women": 470,
+      "positives_men": 485,
+      "auc_women": 0.9547798972853999,
+      "auc_men": 0.9439098892707141,
+      "gap": 0.01087000801468585
+    },
+    {
+      "statement": "CLBBB",
+      "positives_women": 31,
+      "positives_men": 23,
+      "auc_women": 0.9993035550349806,
+      "auc_men": 0.9848805327066197,
+      "gap": 0.014423022328360902
+    },
+    {
+      "statement": "SARRH",
+      "positives_women": 44,
+      "positives_men": 33,
+      "auc_women": 0.9193927345020785,
+      "auc_men": 0.9022314049586777,
+      "gap": 0.017161329543400772
+    },
+    {
+      "statement": "STD_",
+      "positives_women": 62,
+      "positives_men": 39,
+      "auc_women": 0.9200241608985242,
+      "auc_men": 0.9017250269535462,
+      "gap": 0.018299133944978063
+    },
+    {
+      "statement": "ILMI",
+      "positives_women": 21,
+      "positives_men": 26,
+      "auc_women": 0.9525660604377805,
+      "auc_men": 0.9330136891112502,
+      "gap": 0.019552371326530316
+    },
+    {
+      "statement": "QWAVE",
+      "positives_women": 23,
+      "positives_men": 32,
+      "auc_women": 0.8942043097243978,
+      "auc_men": 0.872644187102634,
+      "gap": 0.021560122621763766
+    },
+    {
+      "statement": "IRBBB",
+      "positives_women": 44,
+      "positives_men": 68,
+      "auc_women": 0.9715570215073198,
+      "auc_men": 0.9438690969345485,
+      "gap": 0.02768792457277136
+    },
+    {
+      "statement": "1AVB",
+      "positives_women": 37,
+      "positives_men": 43,
+      "auc_women": 0.9820442357461113,
+      "auc_men": 0.9527629613825475,
+      "gap": 0.02928127436356387
+    },
+    {
+      "statement": "ISCAL",
+      "positives_women": 36,
+      "positives_men": 30,
+      "auc_women": 0.9600043830813062,
+      "auc_men": 0.9223632517376852,
+      "gap": 0.037641131343621015
+    },
+    {
+      "statement": "LAO/LAE",
+      "positives_women": 16,
+      "positives_men": 27,
+      "auc_women": 0.8812862669245647,
+      "auc_men": 0.8259326234009777,
+      "gap": 0.05535364352358696
+    }
+  ],
+  "train_prevalence": {
+    "NORM": {
+      "women": 0.5055829286575317,
+      "men": 0.37242820858955383
+    },
+    "MI": {
+      "women": 0.189578577876091,
+      "men": 0.30806469917297363
+    },
+    "STTC": {
+      "women": 0.2512906789779663,
+      "men": 0.2302783578634262
+    },
+    "CD": {
+      "women": 0.17276984453201294,
+      "men": 0.27153703570365906
+    },
+    "HYP": {
+      "women": 0.1072157546877861,
+      "men": 0.13488832116127014
+    }
+  },
+  "train_counts": {
+    "women": 8329,
+    "men": 9089
+  }
+}

@@ -91,20 +91,36 @@ def make_example(clean: np.ndarray, pool: dict[str, np.ndarray], rng: np.random.
     return seg / (seg.std() + 1e-8) * rng.uniform(0.1, 0.6), 2, "noise-only"
 
 
-def build(record_ids: list[int], pool: dict[str, np.ndarray], n: int, seed: int,
+def preprocess(windows: np.ndarray, lowpass_hz: float | None = None) -> np.ndarray:
+    """Raw 2.5 s windows at FS -> model input: optional zero-phase low-pass (from v0.4, 40 Hz: the
+    small high-frequency hiss of low-amplitude 12-lead limb leads does not impair reading, and the
+    Holter-trained v0.3 rated a fifth of clean PTB-XL leads noisy because of it), then median removed.
+    Training and every analysis path use this one function."""
+    from scipy import signal as sps
+
+    w = np.asarray(windows, dtype=np.float32).reshape(-1, WIN)
+    if lowpass_hz:
+        sos = sps.butter(4, lowpass_hz, btype="lowpass", fs=FS, output="sos")
+        w = sps.sosfiltfilt(sos, w, axis=-1)
+    return (w - np.median(w, axis=-1, keepdims=True)).astype(np.float32)
+
+
+def build(record_ids: list[int] | None, pool: dict[str, np.ndarray], n: int, seed: int,
           extra_clean: np.ndarray | None = None, extra_p: float = 0.0, low_amp_p: float = 0.0,
-          real_noisy: np.ndarray | None = None, real_noisy_p: float = 0.0) -> QualitySet:
+          real_noisy: np.ndarray | None = None, real_noisy_p: float = 0.0,
+          bases: np.ndarray | None = None, lowpass_hz: float | None = None) -> QualitySet:
     """`extra_clean`: additional clean base windows (e.g. AF / other-rhythm windows from another
     dataset) used with probability `extra_p`; `low_amp_p`: share of base windows scaled down to
     0.3–0.8x so small-amplitude ECGs are not learned as "no signal". `real_noisy`: windows from
     recordings experts labelled too noisy to interpret, used as-is with label "noisy" (weak,
-    recording-level labels) with probability `real_noisy_p`."""
+    recording-level labels) with probability `real_noisy_p`. `bases`: clean windows to use instead of
+    MIT-BIH records (e.g. 12-lead PTB-XL leads). Every example goes through `preprocess`."""
     rng = np.random.default_rng(seed)
-    cleans = clean_windows(record_ids)
+    cleans = bases if bases is not None else clean_windows(record_ids)
     xs, ys, kinds = [], [], []
     for _ in range(n):
         if real_noisy is not None and rng.random() < real_noisy_p:
-            xs.append(np.clip(real_noisy[rng.integers(len(real_noisy))], -10, 10)); ys.append(1); kinds.append("real-noisy")
+            xs.append(real_noisy[rng.integers(len(real_noisy))]); ys.append(1); kinds.append("real-noisy")
             continue
         use_extra = extra_clean is not None and rng.random() < extra_p
         base = extra_clean[rng.integers(len(extra_clean))] if use_extra else cleans[rng.integers(len(cleans))]
@@ -112,19 +128,30 @@ def build(record_ids: list[int], pool: dict[str, np.ndarray], n: int, seed: int,
         if low:
             base = base * rng.uniform(0.3, 0.8)
         x, y, k = make_example(base, pool, rng)
-        xs.append(np.clip(x, -10, 10))
+        xs.append(np.clip(x, -10, 10))  # the recorder's range; clipped again after preprocessing
         ys.append(y)
         kinds.append(("extra:" if use_extra else "") + ("low-amp:" if low else "") + k)
-    return QualitySet(np.asarray(xs, dtype=np.float32), np.asarray(ys, dtype=np.int64), np.asarray(kinds))
+    x = np.clip(preprocess(np.asarray(xs, dtype=np.float32), lowpass_hz), -10, 10)
+    return QualitySet(x, np.asarray(ys, dtype=np.int64), np.asarray(kinds))
 
 
-def signal_windows(signal: np.ndarray, fs: float) -> np.ndarray:
-    """Non-overlapping 2.5 s windows at 360 Hz, median removed — the model's input format."""
+def raw_windows(x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Non-overlapping 2.5 s windows of a signal already at FS: (starts, windows)."""
+    starts = np.arange(0, max(len(x) - WIN, -1) + 1, WIN)
+    return starts, (np.stack([x[s:s + WIN] for s in starts]) if len(starts) else np.zeros((0, WIN))).astype(np.float32)
+
+
+def signal_windows(signal: np.ndarray, fs: float, lowpass_hz: float | None = None) -> np.ndarray:
+    """Non-overlapping 2.5 s windows at 360 Hz in the model's input format."""
     from cardiotic_ml import dsp
 
-    x = dsp.resample(np.asarray(signal, dtype=np.float32), fs, FS)
-    starts = range(0, len(x) - WIN + 1, WIN)
-    return np.asarray([x[s:s + WIN] - np.median(x[s:s + WIN]) for s in starts], dtype=np.float32).reshape(-1, WIN)
+    _, w = raw_windows(dsp.resample(np.asarray(signal, dtype=np.float32), fs, FS))
+    return preprocess(w, lowpass_hz)
+
+
+def lowpass_of(card: dict | None) -> float | None:
+    """The input low-pass a quality model was trained with (None for v0.1–v0.3)."""
+    return ((card or {}).get("recipe") or {}).get("lowpass_hz")
 
 
 def noise_pools() -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:

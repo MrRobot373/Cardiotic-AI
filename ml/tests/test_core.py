@@ -322,3 +322,51 @@ def test_native_pantompkins_matches_neurokit2():
         cleaned = nk.ecg_clean(x, sampling_rate=fs, method="pantompkins1985")
         _, info = nk.ecg_peaks(cleaned, sampling_rate=fs, method="pantompkins1985", correct_artifacts=False)
         assert np.array_equal(qrs.pantompkins(x, fs), np.asarray(info["ECG_R_Peaks"]))
+
+
+def test_ptbxl_noise_notes_parse_to_leads():
+    from cardiotic_ml.data.ptbxl import LEADS
+    from cardiotic_ml.data.ptbxl_noise import parse
+
+    def leads(s):
+        return [ld for ld, b in zip(LEADS, parse(s)) if b]
+    assert leads(" , I-AVF") == ["I", "II", "III", "AVR", "AVL", "AVF"]
+    assert leads(" , alles,  ") == LEADS and leads(" , mittel,  ") == LEADS  # no lead named: all leads
+    assert leads("v1-6") == ["V1", "V2", "V3", "V4", "V5", "V6"] and leads("V5,6") == ["V5", "V6"]
+    assert leads("V5stark!") == ["V5"] and leads("AVL.AVF") == ["AVL", "AVF"] and leads("I-ALF")[-1] == "AVF"
+    assert leads("") == [] and leads(" , ") == []
+
+
+def test_quality_preprocess_lowpass_keeps_ecg_and_removes_hiss():
+    from cardiotic_ml.quality import dataset as qd
+    t = np.arange(qd.WIN) / qd.FS
+    ecg = np.sin(2 * np.pi * 1.2 * t) + 0.5
+    hiss = 0.05 * np.sin(2 * np.pi * 120 * t)
+    raw = qd.preprocess((ecg + hiss)[None])[0]
+    lp = qd.preprocess((ecg + hiss)[None], 40)[0]
+    assert abs(np.median(raw)) < 1e-6 and abs(np.median(lp)) < 1e-6
+    core = slice(100, -100)
+    assert np.abs(lp - (ecg - np.median(ecg)))[core].max() < 0.01  # 1.2 Hz kept, 120 Hz gone
+    assert np.abs(raw - (ecg - np.median(ecg)))[core].max() > 0.04
+    assert qd.lowpass_of({"recipe": {"lowpass_hz": 40}}) == 40 and qd.lowpass_of({"recipe": {}}) is None
+    starts, w = qd.raw_windows(np.zeros(qd.WIN * 2 + 10, dtype=np.float32))
+    assert list(starts) == [0, qd.WIN] and w.shape == (2, qd.WIN)
+    assert qd.raw_windows(np.zeros(qd.WIN - 1))[1].shape == (0, qd.WIN)
+
+
+def test_site_thresholds_choose_and_fallback():
+    from cardiotic_ml.ecg12 import site
+    rng = np.random.default_rng(0)
+    n = 400
+    y = np.zeros((n, 2), dtype=np.float32)
+    y[:100, 0] = 1
+    y[:5, 1] = 1  # too few positives at this site
+    p = np.clip(rng.normal(0.2, 0.1, (n, 2)), 0, 1)
+    p[:100, 0] += 0.3  # positives rank higher, but all sit below the model's threshold of 0.8
+    out = site.choose(y, p, ["A", "B"], {"A": 0.8, "B": 0.5})
+    assert out["A"]["source"] == "site" and out["A"]["threshold"] < 0.8 and out["A"]["site_sensitivity"] > 0.8
+    assert out["B"] == {"threshold": 0.5, "source": "model", "site_positives": 5}
+    sens = site.choose(y, p, ["A", "B"], {"A": 0.8, "B": 0.5}, policy="sensitivity", target=0.95)
+    assert sens["A"]["site_sensitivity"] >= 0.95
+    th = site.thresholds({"statements": {"A": out["A"]}}, {"A": 0.8, "B": 0.5})
+    assert th["A"] == out["A"]["threshold"] and th["B"] == 0.5

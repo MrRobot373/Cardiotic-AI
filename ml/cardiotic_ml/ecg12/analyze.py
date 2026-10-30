@@ -50,9 +50,7 @@ def lead_quality(signal: np.ndarray, fs: float, models: Models12) -> dict[str, s
     """Worst-of-majority label per lead from 2.5 s windows (good / noisy / unusable)."""
     out = {}
     for name, lead in zip(LEADS, signal):
-        x = dsp.resample(lead, fs, q_data.FS)
-        starts = range(0, len(x) - q_data.WIN + 1, q_data.WIN)
-        wins = np.stack([x[s:s + q_data.WIN] - np.median(x[s:s + q_data.WIN]) for s in starts]).astype(np.float32)
+        wins = q_data.signal_windows(lead, fs, q_data.lowpass_of(models.q_card))
         lab = run_batched(models.quality, np.clip(wins, -10, 10)).argmax(1)
         out[name] = q_data.LABELS[2] if (lab == 2).mean() > 0.5 else q_data.LABELS[1] if (lab >= 1).mean() > 0.5 else q_data.LABELS[0]
     return out

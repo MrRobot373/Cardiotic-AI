@@ -37,6 +37,18 @@ ECG12_VERSIONS = {
     "v0.2": {"epochs": 20, "width": 64, "lr": 1e-3, "weight_decay": 1e-2, "batch": 128, "ningbo": True, "ningbo_map": "v0.2"},
     # v0.3: same recipe, corrected Ningbo label map (data/ningbo.py: PVC, complete/incomplete RBBB, LBBB, LAFB, pacing…)
     "v0.3": {"epochs": 20, "width": 64, "lr": 1e-3, "weight_decay": 1e-2, "batch": 128, "ningbo": True, "ningbo_map": "v0.3"},
+    # v0.4: v0.3 + the sex-gap finding (reports/ecg12_sex_gap_v0.3.json: the gap is myocardial infarction; 19% of
+    # training women vs 31% of men are MI-positive). PTB-XL training women with MI weigh 1.62x (= 0.308 / 0.190)
+    # on the MI outputs (SUPER_MI and every MI statement).
+    "v0.4": {"epochs": 20, "width": 64, "lr": 1e-3, "weight_decay": 1e-2, "batch": 128, "ningbo": True, "ningbo_map": "v0.3",
+             "women_mi_weight": 1.62},
+}
+# Pre-declared before v0.4 was trained. Adopt v0.4 over v0.3 only if, on VALIDATION data:
+SEX_GAP_RULE = {
+    "ptbxl_val_all_drop_max": 0.003,       # PTB-XL fold 9 macro-AUC, all statements
+    "ningbo_val_drop_max": 0.005,          # Ningbo validation, mapped statements (map v0.3)
+    "women_mi_auc_gain_min": 0.010,        # PTB-XL fold 9, SUPER_MI AUC in women
+    "men_mi_auc_drop_max": 0.005,          # ... and in men
 }
 ECG12_SELECTION_RULE = ("Adopt a candidate over the current model only if, on VALIDATION data: PTB-XL macro-AUC (all "
                         "statements) drops by at most 0.005, and Ningbo-validation macro-AUC on the mapped statements "
@@ -171,6 +183,13 @@ def train_ecg12(version: str = "v0.1") -> dict:
     xtr, ytr = torch.from_numpy(x[tr]), torch.from_numpy(y[tr])
     mtr = torch.ones_like(ytr)
     labels_all = stmts + supers
+    if spec.get("women_mi_weight"):
+        st = ptbxl.statements()
+        mi_cols = [j for j, c in enumerate(labels_all) if c == "SUPER_MI" or (st.get(c, {}).get("diagnostic") and st[c]["diagnostic_class"] == "MI")]
+        women_mi = np.array([r.sex == 1 for r, keep in zip(recs, tr) if keep]) & (y[tr, labels_all.index("SUPER_MI")] == 1)
+        rows = torch.from_numpy(np.flatnonzero(women_mi))
+        mtr[rows[:, None], torch.tensor(mi_cols)[None, :]] = spec["women_mi_weight"]
+        print(f"women with MI in training: {int(women_mi.sum())}; weight {spec['women_mi_weight']} on {len(mi_cols)} MI outputs", flush=True)
     nb = None
     if spec.get("ningbo"):
         from cardiotic_ml.data import ningbo
@@ -592,4 +611,131 @@ def select_ecg12(candidate: str = "v0.3", current: str = "v0.2", versions: tuple
                            "led to finding the label-map error fixed in v0.3.")
     _write("ecg12_selection", result)
     print(json.dumps({k: result[k] for k in ("ptbxl_val_all", "ningbo_val_mapped", "chosen")}), flush=True)
+    return result
+
+
+# ---------------------------------------------------------------- subgroup analysis: sex
+def sex_gap_analysis(version: str = "v0.3", min_pos: int = 15) -> dict:
+    """Where does the women / men gap come from? Validation fold only (the test fold is not looked at):
+    superclass AUC by sex, overall and age 40–80 (women are older in PTB-XL), statement AUCs by sex
+    (statements with >= min_pos positives in each sex), and training-fold prevalence by sex."""
+    stm, sup = label_space()
+    x = ptbxl.load_all_lr()
+    idx = {r.ecg_id: i for i, r in enumerate(ptbxl.records())}
+    va = ptbxl.split(ptbxl.VAL_FOLDS)
+    y = targets(va, stm)
+    sex = np.array([r.sex for r in va])
+    age = np.array([r.age if r.age is not None else np.nan for r in va])
+    p, _ = predict_statements(x[[idx[r.ecg_id] for r in va]], FS_LR, version)
+    k = len(stm)
+
+    def auc(mask, j):
+        return float(roc_auc_score(y[mask, j], p[mask, j])) if 0 < y[mask, j].sum() < mask.sum() else None
+
+    f, m = sex == 1, sex == 0
+    mid = (age >= 40) & (age <= 80)
+    superclass = {s: {"women": auc(f, k + i), "men": auc(m, k + i), "women_40_80": auc(f & mid, k + i), "men_40_80": auc(m & mid, k + i),
+                      "positives_women": int(y[f, k + i].sum()), "positives_men": int(y[m, k + i].sum())}
+                  for i, s in enumerate(ptbxl.SUPERCLASSES)}
+    stmts = []
+    for j, c in enumerate(stm):
+        if y[f, j].sum() >= min_pos and y[m, j].sum() >= min_pos:
+            a, b = auc(f, j), auc(m, j)
+            stmts.append({"statement": c, "positives_women": int(y[f, j].sum()), "positives_men": int(y[m, j].sum()),
+                          "auc_women": a, "auc_men": b, "gap": a - b})
+    stmts.sort(key=lambda d: d["gap"])
+    tr = ptbxl.split(ptbxl.TRAIN_FOLDS)
+    yt, st = targets(tr, stm), np.array([r.sex for r in tr])
+    prevalence = {s: {"women": float(yt[st == 1, k + i].mean()), "men": float(yt[st == 0, k + i].mean())} for i, s in enumerate(ptbxl.SUPERCLASSES)}
+    result = _meta(task="ecg12_sex_gap", version=version, split="PTB-XL validation fold 9",
+                   n={"women": int(f.sum()), "men": int(m.sum())},
+                   mean_age={"women": float(np.nanmean(age[f])), "men": float(np.nanmean(age[m]))},
+                   superclass=superclass, statements=stmts, train_prevalence=prevalence,
+                   train_counts={"women": int((st == 1).sum()), "men": int((st == 0).sum())})
+    _write(f"ecg12_sex_gap_{version}", result)
+    return result
+
+
+def _ningbo_val_auc(version: str) -> float:
+    from cardiotic_ml.data import ningbo
+    nrecs = ningbo.ningbo_part("val")
+    p, card = predict_statements(ningbo.load_lr(nrecs), FS_LR, version)
+    labels = card["labels"]
+    yn = np.zeros((len(nrecs), len(labels)), dtype=np.float32)
+    un = np.zeros_like(yn)
+    for i, r in enumerate(nrecs):
+        for c in r.scp():
+            yn[i, labels.index(c)] = 1
+        for c in r.unknown():
+            un[i, labels.index(c)] = 1
+    return _masked_macro_auc(yn, p, un, [labels.index(c) for c in ningbo.MAPPED])
+
+
+def select_sex_weighted(candidate: str = "v0.4", current: str = "v0.3") -> dict:
+    """Apply SEX_GAP_RULE (validation data only); writes reports/ecg12_selection_sex.json."""
+    rule, rows = SEX_GAP_RULE, {}
+    for v in (current, candidate):
+        if not (REPORTS_DIR / f"ecg12_statements_{v}.json").exists():
+            train_ecg12(v)
+        gap = sex_gap_analysis(v)
+        rows[v] = {"ptbxl_val_all": json.loads((REPORTS_DIR / f"ecg12_statements_{v}.json").read_text())["val"]["all"],
+                   "ningbo_val_mapped": _ningbo_val_auc(v),
+                   "mi_auc_women": gap["superclass"]["MI"]["women"], "mi_auc_men": gap["superclass"]["MI"]["men"],
+                   "superclass_women": float(np.mean([g["women"] for g in gap["superclass"].values()])),
+                   "superclass_men": float(np.mean([g["men"] for g in gap["superclass"].values()]))}
+    c, ref = rows[candidate], rows[current]
+    checks = {"ptbxl_val_all": ref["ptbxl_val_all"] - c["ptbxl_val_all"] <= rule["ptbxl_val_all_drop_max"],
+              "ningbo_val_mapped": ref["ningbo_val_mapped"] - c["ningbo_val_mapped"] <= rule["ningbo_val_drop_max"],
+              "mi_auc_women": c["mi_auc_women"] - ref["mi_auc_women"] >= rule["women_mi_auc_gain_min"],
+              "mi_auc_men": ref["mi_auc_men"] - c["mi_auc_men"] <= rule["men_mi_auc_drop_max"]}
+    result = _meta(task="ecg12_selection_sex", rule=rule, current=current, candidate=candidate, validation=rows,
+                   checks=checks, chosen=candidate if all(checks.values()) else current)
+    _write("ecg12_selection_sex", result)
+    print(json.dumps({"validation": rows, "checks": checks, "chosen": result["chosen"]}, indent=1), flush=True)
+    return result
+
+
+# ---------------------------------------------------------------- per-site operating points (installation step)
+def site_thresholds_chapman(version: str = "v0.3", policy: str = "max_f1", seed: int = 0) -> dict:
+    """Simulate installation at a new hospital with Chapman–Shaoxing as the site: thresholds chosen on a
+    random half of its ECGs (one ECG per patient), scored on the other half against the PTB-XL thresholds.
+    Only statements Chapman labels are set; others keep the model's threshold."""
+    from cardiotic_ml.data import chapman
+    from cardiotic_ml.ecg12 import site
+
+    recs = chapman.records()
+    p, card = predict_statements(chapman.load_all(), chapman.FS, version)
+    labels = card["labels"]
+    labelled = sorted(set(chapman.RHYTHM_TO_SCP.values()) | set(chapman.CONDITION_TO_SCP.values()))
+    y = np.array([[name in r.scp() for name in labels] for r in recs], dtype=np.float32)
+    unknown = np.array([[name not in labelled for name in labels]] * len(recs), dtype=np.float32)
+    idx = np.random.default_rng(seed).permutation(len(recs))
+    cal, ev = idx[: len(idx) // 2], idx[len(idx) // 2:]
+    chosen = site.choose(y[cal], p[cal], labels, card["thresholds"], policy=policy, unknown=unknown[cal])
+    th_site = site.thresholds({"statements": {k: v for k, v in chosen.items() if v["source"] == "site"}}, card["thresholds"])
+
+    def score(j, th):
+        yt, pred = y[ev, j] == 1, p[ev, j] >= th
+        return {"sensitivity": float(pred[yt].mean()), "specificity": float((~pred[~yt]).mean()),
+                "ppv": float(pred[yt].sum() / max(pred.sum(), 1)), "f1": float(2 * pred[yt].sum() / max(pred.sum() + yt.sum(), 1))}
+
+    rows = {}
+    for name in labelled:
+        if name not in labels:
+            continue
+        j = labels.index(name)
+        if y[ev, j].sum() < EXTERNAL_MIN_POSITIVES:
+            continue
+        rows[name] = {"support_eval": int(y[ev, j].sum()), "source": chosen[name]["source"],
+                      "threshold_model": float(card["thresholds"][name]), "threshold_site": float(th_site[name]),
+                      "model_threshold": score(j, card["thresholds"][name]), "site_threshold": score(j, th_site[name])}
+    # what atrial flutter is called instead (evaluation half, site thresholds)
+    fl = ev[y[ev, labels.index("AFLT")] == 1]
+    called = {c: float(np.mean(p[fl, labels.index(c)] >= th_site[c])) for c in ("AFLT", "AFIB", "SVTAC", "STACH", "SR")}
+    result = _meta(task="ecg12_site_thresholds", version=version, site="Chapman–Shaoxing (simulated installation)",
+                   policy=policy, seed=seed, n_calibration=int(len(cal)), n_evaluation=int(len(ev)),
+                   min_positives=site.MIN_POSITIVES, statements=rows, flutter_called_as=called,
+                   site_config={k: v for k, v in chosen.items() if v["source"] == "site"})
+    _write(f"ecg12_site_thresholds_{version}", result)
+    print(json.dumps({k: (v["model_threshold"]["f1"], v["site_threshold"]["f1"]) for k, v in rows.items()}), flush=True)
     return result

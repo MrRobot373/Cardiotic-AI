@@ -1,0 +1,407 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-30T12:47:41+00:00",
+  "torch": "2.15.0+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "ecg12_site_thresholds",
+  "version": "v0.3",
+  "site": "Chapman\u2013Shaoxing (simulated installation)",
+  "policy": "max_f1",
+  "seed": 0,
+  "n_calibration": 5323,
+  "n_evaluation": 5323,
+  "min_positives": 20,
+  "statements": {
+    "1AVB": {
+      "support_eval": 137,
+      "source": "site",
+      "threshold_model": 0.30000000000000004,
+      "threshold_site": 0.3897343575954437,
+      "model_threshold": {
+        "sensitivity": 0.7737226277372263,
+        "specificity": 0.9907443116081759,
+        "ppv": 0.6883116883116883,
+        "f1": 0.7285223367697594
+      },
+      "site_threshold": {
+        "sensitivity": 0.7153284671532847,
+        "specificity": 0.9936367142306209,
+        "ppv": 0.7480916030534351,
+        "f1": 0.7313432835820896
+      }
+    },
+    "AFIB": {
+      "support_eval": 857,
+      "source": "site",
+      "threshold_model": 0.54,
+      "threshold_site": 0.7761345505714417,
+      "model_threshold": {
+        "sensitivity": 0.9743290548424738,
+        "specificity": 0.942230183609494,
+        "ppv": 0.7639524245196706,
+        "f1": 0.8564102564102564
+      },
+      "site_threshold": {
+        "sensitivity": 0.9346557759626605,
+        "specificity": 0.9688759516345723,
+        "ppv": 0.8521276595744681,
+        "f1": 0.8914858096828047
+      }
+    },
+    "AFLT": {
+      "support_eval": 209,
+      "source": "site",
+      "threshold_model": 0.56,
+      "threshold_site": 0.008690232411026955,
+      "model_threshold": {
+        "sensitivity": 0.11004784688995216,
+        "specificity": 0.9868987094251076,
+        "ppv": 0.25555555555555554,
+        "f1": 0.15384615384615385
+      },
+      "site_threshold": {
+        "sensitivity": 0.6746411483253588,
+        "specificity": 0.9035979663668361,
+        "ppv": 0.222397476340694,
+        "f1": 0.33451957295373663
+      }
+    },
+    "CLBBB": {
+      "support_eval": 44,
+      "source": "site",
+      "threshold_model": 0.32,
+      "threshold_site": 0.09925022721290588,
+      "model_threshold": {
+        "sensitivity": 0.8863636363636364,
+        "specificity": 0.9984845614699753,
+        "ppv": 0.8297872340425532,
+        "f1": 0.8571428571428571
+      },
+      "site_threshold": {
+        "sensitivity": 0.8863636363636364,
+        "specificity": 0.9967796931236976,
+        "ppv": 0.6964285714285714,
+        "f1": 0.78
+      }
+    },
+    "CRBBB": {
+      "support_eval": 244,
+      "source": "site",
+      "threshold_model": 0.24,
+      "threshold_site": 0.3851349353790283,
+      "model_threshold": {
+        "sensitivity": 0.8155737704918032,
+        "specificity": 0.998424886788738,
+        "ppv": 0.961352657004831,
+        "f1": 0.8824833702882483
+      },
+      "site_threshold": {
+        "sensitivity": 0.7991803278688525,
+        "specificity": 0.9986217759401457,
+        "ppv": 0.9653465346534653,
+        "f1": 0.874439461883408
+      }
+    },
+    "LAFB": {
+      "support_eval": 57,
+      "source": "site",
+      "threshold_model": 0.34,
+      "threshold_site": 0.4196145236492157,
+      "model_threshold": {
+        "sensitivity": 0.6666666666666666,
+        "specificity": 0.9914546145081656,
+        "ppv": 0.4578313253012048,
+        "f1": 0.5428571428571428
+      },
+      "site_threshold": {
+        "sensitivity": 0.6491228070175439,
+        "specificity": 0.9929737941511584,
+        "ppv": 0.5,
+        "f1": 0.5648854961832062
+      }
+    },
+    "LNGQT": {
+      "support_eval": 27,
+      "source": "site",
+      "threshold_model": 0.24,
+      "threshold_site": 0.4209892451763153,
+      "model_threshold": {
+        "sensitivity": 0.1111111111111111,
+        "specificity": 0.9939577039274925,
+        "ppv": 0.08571428571428572,
+        "f1": 0.0967741935483871
+      },
+      "site_threshold": {
+        "sensitivity": 0.1111111111111111,
+        "specificity": 0.9969788519637462,
+        "ppv": 0.15789473684210525,
+        "f1": 0.13043478260869565
+      }
+    },
+    "PAC": {
+      "support_eval": 128,
+      "source": "site",
+      "threshold_model": 0.19999999999999998,
+      "threshold_site": 0.2211000919342041,
+      "model_threshold": {
+        "sensitivity": 0.7109375,
+        "specificity": 0.9913378248315688,
+        "ppv": 0.6691176470588235,
+        "f1": 0.6893939393939394
+      },
+      "site_threshold": {
+        "sensitivity": 0.6953125,
+        "specificity": 0.9915303176130895,
+        "ppv": 0.6691729323308271,
+        "f1": 0.6819923371647509
+      }
+    },
+    "PVC": {
+      "support_eval": 144,
+      "source": "site",
+      "threshold_model": 0.54,
+      "threshold_site": 0.30071544647216797,
+      "model_threshold": {
+        "sensitivity": 0.7777777777777778,
+        "specificity": 0.995945163158911,
+        "ppv": 0.8421052631578947,
+        "f1": 0.8086642599277978
+      },
+      "site_threshold": {
+        "sensitivity": 0.8402777777777778,
+        "specificity": 0.993241938598185,
+        "ppv": 0.7756410256410257,
+        "f1": 0.8066666666666666
+      }
+    },
+    "SARRH": {
+      "support_eval": 206,
+      "source": "site",
+      "threshold_model": 0.19999999999999998,
+      "threshold_site": 0.40680956840515137,
+      "model_threshold": {
+        "sensitivity": 0.9174757281553398,
+        "specificity": 0.9673636896619113,
+        "ppv": 0.5308988764044944,
+        "f1": 0.6725978647686833
+      },
+      "site_threshold": {
+        "sensitivity": 0.7475728155339806,
+        "specificity": 0.986515536447137,
+        "ppv": 0.6905829596412556,
+        "f1": 0.717948717948718
+      }
+    },
+    "SBRAD": {
+      "support_eval": 2013,
+      "source": "site",
+      "threshold_model": 0.46,
+      "threshold_site": 0.3508569896221161,
+      "model_threshold": {
+        "sensitivity": 0.9885742672627919,
+        "specificity": 0.9933534743202417,
+        "ppv": 0.989065606361829,
+        "f1": 0.9888198757763975
+      },
+      "site_threshold": {
+        "sensitivity": 0.9920516641828118,
+        "specificity": 0.9897280966767371,
+        "ppv": 0.983259478089611,
+        "f1": 0.9876360039564788
+      }
+    },
+    "SR": {
+      "support_eval": 901,
+      "source": "site",
+      "threshold_model": 0.42000000000000004,
+      "threshold_site": 0.5670228004455566,
+      "model_threshold": {
+        "sensitivity": 0.9667036625971143,
+        "specificity": 0.9773857982813207,
+        "ppv": 0.8970133882595263,
+        "f1": 0.9305555555555556
+      },
+      "site_threshold": {
+        "sensitivity": 0.9456159822419534,
+        "specificity": 0.984622342831298,
+        "ppv": 0.9260869565217391,
+        "f1": 0.9357495881383855
+      }
+    },
+    "STACH": {
+      "support_eval": 755,
+      "source": "site",
+      "threshold_model": 0.5800000000000001,
+      "threshold_site": 0.4237135648727417,
+      "model_threshold": {
+        "sensitivity": 0.9549668874172186,
+        "specificity": 0.9945271453590193,
+        "ppv": 0.9664879356568364,
+        "f1": 0.960692871419054
+      },
+      "site_threshold": {
+        "sensitivity": 0.9642384105960264,
+        "specificity": 0.9919001751313485,
+        "ppv": 0.9516339869281045,
+        "f1": 0.9578947368421052
+      }
+    },
+    "SVTAC": {
+      "support_eval": 306,
+      "source": "site",
+      "threshold_model": 0.18,
+      "threshold_site": 0.0726911872625351,
+      "model_threshold": {
+        "sensitivity": 0.7647058823529411,
+        "specificity": 0.9908311740083715,
+        "ppv": 0.8357142857142857,
+        "f1": 0.7986348122866894
+      },
+      "site_threshold": {
+        "sensitivity": 0.9052287581699346,
+        "specificity": 0.984253537970899,
+        "ppv": 0.7780898876404494,
+        "f1": 0.8368580060422961
+      }
+    }
+  },
+  "flutter_called_as": {
+    "AFLT": 0.6746411483253588,
+    "AFIB": 0.45454545454545453,
+    "SVTAC": 0.2535885167464115,
+    "STACH": 0.05263157894736842,
+    "SR": 0.004784688995215311
+  },
+  "site_config": {
+    "1AVB": {
+      "threshold": 0.3897343575954437,
+      "source": "site",
+      "site_positives": 115,
+      "policy": "max_f1",
+      "site_sensitivity": 0.7739130434782608,
+      "site_ppv": 0.689922480620155,
+      "model_threshold": 0.30000000000000004
+    },
+    "AFIB": {
+      "threshold": 0.7761345505714417,
+      "source": "site",
+      "site_positives": 923,
+      "policy": "max_f1",
+      "site_sensitivity": 0.9176598049837487,
+      "site_ppv": 0.8486973947895792,
+      "model_threshold": 0.54
+    },
+    "AFLT": {
+      "threshold": 0.008690232411026955,
+      "source": "site",
+      "site_positives": 236,
+      "policy": "max_f1",
+      "site_sensitivity": 0.652542372881356,
+      "site_ppv": 0.23547400611620795,
+      "model_threshold": 0.56
+    },
+    "CLBBB": {
+      "threshold": 0.09925022721290588,
+      "source": "site",
+      "site_positives": 50,
+      "policy": "max_f1",
+      "site_sensitivity": 0.96,
+      "site_ppv": 0.8,
+      "model_threshold": 0.32
+    },
+    "CRBBB": {
+      "threshold": 0.3851349353790283,
+      "source": "site",
+      "site_positives": 216,
+      "policy": "max_f1",
+      "site_sensitivity": 0.8055555555555556,
+      "site_ppv": 0.9775280898876404,
+      "model_threshold": 0.24
+    },
+    "LAFB": {
+      "threshold": 0.4196145236492157,
+      "source": "site",
+      "site_positives": 51,
+      "policy": "max_f1",
+      "site_sensitivity": 0.6862745098039216,
+      "site_ppv": 0.6140350877192983,
+      "model_threshold": 0.34
+    },
+    "LNGQT": {
+      "threshold": 0.4209892451763153,
+      "source": "site",
+      "site_positives": 31,
+      "policy": "max_f1",
+      "site_sensitivity": 0.2903225806451613,
+      "site_ppv": 0.5,
+      "model_threshold": 0.24
+    },
+    "PAC": {
+      "threshold": 0.2211000919342041,
+      "source": "site",
+      "site_positives": 150,
+      "policy": "max_f1",
+      "site_sensitivity": 0.7933333333333333,
+      "site_ppv": 0.7828947368421053,
+      "model_threshold": 0.19999999999999998
+    },
+    "PVC": {
+      "threshold": 0.30071544647216797,
+      "source": "site",
+      "site_positives": 166,
+      "policy": "max_f1",
+      "site_sensitivity": 0.8614457831325302,
+      "site_ppv": 0.8411764705882353,
+      "model_threshold": 0.54
+    },
+    "SARRH": {
+      "threshold": 0.40680956840515137,
+      "source": "site",
+      "site_positives": 193,
+      "policy": "max_f1",
+      "site_sensitivity": 0.7927461139896373,
+      "site_ppv": 0.7251184834123223,
+      "model_threshold": 0.19999999999999998
+    },
+    "SBRAD": {
+      "threshold": 0.3508569896221161,
+      "source": "site",
+      "site_positives": 1876,
+      "policy": "max_f1",
+      "site_sensitivity": 0.9936034115138592,
+      "site_ppv": 0.9857218402961396,
+      "model_threshold": 0.46
+    },
+    "SR": {
+      "threshold": 0.5670228004455566,
+      "source": "site",
+      "site_positives": 925,
+      "policy": "max_f1",
+      "site_sensitivity": 0.932972972972973,
+      "site_ppv": 0.9452354874041621,
+      "model_threshold": 0.42000000000000004
+    },
+    "STACH": {
+      "threshold": 0.4237135648727417,
+      "source": "site",
+      "site_positives": 813,
+      "policy": "max_f1",
+      "site_sensitivity": 0.971709717097171,
+      "site_ppv": 0.9518072289156626,
+      "model_threshold": 0.5800000000000001
+    },
+    "SVTAC": {
+      "threshold": 0.0726911872625351,
+      "source": "site",
+      "site_positives": 281,
+      "policy": "max_f1",
+      "site_sensitivity": 0.896797153024911,
+      "site_ppv": 0.7636363636363637,
+      "model_threshold": 0.18
+    }
+  }
+}

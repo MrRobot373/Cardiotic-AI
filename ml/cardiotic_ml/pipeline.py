@@ -95,8 +95,8 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
     x = dsp.resample(raw, fs, FS)
     win = q_data.WIN
     # 1. quality, per 2.5 s window
-    starts = np.arange(0, max(len(x) - win, 0) + 1, win)
-    wins = np.stack([x[s:s + win] - np.median(x[s:s + win]) for s in starts]) if len(starts) else np.zeros((0, win))
+    starts, wins = q_data.raw_windows(x)
+    wins = q_data.preprocess(wins, q_data.lowpass_of(models.cards.get(QUALITY_MODEL)))
     qp = cal.softmax(_batched(models.quality, np.clip(wins, -10, 10).astype(np.float32)))
     q_label = qp.argmax(1)
     segments = [{"start_s": float(s / FS), "end_s": float((s + win) / FS), "quality": q_data.LABELS[l],
