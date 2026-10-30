@@ -43,6 +43,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("eval-pipeline")
     q = sub.add_parser("train-quality"); q.add_argument("--version", default="v0.3", choices=["v0.1", "v0.2", "v0.3", "v0.4", "v0.5"])
     sub.add_parser("select-quality")
+    sub.add_parser("select-quality-v06")
     sub.add_parser("select-ecg12-sex")
     stc = sub.add_parser("site-thresholds"); stc.add_argument("--version", default="v0.3"); stc.add_argument("--policy", default="max_f1")
     qr = sub.add_parser("quality-real"); qr.add_argument("--version", default="v0.1")
@@ -99,6 +100,9 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "select-quality":
         from cardiotic_ml.experiments import select_quality_12
         select_quality_12()
+    elif args.cmd == "select-quality-v06":
+        from cardiotic_ml.experiments import select_quality_12
+        select_quality_12(candidates=("v0.6",), name="quality_selection_v06")
     elif args.cmd == "quality-real":
         from cardiotic_ml.experiments import quality_real_data_for
         quality_real_data_for(args.version)

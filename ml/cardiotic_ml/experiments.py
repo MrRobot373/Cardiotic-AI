@@ -109,6 +109,12 @@ QUALITY_12_RULE = {
     "tie_break": "lowest PTB-XL clean-lead not-good rate; equal within 0.5 points -> the simpler recipe (v0.4)",
 }
 QUALITY_12_CANDIDATES = ("v0.4", "v0.5")
+# Neither retrained candidate met the clean-lead rule (v0.4 14.8%, v0.5 15.3%: limb leads still flagged).
+# v0.6 = v0.3's weights unchanged, input low-passed at 40 Hz (no retraining). It was suggested by a diagnostic
+# run on 300 validation-fold ECGs, so validation is not independent for it: it must pass QUALITY_12_RULE on
+# validation AND, scored once, the confirmation below on the PTB-XL test fold.
+QUALITY_V06_TEST_CONFIRMATION = {"ptbxl_clean_leads_not_good_max": 0.05, "ptbxl_synthetic_unusable_se_drop_max": 0.02,
+                                 "ptbxl_synthetic_not_good_se_drop_max": 0.02}
 QUALITY_VAL_PATIENTS = [106, 118, 207, 220]
 
 
@@ -288,14 +294,26 @@ def _load_quality(version: str) -> tuple[QualityNet, dict]:
     return model, card
 
 
-def select_quality_12(current: str = "v0.3") -> dict:
+def make_quality_v06() -> None:
+    """v0.6: copy of v0.3's weights with a 40 Hz input low-pass recorded in its card."""
+    import shutil
+    card = json.loads((ARTIFACTS_DIR / "quality_net_v0.3.card.json").read_text())
+    shutil.copy(ARTIFACTS_DIR / "quality_net_v0.3.pt", ARTIFACTS_DIR / "quality_net_v0.6.pt")
+    card.update(version="v0.6", file="quality_net_v0.6.pt", recipe={**card["recipe"], "lowpass_hz": 40, "weights_from": "v0.3"},
+                input="900 samples @ 360 Hz, millivolts, 40 Hz low-pass (zero-phase), median removed")
+    (ARTIFACTS_DIR / "quality_net_v0.6.card.json").write_text(json.dumps(card, indent=1))
+
+
+def select_quality_12(current: str = "v0.3", candidates: tuple[str, ...] = QUALITY_12_CANDIDATES, name: str = "quality_selection") -> dict:
     """Apply QUALITY_12_RULE to the candidates on validation data only; writes reports/quality_selection.json."""
     from cardiotic_ml.data import cinc2017
     rule = QUALITY_12_RULE
     pool_train, _ = q_data.noise_pools()
     signals = cinc2017.load_all()
     rows = {}
-    for v in (current, *QUALITY_12_CANDIDATES):
+    for v in (current, *candidates):
+        if v == "v0.6" and not (ARTIFACTS_DIR / "quality_net_v0.6.pt").exists():
+            make_quality_v06()
         if not (ARTIFACTS_DIR / f"quality_net_{v}.pt").exists():
             train_quality(v)
         model, card = _load_quality(v)
@@ -312,7 +330,7 @@ def select_quality_12(current: str = "v0.3") -> dict:
                    "cinc_clean_unusable": float(np.mean([real[f"cinc_{k}"]["unusable"] for k in "NAO"]))}
     ref = rows[current]
     passed = {}
-    for v in QUALITY_12_CANDIDATES:
+    for v in candidates:
         c = rows[v]
         checks = {
             "ptbxl_clean_leads_not_good": c["ptbxl_clean_leads_not_good"] <= rule["ptbxl_clean_leads_not_good_max"],
@@ -324,14 +342,26 @@ def select_quality_12(current: str = "v0.3") -> dict:
             "ptbxl_note_auc": c["ptbxl_note_auc"] >= ref["ptbxl_note_auc"] - rule["ptbxl_note_auc_drop_max"],
         }
         passed[v] = {"checks": checks, "passed": all(checks.values())}
-    ok = [v for v in QUALITY_12_CANDIDATES if passed[v]["passed"]]
+    ok = [v for v in candidates if passed[v]["passed"]]
     chosen = current
     if ok:
         best = min(ok, key=lambda v: rows[v]["ptbxl_clean_leads_not_good"])
         simple = ok[0]  # candidates are listed simplest first
         chosen = simple if rows[simple]["ptbxl_clean_leads_not_good"] - rows[best]["ptbxl_clean_leads_not_good"] <= 0.005 else best
-    result = _meta(task="quality_selection_12lead", rule=rule, current=current, validation=rows, candidates=passed, chosen=chosen)
-    _write("quality_selection", result)
+    test = None
+    if "v0.6" in ok:  # confirmation on the test fold, scored once
+        conf = QUALITY_V06_TEST_CONFIRMATION
+        t = {v: quality_12_checks(_load_quality(v)[0], q_data.lowpass_of(_load_quality(v)[1]))["ptbxl_test"] for v in (current, "v0.6")}
+        checks = {"ptbxl_clean_leads_not_good": t["v0.6"]["clean_leads_not_good"] <= conf["ptbxl_clean_leads_not_good_max"],
+                  "ptbxl_synthetic_unusable_se": t["v0.6"]["synthetic"]["unusable_sensitivity"] >= t[current]["synthetic"]["unusable_sensitivity"] - conf["ptbxl_synthetic_unusable_se_drop_max"],
+                  "ptbxl_synthetic_not_good_se": t["v0.6"]["synthetic"]["not_good_sensitivity"] >= t[current]["synthetic"]["not_good_sensitivity"] - conf["ptbxl_synthetic_not_good_se_drop_max"]}
+        test = {"rule": conf, "results": t, "checks": checks, "passed": all(checks.values())}
+        if not test["passed"]:
+            ok.remove("v0.6")
+            chosen = current if not ok else chosen if chosen != "v0.6" else ok[0]
+    result = _meta(task="quality_selection_12lead", rule=rule, current=current, validation=rows, candidates=passed, chosen=chosen,
+                   test_confirmation=test)
+    _write(name, result)
     print(json.dumps({"chosen": chosen, "validation": rows}, indent=1), flush=True)
     return result
 
