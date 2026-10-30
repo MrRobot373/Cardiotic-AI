@@ -1,0 +1,60 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-30T12:54:44+00:00",
+  "torch": "2.15.0+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "quality_selection_12lead",
+  "rule": {
+    "ptbxl_clean_leads_not_good_max": 0.05,
+    "ptbxl_synthetic_unusable_se_drop_max": 0.02,
+    "ptbxl_synthetic_not_good_se_drop_max": 0.02,
+    "mitdb_val_macro_f1_drop_max": 0.02,
+    "cinc_noisy_not_good_drop_max": 0.05,
+    "cinc_clean_unusable_rise_max": 0.005,
+    "ptbxl_note_auc_drop_max": 0.03,
+    "tie_break": "lowest PTB-XL clean-lead not-good rate; equal within 0.5 points -> the simpler recipe (v0.4)"
+  },
+  "current": "v0.3",
+  "validation": {
+    "v0.3": {
+      "ptbxl_clean_leads_not_good": 0.1910060975609756,
+      "ptbxl_clean_ecgs_with_a_not_good_lead": 0.7615853658536585,
+      "ptbxl_synthetic_unusable_se": 0.8589909443725744,
+      "ptbxl_synthetic_not_good_se": 0.8614718614718615,
+      "ptbxl_note_auc": 0.744856705060547,
+      "mitdb_val_macro_f1": 0.8665169946688636,
+      "cinc_noisy_not_good": 0.8020833333333334,
+      "cinc_clean_unusable": 0.0003994432358350576
+    },
+    "v0.6": {
+      "ptbxl_clean_leads_not_good": 0.018495934959349595,
+      "ptbxl_clean_ecgs_with_a_not_good_lead": 0.15670731707317073,
+      "ptbxl_synthetic_unusable_se": 0.5045278137128072,
+      "ptbxl_synthetic_not_good_se": 0.5654345654345654,
+      "ptbxl_note_auc": 0.6791252221692406,
+      "mitdb_val_macro_f1": 0.6813981951123349,
+      "cinc_noisy_not_good": 0.7430555555555556,
+      "cinc_clean_unusable": 0.00029622808385074633
+    }
+  },
+  "candidates": {
+    "v0.6": {
+      "checks": {
+        "ptbxl_clean_leads_not_good": true,
+        "ptbxl_synthetic_unusable_se": false,
+        "ptbxl_synthetic_not_good_se": false,
+        "mitdb_val_macro_f1": false,
+        "cinc_noisy_not_good": false,
+        "cinc_clean_unusable": true,
+        "ptbxl_note_auc": false
+      },
+      "passed": false
+    }
+  },
+  "chosen": "v0.3",
+  "test_confirmation": null
+}
