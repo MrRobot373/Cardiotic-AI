@@ -1,0 +1,406 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-30T12:50:48+00:00",
+  "torch": "2.15.0+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "signal_quality",
+  "version": "v0.5",
+  "sizes": {
+    "train": 30000,
+    "val": 5000,
+    "test": 10000
+  },
+  "test": {
+    "accuracy": 0.8349,
+    "macro_f1": 0.8392542157164623,
+    "per_class": {
+      "good": {
+        "support": 3964,
+        "sensitivity": 0.6846619576185671,
+        "ppv": 0.9141124957898282,
+        "f1": 0.7829222558776864
+      },
+      "noisy": {
+        "support": 2985,
+        "sensitivity": 0.8777219430485762,
+        "ppv": 0.6780538302277432,
+        "f1": 0.7650751934588991
+      },
+      "unusable": {
+        "support": 3051,
+        "sensitivity": 0.9882005899705014,
+        "ppv": 0.9520050520997789,
+        "f1": 0.9697651978128016
+      }
+    },
+    "confusion": [
+      [
+        2714,
+        1208,
+        42
+      ],
+      [
+        255,
+        2620,
+        110
+      ],
+      [
+        0,
+        36,
+        3015
+      ]
+    ],
+    "labels": [
+      "good",
+      "noisy",
+      "unusable"
+    ]
+  },
+  "val": {
+    "accuracy": 0.839,
+    "macro_f1": 0.8477401356179802,
+    "per_class": {
+      "good": {
+        "support": 2011,
+        "sensitivity": 0.6568871208354052,
+        "ppv": 0.945597709377237,
+        "f1": 0.7752347417840375
+      },
+      "noisy": {
+        "support": 1529,
+        "sensitivity": 0.9424460431654677,
+        "ppv": 0.6683673469387755,
+        "f1": 0.7820895522388059
+      },
+      "unusable": {
+        "support": 1460,
+        "sensitivity": 0.9815068493150685,
+        "ppv": 0.9903248099516241,
+        "f1": 0.9858961128310972
+      }
+    },
+    "confusion": [
+      [
+        1321,
+        689,
+        1
+      ],
+      [
+        75,
+        1441,
+        13
+      ],
+      [
+        1,
+        26,
+        1433
+      ]
+    ],
+    "labels": [
+      "good",
+      "noisy",
+      "unusable"
+    ]
+  },
+  "test_accuracy_by_generator": {
+    "bw@high-snr": 0.6677740863787376,
+    "bw@mid-snr": 0.8199419167473379,
+    "clean": 0.7131272174353775,
+    "em@high-snr": 0.6794117647058824,
+    "em@low-snr": 0.9188311688311688,
+    "em@mid-snr": 0.8972162740899358,
+    "flatline": 1.0,
+    "lead-off": 1.0,
+    "ma@high-snr": 0.6248236953455572,
+    "ma@low-snr": 0.9762611275964391,
+    "ma@mid-snr": 0.918467583497053,
+    "noise-only": 0.9949494949494949,
+    "saturation": 1.0
+  },
+  "training": {
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.5760101891835531,
+        "val_macro_f1": 0.7322754773167285,
+        "val_accuracy": 0.7236,
+        "seconds": 9.4
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.42085820852915445,
+        "val_macro_f1": 0.8436770325929294,
+        "val_accuracy": 0.836,
+        "seconds": 9.2
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.3810800150712331,
+        "val_macro_f1": 0.8024692266119927,
+        "val_accuracy": 0.7932,
+        "seconds": 9.6
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.3590897918621699,
+        "val_macro_f1": 0.8377056964927082,
+        "val_accuracy": 0.8282,
+        "seconds": 9.6
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.3404203208128611,
+        "val_macro_f1": 0.8000475595981213,
+        "val_accuracy": 0.7904,
+        "seconds": 9.2
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.3232041151046753,
+        "val_macro_f1": 0.8414546015030672,
+        "val_accuracy": 0.8324,
+        "seconds": 9.5
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.3069840258280436,
+        "val_macro_f1": 0.8222021761847507,
+        "val_accuracy": 0.8132,
+        "seconds": 9.8
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.29134843700726826,
+        "val_macro_f1": 0.8307075322735584,
+        "val_accuracy": 0.8216,
+        "seconds": 10.1
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.27659226608276366,
+        "val_macro_f1": 0.8203339053634872,
+        "val_accuracy": 0.8112,
+        "seconds": 9.0
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.2705866247812907,
+        "val_macro_f1": 0.8477401356179802,
+        "val_accuracy": 0.839,
+        "seconds": 9.4
+      }
+    ],
+    "best_val_macro_f1": 0.8477401356179802
+  },
+  "model_card": {
+    "name": "quality_net",
+    "version": "v0.5",
+    "recipe": {
+      "extra_p": 0.3,
+      "low_amp_p": 0.3,
+      "real_noisy_p": 0.1,
+      "epochs": 10,
+      "lowpass_hz": 40,
+      "ptbxl_p": 0.4
+    },
+    "task": "single-lead 2.5 s window signal quality: good / noisy / unusable",
+    "input": "900 samples @ 360 Hz, millivolts, 40 Hz low-pass (zero-phase), median removed",
+    "labels": [
+      "good",
+      "noisy",
+      "unusable"
+    ],
+    "intended_use": "Research use only. Gate for downstream analysis; not validated on clinical data.",
+    "train_patients": [
+      101,
+      108,
+      109,
+      112,
+      114,
+      115,
+      116,
+      119,
+      122,
+      124,
+      201,
+      203,
+      205,
+      208,
+      209,
+      215,
+      223,
+      230
+    ],
+    "val_patients": [
+      106,
+      118,
+      207,
+      220
+    ],
+    "test_patients": [
+      100,
+      103,
+      105,
+      111,
+      113,
+      117,
+      121,
+      123,
+      200,
+      202,
+      210,
+      212,
+      213,
+      214,
+      219,
+      221,
+      222,
+      228,
+      231,
+      232,
+      233,
+      234
+    ],
+    "noise_split": "NSTDB bw/em/ma: first 60% of each recording train, last 40% test",
+    "label_source": "proxy labels from known injected SNR and synthetic failure modes (see quality/dataset.py); extra good bases from CinC 2017 train-split AF / other-rhythm records; real noisy windows from CinC 2017 train-split 'too noisy' records; clean 12-lead leads from PTB-XL training folds (records without technician noise notes)",
+    "file": "quality_net_v0.5.pt",
+    "sha256": "a867e8776db7882f9279f362b92ab3b2914e74380b19e94fe60054a223cc1282",
+    "parameters": 66435
+  },
+  "real_data_val": {
+    "cinc_N": {
+      "good": 0.5488465706765753,
+      "noisy": 0.44573463384424833,
+      "unusable": 0.005418795479176343,
+      "windows": 6459
+    },
+    "cinc_A": {
+      "good": 0.660056657223796,
+      "noisy": 0.3380547686496695,
+      "unusable": 0.0018885741265344666,
+      "windows": 1059
+    },
+    "cinc_O": {
+      "good": 0.6323103647944412,
+      "noisy": 0.363346844238564,
+      "unusable": 0.004342790966994789,
+      "windows": 3454
+    },
+    "cinc_~": {
+      "good": 0.10069444444444445,
+      "noisy": 0.8090277777777778,
+      "unusable": 0.09027777777777778,
+      "windows": 288
+    }
+  },
+  "real_data_test": {
+    "cinc_N": {
+      "good": 0.5702440180052121,
+      "noisy": 0.42383321487799097,
+      "unusable": 0.005922767116796968,
+      "windows": 12663
+    },
+    "cinc_A": {
+      "good": 0.6744306418219461,
+      "noisy": 0.32091097308488614,
+      "unusable": 0.004658385093167702,
+      "windows": 1932
+    },
+    "cinc_O": {
+      "good": 0.6641318124207858,
+      "noisy": 0.33095690747782003,
+      "unusable": 0.00491128010139417,
+      "windows": 6312
+    },
+    "cinc_~": {
+      "good": 0.072992700729927,
+      "noisy": 0.822992700729927,
+      "unusable": 0.10401459854014598,
+      "windows": 548
+    },
+    "mitdb_210": {
+      "good": 0.8573407202216067,
+      "noisy": 0.13988919667590027,
+      "unusable": 0.002770083102493075
+    },
+    "mitdb_219": {
+      "good": 0.6385041551246537,
+      "noisy": 0.35041551246537395,
+      "unusable": 0.0110803324099723
+    },
+    "mitdb_221": {
+      "good": 0.9861495844875346,
+      "noisy": 0.013850415512465374,
+      "unusable": 0.0
+    },
+    "mitdb_222": {
+      "good": 0.04847645429362881,
+      "noisy": 0.8808864265927978,
+      "unusable": 0.07063711911357341
+    }
+  },
+  "ptbxl_val": {
+    "records": 2183,
+    "records_without_notes": 1640,
+    "clean_leads_not_good": 0.1527439024390244,
+    "clean_leads_unusable": 0.0012195121951219512,
+    "clean_ecgs_with_a_not_good_lead": 0.6378048780487805,
+    "clean_ecgs_with_an_unusable_lead": 0.012804878048780487,
+    "clean_not_good_by_lead": {
+      "I": 0.16951219512195123,
+      "II": 0.18292682926829268,
+      "III": 0.3432926829268293,
+      "AVR": 0.16951219512195123,
+      "AVL": 0.30304878048780487,
+      "AVF": 0.2554878048780488,
+      "V1": 0.08597560975609755,
+      "V2": 0.05121951219512195,
+      "V3": 0.05304878048780488,
+      "V4": 0.04939024390243903,
+      "V5": 0.05975609756097561,
+      "V6": 0.10975609756097561
+    },
+    "noted_leads_not_good": 0.43008678881388623,
+    "note_auc": 0.7108830676005067,
+    "synthetic": {
+      "macro_f1": 0.8523290623960157,
+      "unusable_sensitivity": 0.9741267787839586,
+      "not_good_sensitivity": 0.9284049284049284,
+      "good_kept": 0.756134201301953
+    }
+  },
+  "ptbxl_test": {
+    "records": 2198,
+    "records_without_notes": 1670,
+    "clean_leads_not_good": 0.14216566866267466,
+    "clean_leads_unusable": 0.0015469061876247506,
+    "clean_ecgs_with_a_not_good_lead": 0.6107784431137725,
+    "clean_ecgs_with_an_unusable_lead": 0.01437125748502994,
+    "clean_not_good_by_lead": {
+      "I": 0.14790419161676646,
+      "II": 0.17305389221556886,
+      "III": 0.3125748502994012,
+      "AVR": 0.1562874251497006,
+      "AVL": 0.27365269461077846,
+      "AVF": 0.24491017964071857,
+      "V1": 0.08622754491017964,
+      "V2": 0.0592814371257485,
+      "V3": 0.055089820359281436,
+      "V4": 0.053293413173652694,
+      "V5": 0.05688622754491018,
+      "V6": 0.08682634730538923
+    },
+    "noted_leads_not_good": 0.48271276595744683,
+    "note_auc": 0.7564033924483928,
+    "synthetic": {
+      "macro_f1": 0.8613452137841562,
+      "unusable_sensitivity": 0.9745264532984977,
+      "not_good_sensitivity": 0.930379746835443,
+      "good_kept": 0.7802802802802803
+    }
+  }
+}
