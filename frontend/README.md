@@ -31,6 +31,19 @@ Screenshots: [worklist](screenshots/worklist-light.png) · [ECG review](screensh
 | AI models & validation | Every model's task, test data, key numbers and known weaknesses, generated from `ml/reports` |
 | Audit log, Settings | Who did what; site name, operating points, Validation view, reset of local review data (admin), appearance (theme, accent, ECG paper colour), integrations, roles |
 
+## Two ways to run
+
+One build, two modes, chosen when the app starts: if `/api/health` answers, the app runs against the
+**Cardiotic server** (real accounts, uploads, storage, sign-off, audit, HIS delivery: see
+[../server/README.md](../server/README.md)); if not, it runs **static** on the recorded sample data in
+`public/data`, with reviews kept in the browser. In server mode there are no sample users, no single sign-on
+button and no Monitoring board (that screen replays recordings and is still in development).
+
+```bash
+npm run dev:server        # Vite on :5174 proxying /api to a server on :8720 (cardiotic-server serve)
+npm run test:e2e:server   # builds the app, starts a real server on a fresh database and drives the whole flow
+```
+
 ## Run it
 
 ```bash
