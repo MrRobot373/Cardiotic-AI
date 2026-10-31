@@ -22,7 +22,7 @@ from urllib.parse import parse_qs, urlparse
 
 from cardiotic_engine.api import Engine, InputError
 
-from . import auth, export, feeds
+from . import auth, export, feeds, hl7in
 from .db import Database
 from .store import Conflict, Forbidden, NotFound, Store
 
@@ -59,6 +59,7 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
     worker = export.Worker(store)
     folders, dicom = feeds.FolderFeeds(store), feeds.DicomFeed(store)
     store.folders, store.dicom = folders, dicom
+    store.hl7in = hl7in.Listener(store)
     static = Path(static_dir).resolve() if static_dir else None
 
     class Handler(BaseHTTPRequestHandler):
@@ -275,13 +276,21 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                     return self._json(200, db.get_setting("his", {"enabled": False}))
                 if method == "PUT":
                     b = self._json_body()
+                    inb = b.get("inbound", {}) if isinstance(b.get("inbound"), dict) else {}
                     his = {"enabled": bool(b.get("enabled")), "host": str(b.get("host", "")).strip(), "port": int(b.get("port", 2575)), "facility": str(b.get("facility", ""))[:40],
-                           "application": str(b.get("application", "HIS"))[:40], "attach_pdf": bool(b.get("attach_pdf", True))}
+                           "application": str(b.get("application", "HIS"))[:40], "attach_pdf": bool(b.get("attach_pdf", True)),
+                           "inbound": {"enabled": bool(inb.get("enabled")), "port": int(inb.get("port", 2576))}}
+                    if not 0 < his["inbound"]["port"] < 65536:
+                        raise ValueError("inbound port must be 1-65535")
                     if his["enabled"] and not his["host"]:
                         raise ValueError("host is required to enable the HIS connection")
                     if not 0 < his["port"] < 65536:
                         raise ValueError("port must be 1-65535")
                     db.set_setting("his", his)
+                    try:
+                        store.hl7in.apply(his["inbound"])
+                    except OSError as e:
+                        raise ValueError(f"HL7 listener could not start on port {his['inbound']['port']}: {e}") from None
                     db.audit(user["name"], "Changed HIS connection", f"{his['host']}:{his['port']} enabled={his['enabled']}")
                     return self._json(200, his)
             if path == "/feeds":
@@ -381,4 +390,8 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
             dicom.apply(db.get_setting("feeds", {}).get("dicom", {}))
         except OSError as e:  # port in use: the server still runs; Integrations shows the error
             log.error("DICOM receiver could not start: %s", e)
+        try:
+            store.hl7in.apply(db.get_setting("his", {}).get("inbound", {}))
+        except OSError as e:
+            log.error("HL7 listener could not start: %s", e)
     return httpd, store, worker

@@ -90,7 +90,7 @@ export function ServerUsers() {
   );
 }
 
-interface His { enabled: boolean; host?: string; port?: number; facility?: string; application?: string }
+interface His { enabled: boolean; host?: string; port?: number; facility?: string; application?: string; attach_pdf?: boolean; inbound?: { enabled: boolean; port: number } }
 interface Outbox { id: number; ecg_id: string; status: string; attempts: number; last_error: string | null; created_at: string; sent_at: string | null }
 
 export function ServerIntegrations() {
@@ -125,8 +125,10 @@ function ServerHis() {
             <Input aria-label="HIS host" placeholder="HIS host" value={cur.host ?? ""} onChange={(e) => setDraft({ ...cur, host: e.target.value })} className="sm:col-span-2" />
             <Input aria-label="HIS port" type="number" placeholder="Port" value={cur.port ?? 2575} onChange={(e) => setDraft({ ...cur, port: Number(e.target.value) })} />
             <Input aria-label="Receiving facility" placeholder="Receiving facility" value={cur.facility ?? ""} onChange={(e) => setDraft({ ...cur, facility: e.target.value })} />
-            <div className="sm:col-span-3"><SwitchRow label="Deliver signed reports to the HIS" checked={!!cur.enabled} onCheckedChange={(v) => setDraft({ ...cur, enabled: v })} /></div>
-            <Button type="submit" variant="strong" disabled={save.isPending}>Save</Button>
+            <div className="sm:col-span-4"><SwitchRow label="Deliver signed reports to the HIS" description="HL7 ORU^R01 with the PDF report attached" checked={!!cur.enabled} onCheckedChange={(v) => setDraft({ ...cur, enabled: v })} /></div>
+            <div className="sm:col-span-3"><SwitchRow label="Receive patients and ECG orders from the HIS" description={`ADT (register, update, merge) and ORM orders over MLLP, port ${cur.inbound?.port ?? 2576}`} checked={!!cur.inbound?.enabled} onCheckedChange={(v) => setDraft({ ...cur, inbound: { port: cur.inbound?.port ?? 2576, enabled: v } })} /></div>
+            <Input aria-label="Inbound port" type="number" value={cur.inbound?.port ?? 2576} onChange={(e) => setDraft({ ...cur, inbound: { enabled: !!cur.inbound?.enabled, port: Number(e.target.value) } })} />
+            <Button type="submit" variant="strong" className="sm:col-span-4" disabled={save.isPending}>Save HIS connection</Button>
           </form>
         ) : <p className="text-sm text-muted-foreground">Only an administrator can change the connection.</p>}
         <div>
@@ -143,7 +145,7 @@ function ServerHis() {
             ))}
           </div>
         </div>
-        <p className="text-[0.75rem] text-muted-foreground">Reports go out as HL7 v2.5.1 ORU^R01 text; FHIR R4 bundles are available from each signed report. ADT feeds and PDF attachments are not connected yet.</p>
+        <p className="text-[0.75rem] text-muted-foreground">Reports go out as HL7 v2.5.1 ORU^R01 with the PDF attached; a FHIR R4 bundle is available for each signed report.</p>
       </div>
     </Card>
   );

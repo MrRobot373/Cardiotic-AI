@@ -121,7 +121,11 @@ class Store:
         mrn = (mrn or patient.get("id") or "").strip()
         if not mrn:
             mrn = f"UNMATCHED-{digest[:8].upper()}"
-        sex = patient.get("sex", "")
+        if not location or not ordered_by:  # an ECG order from the HIS for this patient fills what the recording does not carry
+            from .hl7in import order_for
+            o = order_for(self, mrn)
+            if o:
+                location, ordered_by = location or o["location"], ordered_by or o["doctor"]
         if out["analysis"] == "ecg12":
             rec = self._store_ecg12(user, out, parsed, filename, digest, mrn, patient, location, ordered_by, src)
         else:
