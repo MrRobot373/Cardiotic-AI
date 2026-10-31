@@ -1,0 +1,65 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-31T17:15:34+00:00",
+  "torch": "2.15.0+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "ecg12_selection_print",
+  "rule": {
+    "min_gain_all": 0.03,
+    "min_superclass": 0.9
+  },
+  "results": {
+    "val": {
+      "v0.3 (full ECG)": {
+        "all": 0.9313628914501311,
+        "diagnostic": 0.9373617355398962,
+        "form": 0.8924330707185929,
+        "rhythm": 0.962759892242592,
+        "superclass": 0.9324072065522244
+      },
+      "v0.3 (printout)": {
+        "all": 0.8572983605305314,
+        "diagnostic": 0.8541534037645296,
+        "form": 0.8176048656147779,
+        "rhythm": 0.92038932044177,
+        "superclass": 0.8363077006703286
+      },
+      "print-v0.1 (printout)": {
+        "all": 0.9285593635799171,
+        "diagnostic": 0.9314947149965966,
+        "form": 0.892462797051985,
+        "rhythm": 0.9693954140681943,
+        "superclass": 0.9337258731594489
+      }
+    },
+    "test": {
+      "v0.3 (full ECG)": {
+        "all": 0.9211083479197006,
+        "diagnostic": 0.9345703381927979,
+        "form": 0.8653575971031087,
+        "rhythm": 0.9505295722237919,
+        "superclass": 0.9286638399355027
+      },
+      "v0.3 (printout)": {
+        "all": 0.8414382579949108,
+        "diagnostic": 0.8505562559922283,
+        "form": 0.7650311136312012,
+        "rhythm": 0.9237534114893043,
+        "superclass": 0.8247146999692945
+      },
+      "print-v0.1 (printout)": {
+        "all": 0.9200578744139987,
+        "diagnostic": 0.9287338328444048,
+        "form": 0.871047985152236,
+        "rhythm": 0.9600698707982938,
+        "superclass": 0.9288485732245266
+      }
+    }
+  },
+  "gain_val_all": 0.07126100304938565,
+  "chosen": "print-v0.1"
+}

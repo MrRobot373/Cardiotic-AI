@@ -203,6 +203,9 @@ def test_digitised_printout_is_analysed_with_its_limits_stated(engine, x):
     assert out["source_file"]["layout"] == "print-3x4" and r["layout"] == "print-3x4"
     assert r["measurements"]["heart_rate_bpm"] == pytest.approx(engine.analyze_ecg12({l: x[i].tolist() for i, l in enumerate(w.LEADS)}, 500)["result"]["measurements"]["heart_rate_bpm"], abs=3)
     assert r["measurements"]["qrs_ms"] is None and any("QRS, QT and QTc are not measured" in n for n in r["notes"])
+    direct = engine.analyze_ecg12({l: x[i].tolist() for i, l in enumerate(w.LEADS)}, 500)["result"]["statements"]
+    assert r["statements"] and {s["statement"] for s in r["statements"]} & {s["statement"] for s in direct}  # the printout model finds what the full ECG shows
+    assert out["engine"]["models"]["ecg12_print"]["model"] == "ecg12_net_print-v0.1"
     full = engine.analyze_file(w.printout(x, 500, "pdf", layout="12x1"))["result"]
     assert full["measurements"]["qrs_ms"] is not None and any("12 x 1" in n for n in full["notes"])
 

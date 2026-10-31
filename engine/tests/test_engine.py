@@ -32,7 +32,7 @@ def _leads(x):
 
 
 def test_models_verify():
-    assert set(verify()) == {"quality", "beats", "rhythm", "ecg12"}
+    assert set(verify()) == {"quality", "beats", "rhythm", "ecg12", "ecg12_print"}
 
 
 def test_altered_model_file_is_refused(tmp_path):

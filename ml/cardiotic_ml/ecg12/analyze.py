@@ -20,6 +20,7 @@ from cardiotic_ml.quality import dataset as q_data
 from cardiotic_ml.runner import TorchRunner, run_batched
 
 ECG12_MODEL = "ecg12_net_v0.3"  # chosen by experiments_ecg12.select_ecg12 on validation data (reports/ecg12_selection.json)
+PRINT_MODEL = "ecg12_net_print-v0.1"  # for ECGs digitised from 3 x 4 printouts; adopted by the pre-declared rule (reports/ecg12_selection_print.json)
 QUALITY_MODEL = "quality_net_v0.3"
 FS_MODEL, N_MODEL = 100, 1000
 MAX_UNUSABLE_LEADS = 2

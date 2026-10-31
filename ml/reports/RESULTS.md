@@ -506,6 +506,31 @@ A 3 × 4 printout shows each lead for 2.5 s (lead II for 10 s). PTB-XL validatio
 
 **Decision:** from a 3 × 4 printout the engine reports heart rate and PR (from the 10 s rhythm strip) but not QRS, QT or QTc: their error from one lead or 2.5 s columns is several times larger than from the full ECG. A 12 × 1 printout carries all leads for 10 s and is analysed in full.
 
+### 9.2 Printout statement model
+
+Rule, fixed before training: adopt `print-v0.1` for digitised printouts only if its validation macro-AUC (all statements, printout layout) beats v0.3 on the same masked data by at least 0.03 and its superclass macro-AUC is at least 0.9.
+
+| Validation, printout layout | All statements | Superclass |
+|---|---:|---:|
+| v0.3 (full ECG) | 0.931 | 0.932 |
+| v0.3 (printout) | 0.857 | 0.836 |
+| print-v0.1 (printout) | 0.929 | 0.934 |
+
+Gain on all statements: +0.071. **Adopted: print-v0.1.**
+
+### 9.3 End to end on unseen ECGs
+
+PTB-XL test fold (196 ECGs, scored once; 4 could not be digitised): the product's PDF report, read back by the digitiser, analysed by the printout model.
+
+| Input | Macro-AUC, all statements | Macro-AUC, superclass |
+|---|---:|---:|
+| original, masked | 0.920 | 0.922 |
+| vector PDF | 0.913 | 0.912 |
+| scan, 200 dpi | 0.908 | 0.912 |
+
+Heart rate against the same analysis of the original ECG: vector PDF: -0.1 ± 3.7 bpm, 97% within 5 bpm; scan, 200 dpi: +0.8 ± 6.7 bpm, 97% within 5 bpm.
+Reading from paper costs about 0.01 of AUC against the original; a printed ECG is not a replacement for the digital recording, and the engine says it was digitised.
+
 ## 10. 24-hour Holter: analysis in 30-minute sections
 
 Recordings longer than 32 minutes are analysed in 30-minute sections with a minute of overlap either side, then merged and summarised once (the beat model was trained on 30-minute records). One-pass against sectioned analysis on 2 h of real MIT-BIH data:

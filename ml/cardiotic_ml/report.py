@@ -337,6 +337,17 @@ def _product_sections() -> list[str]:
         for k, d in v.items():
             out.append(f"| {k} | {d['all']:.3f} | {d['superclass']:.3f} |")
         out += ["", f"Gain on all statements: {sp['gain_val_all']:+.3f}. **{'Adopted: print-v0.1' if sp['chosen'] else 'Not adopted: printouts get rate and rhythm only'}.**", ""]
+    e2e = _load("printout_end_to_end")
+    if e2e:
+        m = e2e["macro_auc"]
+        out += ["### 9.3 End to end on unseen ECGs", "",
+                f"PTB-XL test fold ({e2e['ecgs']} ECGs, scored once; {e2e['failed']} could not be digitised): the product's PDF report, read back by the digitiser, analysed by the printout model.", "",
+                "| Input | Macro-AUC, all statements | Macro-AUC, superclass |", "|---|---:|---:|"]
+        for k, d in m.items():
+            out.append(f"| {k} | {d['all']:.3f} | {d['superclass']:.3f} |")
+        hr = e2e["heart_rate_difference_vs_original_bpm"]
+        out += ["", "Heart rate against the same analysis of the original ECG: " + "; ".join(f"{k}: {v['mean']:+.1f} ± {v['sd']:.1f} bpm, {100 * v['within_5bpm']:.0f}% within 5 bpm" for k, v in hr.items()) + ".",
+                "Reading from paper costs about 0.01 of AUC against the original; a printed ECG is not a replacement for the digital recording, and the engine says it was digitised.", ""]
     hc = _load("holter_chunking")
     if hc:
         out += ["## 10. 24-hour Holter: analysis in 30-minute sections", "",

@@ -1,0 +1,32 @@
+{
+ "created_utc": "2026-10-31T17:22:02+00:00",
+ "split": "PTB-XL test fold 10",
+ "ecgs": 196,
+ "failed": 4,
+ "macro_auc": {
+  "original, masked": {
+   "all": 0.9198031824929707,
+   "superclass": 0.921950230109563
+  },
+  "vector PDF": {
+   "all": 0.9125833993097251,
+   "superclass": 0.9120642576875481
+  },
+  "scan, 200 dpi": {
+   "all": 0.9084977008510693,
+   "superclass": 0.9122873080713948
+  }
+ },
+ "heart_rate_difference_vs_original_bpm": {
+  "vector PDF": {
+   "mean": -0.056363832244377875,
+   "sd": 3.734147097342526,
+   "within_5bpm": 0.9695431472081218
+  },
+  "scan, 200 dpi": {
+   "mean": 0.7893629222231819,
+   "sd": 6.682468057126793,
+   "within_5bpm": 0.9693877551020408
+  }
+ }
+}
