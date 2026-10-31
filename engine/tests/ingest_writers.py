@@ -174,3 +174,130 @@ def scp_file(x, fs, enc=0, leads=("I", "II", "V1", "V2", "V3", "V4", "V5", "V6")
     body = sec0 + b"".join(blocks.values())
     head = struct.pack("<I", 6 + len(body))
     return struct.pack("<H", _crc16(head + body)) + head + body
+
+
+# ------------------------------------------------------------------ Philips XML with XLI compression
+def _lzw_encode(data: bytes, bits: int = 10) -> bytes:
+    max_code = (1 << bits) - 2
+    table = {bytes([i]): i for i in range(256)}
+    nxt, w, codes = 256, b"", []
+    for ch in data:
+        wc = w + bytes([ch])
+        if wc in table:
+            w = wc
+        else:
+            codes.append(table[w])
+            if nxt <= max_code:
+                table[wc] = nxt
+                nxt += 1
+            w = bytes([ch])
+    if w:
+        codes.append(table[w])
+    acc, nacc, out = 0, 0, bytearray()
+    for c in codes:
+        acc = (acc << bits) | c
+        nacc += bits
+        while nacc >= 8:
+            out.append((acc >> (nacc - 8)) & 0xFF)
+            nacc -= 8
+    if nacc:
+        out.append((acc << (8 - nacc)) & 0xFF)
+    return bytes(out)
+
+
+def _xli_chunk(x: np.ndarray) -> bytes:
+    """Inverse of the reference XLI decoder for one lead of int16 samples."""
+    out = [int(v) for v in x]
+    n = len(out)
+    raw = [0] * n
+    raw[0], raw[1] = out[0], out[1]
+    first = 2 * out[1] - out[0] - out[2]
+    for i in range(3, n):
+        raw[i - 1] = (2 * out[i - 1] - out[i - 2] - out[i]) + 64
+    raw[n - 1] = 64
+    r16 = np.asarray(raw, dtype=np.int64).astype(np.int16).view(np.uint16)
+    buf = bytes((r16 >> 8).astype(np.uint8)) + bytes((r16 & 0xFF).astype(np.uint8))
+    comp = _lzw_encode(buf)
+    return struct.pack("<iHh", len(comp), 0, first) + comp
+
+
+def philips_file(x, fs, compression="XLI", resolution=5):
+    labels = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
+    counts = {l: np.round(x[LEADS.index(l.upper())] * 1000 / resolution).astype(np.int64) for l in labels}
+    if compression == "XLI":  # Philips residual coding of the derived limb leads
+        i, ii, iii = counts["I"], counts["II"], counts["III"]
+        stored = dict(counts)
+        stored["III"] = ii - i - iii
+        stored["aVR"] = -counts["aVR"] - np.floor((i + ii) / 2).astype(np.int64)
+        stored["aVL"] = np.floor((i - iii) / 2).astype(np.int64) - counts["aVL"]
+        stored["aVF"] = np.floor((ii + iii) / 2).astype(np.int64) - counts["aVF"]
+        blob = b"".join(_xli_chunk(stored[l]) for l in labels)
+    else:
+        blob = b"".join(counts[l].astype("<i2").tobytes() for l in labels)
+    dur = int(round(x.shape[1] / fs * 1000))
+    return ('<?xml version="1.0" encoding="utf-8"?><restingecgdata xmlns="http://www3.medical.philips.com">'
+            '<documentinfo><documenttype>PhilipsECG</documenttype><documentversion>1.04</documentversion></documentinfo>'
+            '<dataacquisition date="2026-01-05" time="08:15:30"><machine machineid="PageWriter TC50">PageWriter TC50</machine>'
+            f'<signalcharacteristics><samplingrate>{int(fs)}</samplingrate><signalresolution>{resolution}</signalresolution>'
+            '<acquisitiontype>STD-12</acquisitiontype><numberchannelsallocated>12</numberchannelsallocated></signalcharacteristics></dataacquisition>'
+            '<patient><generalpatientdata><patientid>PAT-7</patientid><name><firstname>Meera</firstname><lastname>Rao</lastname></name>'
+            '<sex>Female</sex><age><dateofbirth>1960-01-01</dateofbirth></age></generalpatientdata></patient>'
+            f'<waveforms><parsedwaveforms durationperchannel="{dur}" numberofleads="12" leadlabels="{" ".join(labels)}" dataencoding="Base64" '
+            f'compression="{compression}">{base64.b64encode(blob).decode()}</parsedwaveforms></waveforms></restingecgdata>').encode()
+
+
+# ------------------------------------------------------------------ SCP-ECG Huffman
+def _huff_encode(values, table) -> bytes:
+    bits = []
+    by_value = {val: (p, c) for p, tot, mode, val, c in table if tot == p and mode == 1}
+    esc = sorted((tot - p, p, c) for p, tot, mode, val, c in table if tot > p)
+    for v in values:
+        if v in by_value:
+            p, c = by_value[v]
+            bits += [(c >> k) & 1 for k in range(p)]
+        else:
+            nb, p, c = next(e for e in esc if -(1 << (e[0] - 1)) <= v < (1 << (e[0] - 1)))
+            bits += [(c >> k) & 1 for k in range(p)]
+            bits += [((v & ((1 << nb) - 1)) >> (nb - 1 - k)) & 1 for k in range(nb)]
+    bits += [0] * (-len(bits) % 8)
+    return bytes(np.packbits(np.asarray(bits, dtype=np.uint8)))
+
+
+def scp_huffman_file(x, fs, custom_table=False, enc=1, leads=("I", "II", "V1", "V2", "V3", "V4", "V5", "V6")):
+    from cardiotic_engine.ingest.scp_ecg import DEFAULT_HUFFMAN
+    table = DEFAULT_HUFFMAN
+    if custom_table:  # a site-specific table: 0 and +/-1 get short codes, everything else the 16-bit escape
+        table = [(1, 1, 1, 0, 0), (2, 2, 1, 1, 1), (3, 3, 1, -1, 3), (3, 19, 1, 0, 7)]
+    base = scp_file(x, fs, enc=enc, leads=leads)
+    codes = {"I": 1, "II": 2, "V1": 3, "V2": 4, "V3": 5, "V4": 6, "V5": 7, "V6": 8}
+    avm, n = 1000, x.shape[1]
+    chans = []
+    for l in leads:
+        v = np.round(x[LEADS.index(l)] * 1e6 / avm).astype(np.int64)
+        if enc == 1:
+            v = np.diff(v, prepend=0)
+        chans.append(_huff_encode([int(t) for t in v], table))
+    s6 = struct.pack("<HHBB", avm, int(round(1e6 / fs)), enc, 0) + b"".join(struct.pack("<H", len(c)) for c in chans) + b"".join(chans)
+    s2 = struct.pack("<H", 19999) if not custom_table else struct.pack("<HH", 1, len(table)) + b"".join(struct.pack("<BBBhI", *e) for e in table)
+    s3 = bytes([len(leads), 0b00000100 | (len(leads) << 3)]) + b"".join(struct.pack("<IIB", 1, n, codes[l]) for l in leads)
+    s1 = bytes([2]) + struct.pack("<H", 6) + b"PAT-7\x00" + bytes([255]) + struct.pack("<H", 0)
+
+    def section(sid, body):
+        h = struct.pack("<HIBB6x", sid, len(body) + 16, 20, 20)
+        return struct.pack("<H", _crc16(h + body)) + h + body
+
+    blocks = {sid: section(sid, b) for sid, b in sorted({1: s1, 2: s2, 3: s3, 6: s6}.items())}
+    def table0(start):
+        t, pos = b"", start
+        for sid in range(12):
+            if sid in blocks:
+                t += struct.pack("<HII", sid, len(blocks[sid]), pos)
+                pos += len(blocks[sid])
+            else:
+                t += struct.pack("<HII", sid, 0, 0)
+        return t
+    sec0 = section(0, table0(0))
+    sec0 = section(0, table0(6 + len(sec0) + 1))
+    body = sec0 + b"".join(blocks.values())
+    head = struct.pack("<I", 6 + len(body))
+    return struct.pack("<H", _crc16(head + body)) + head + body

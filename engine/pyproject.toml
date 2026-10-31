@@ -8,6 +8,7 @@ dependencies = [
   "scipy>=1.11",
   "onnxruntime>=1.18",
   "cardiotic-ml>=0.1.0",  # core signal processing only (no PyTorch); install from ../ml
+  "sierraecg>=0.4,<0.5",  # Philips XLI waveform decoding (MIT)
 ]
 
 [project.optional-dependencies]

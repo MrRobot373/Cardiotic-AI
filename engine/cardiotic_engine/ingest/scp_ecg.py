@@ -1,8 +1,9 @@
-"""SCP-ECG (EN 1064 / ISO 11073-91064): sections 0 (pointers), 1 (patient), 3 (leads), 6 (rhythm data).
+"""SCP-ECG (EN 1064 / ISO 11073-91064): sections 0 (pointers), 1 (patient), 2 (Huffman tables), 3 (leads),
+6 (rhythm data).
 
-Supported: uncompressed or first/second-difference 16-bit data (no Section 2 Huffman tables).
-Not supported yet, with a clear error: Huffman-compressed data (Section 2) and reference-beat
-subtraction (Section 5). Many carts write Huffman SCP: export those as DICOM or HL7 aECG.
+Rhythm data may be uncompressed, first- or second-difference coded, and Huffman coded with the tables in
+Section 2 or the standard's default table (Section 2 table count 19999). Refused with a clear error:
+reference-beat subtraction (Section 3 flag, Section 5 data), which some carts use for long recordings.
 """
 
 from __future__ import annotations
@@ -15,6 +16,72 @@ from .common import IngestError, finish
 
 LEAD_CODES = {1: "I", 2: "II", 3: "V1", 4: "V2", 5: "V3", 6: "V4", 7: "V5", 8: "V6",
               61: "III", 62: "AVR", 63: "AVL", 64: "AVF"}
+
+
+# The standard's default Huffman table: (prefix bits, total bits, table-mode switch, base value, base code).
+# Codes are given with the first transmitted bit as the least significant bit. 0 -> "0"; +/-1..8 -> n ones,
+# a zero and a sign bit; the last two entries carry the value itself in 8 or 16 bits after a 10-bit prefix.
+DEFAULT_HUFFMAN = [(1, 1, 1, 0, 0)] + [e for v in range(1, 9) for e in (
+    (v + 2 if v < 8 else 10, v + 2 if v < 8 else 10, 1, v, (1 << v) - 1),
+    (v + 2 if v < 8 else 10, v + 2 if v < 8 else 10, 1, -v, (1 << v) - 1 + (1 << (v + 1))))] + [(10, 18, 1, 0, 511), (10, 26, 1, 0, 1023)]
+
+
+def huffman_tables(s2: bytes) -> list[list[tuple[int, int, int, int, int]]]:
+    n = struct.unpack_from("<H", s2, 0)[0]
+    if n == 19999:
+        return [DEFAULT_HUFFMAN]
+    tables, pos = [], 2
+    for _ in range(n):
+        m = struct.unpack_from("<H", s2, pos)[0]
+        pos += 2
+        t = []
+        for _ in range(m):
+            t.append(struct.unpack_from("<BBBhI", s2, pos))
+            pos += 9
+        tables.append(t)
+    if not tables or not all(tables):
+        raise IngestError("scp-ecg: Section 2 has no Huffman codes")
+    return tables
+
+
+def huffman_decode(data: bytes, count: int, tables) -> np.ndarray:
+    """`count` values from a Huffman bit stream (bits read most significant first within each byte)."""
+    lookup = [{(p, c): (tot, mode, val) for p, tot, mode, val, c in t} for t in tables]
+    bits = np.unpackbits(np.frombuffer(data, dtype=np.uint8))
+    out, pos, table, n_bits = [], 0, 0, len(bits)
+    while len(out) < count:
+        code, k = 0, 0
+        while True:
+            if pos >= n_bits:
+                raise IngestError(f"scp-ecg: Huffman data ends after {len(out)} of {count} samples")
+            code |= int(bits[pos]) << k
+            pos += 1
+            k += 1
+            hit = lookup[table].get((k, code))
+            if hit is not None:
+                break
+            if k > 32:
+                raise IngestError("scp-ecg: invalid Huffman code")
+        tot, mode, val = hit
+        if mode == 0:  # switch to another table, no value
+            table = val - 1
+            if not 0 <= table < len(lookup):
+                raise IngestError("scp-ecg: Huffman table switch to a table that does not exist")
+            continue
+        extra = tot - k
+        if extra:
+            if pos + extra > n_bits:
+                raise IngestError("scp-ecg: Huffman data ends inside a value")
+            v = 0
+            for b in bits[pos:pos + extra]:
+                v = (v << 1) | int(b)
+            pos += extra
+            if v >= 1 << (extra - 1):
+                v -= 1 << extra
+            out.append(v)
+        else:
+            out.append(val)
+    return np.asarray(out, dtype=np.int64)
 
 
 def crc16(b: bytes) -> int:
@@ -78,14 +145,13 @@ def read(data: bytes, fs: float | None = None, units: str | None = None):
     if not looks_like_scp(data):
         raise IngestError("scp-ecg: not an SCP-ECG file")
     sec, notes = _sections(data)
-    if 2 in sec:
-        raise IngestError("scp-ecg: Huffman-compressed SCP-ECG (Section 2) is not supported yet; export the ECG as DICOM or HL7 aECG")
+    tables = huffman_tables(sec[2]) if 2 in sec else None
     if 3 not in sec or 6 not in sec:
         raise IngestError("scp-ecg: lead definition (Section 3) or rhythm data (Section 6) is missing")
     s3 = sec[3]
     n_leads, flags = s3[0], s3[1]
     if flags & 1:
-        raise IngestError("scp-ecg: reference-beat subtraction is not supported yet")
+        raise IngestError("scp-ecg: this file uses reference-beat subtraction, which is not read; set the cart to export SCP-ECG without it, or DICOM / HL7 aECG")
     spans = []
     for i in range(n_leads):
         start, end, code = struct.unpack_from("<IIB", s3, 2 + 9 * i)
@@ -98,7 +164,10 @@ def read(data: bytes, fs: float | None = None, units: str | None = None):
     pos = 6 + 2 * n_leads
     leads = {}
     for (start, end, code), nbytes in zip(spans, lens):
-        raw = np.frombuffer(s6, dtype="<i2", count=nbytes // 2, offset=pos).astype(np.int64)
+        if tables is not None:
+            raw = huffman_decode(s6[pos:pos + nbytes], end - start + 1, tables)
+        else:
+            raw = np.frombuffer(s6, dtype="<i2", count=nbytes // 2, offset=pos).astype(np.int64)
         pos += nbytes
         if enc >= 1:
             raw = np.cumsum(raw)

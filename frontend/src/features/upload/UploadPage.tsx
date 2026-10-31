@@ -137,7 +137,7 @@ interface Uploaded {
   source: { dataset: string };
 }
 
-const FORMAT_NAMES: Record<string, string> = { "dicom-ecg": "DICOM ECG waveform", "hl7-aecg": "HL7 aECG", "ge-muse-xml": "GE MUSE XML", "scp-ecg": "SCP-ECG", edf: "EDF", csv: "CSV" };
+const FORMAT_NAMES: Record<string, string> = { "philips-xml": "Philips PageWriter XML", "dicom-ecg": "DICOM ECG waveform", "hl7-aecg": "HL7 aECG", "ge-muse-xml": "GE MUSE XML", "scp-ecg": "SCP-ECG", edf: "EDF", csv: "CSV" };
 
 /** Upload to the Cardiotic server: the file is read, analysed and stored; nothing is faked. */
 function ServerUpload() {
@@ -188,7 +188,7 @@ function ServerUpload() {
                   <Button variant="strong" disabled={!allowed || !!busy} onClick={() => input.current?.click()}><FileUp /> Choose file</Button>
                   <input ref={input} type="file" multiple className="hidden" aria-label="ECG file" onChange={(e) => { if (e.target.files?.length) void send(e.target.files); e.target.value = ""; }} />
                 </div>
-                <div className="mt-5 flex max-w-xl flex-wrap justify-center gap-1.5">{["DICOM ECG waveform", "HL7 aECG (FDA XML, SierraECG)", "GE MUSE XML", "SCP-ECG (uncompressed)", "EDF / EDF+", "CSV"].map((f) => <Badge key={f} tone="outline">{f}</Badge>)}</div>
+                <div className="mt-5 flex max-w-xl flex-wrap justify-center gap-1.5">{["DICOM ECG waveform", "HL7 aECG (FDA XML)", "GE MUSE XML", "Philips PageWriter XML", "SCP-ECG", "EDF / EDF+", "CSV"].map((f) => <Badge key={f} tone="outline">{f}</Badge>)}</div>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <Field label="Patient MRN" hint="Only used when the file carries no patient ID"><Input value={mrn} onChange={(e) => setMrn(e.target.value)} placeholder="e.g. UH-20400" /></Field>
@@ -224,7 +224,7 @@ function ServerUpload() {
           <CardHeader title="Supported files" description="The format is recognised from the content" icon={<Plug />} />
           <div className="card-pad space-y-2 text-[0.8rem] text-muted-foreground">
             <p>12 leads (or I, II and V1–V6) are read as an ECG; a single lead as a Holter recording. A file without a patient ID is kept under “Unidentified patient” until it is matched.</p>
-            <p>Not read yet: PDF and photographs of paper ECGs, Huffman-compressed SCP-ECG, Philips PageWriter XML. Export those from the machine as DICOM or HL7 aECG.</p>
+            <p>SCP-ECG files written with reference-beat subtraction are refused with the reason; set the cart to export without it.</p>
           </div>
         </Card>
         </div>

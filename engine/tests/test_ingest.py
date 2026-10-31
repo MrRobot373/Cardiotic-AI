@@ -45,6 +45,11 @@ FILES = {
     "scp": (lambda x: w.scp_file(x, 500), 8, 2e-3, "scp-ecg"),
     "scp-diff": (lambda x: w.scp_file(x, 500, enc=1), 8, 2e-3, "scp-ecg"),
     "scp-diff2": (lambda x: w.scp_file(x, 500, enc=2), 8, 2e-3, "scp-ecg"),
+    "scp-huffman-default": (lambda x: w.scp_huffman_file(x, 500), 8, 2e-3, "scp-ecg"),
+    "scp-huffman-site-table": (lambda x: w.scp_huffman_file(x, 500, custom_table=True), 8, 2e-3, "scp-ecg"),
+    "scp-huffman-no-diff": (lambda x: w.scp_huffman_file(x, 500, enc=0), 8, 2e-3, "scp-ecg"),
+    "philips-xli": (lambda x: w.philips_file(x, 500), 12, 6e-3, "philips-xml"),
+    "philips-uncompressed": (lambda x: w.philips_file(x, 500, compression="Uncompressed"), 12, 6e-3, "philips-xml"),
 }
 
 
@@ -58,7 +63,7 @@ def test_format_round_trips_real_samples(name, x):
 
 
 def test_patient_and_time_fields_where_the_format_has_them(x):
-    for make in (w.aecg_file, w.muse_file, w.dicom_file, w.scp_file):
+    for make in (w.aecg_file, w.muse_file, w.dicom_file, w.scp_file, w.philips_file):
         p = parse(make(x, 500))
         assert p.patient["id"] == "PAT-7" and p.patient["sex"] == "F" and p.patient["birth_date"] == "1960-01-01"
     assert parse(w.aecg_file(x, 500)).recorded_at == "2026-01-05T08:15:30"
@@ -82,10 +87,14 @@ def test_muse_rhythm_waveform_is_chosen_over_median(x):
 def test_unsupported_and_damaged_files_are_refused_with_the_reason(x):
     with pytest.raises(IngestError, match="digitiser"):
         detect(b"%PDF-1.7 " + b"0" * 100)
-    with pytest.raises(IngestError, match="Huffman"):
-        parse(w.scp_file(x, 500, huffman=True))
-    with pytest.raises(IngestError, match="Philips PageWriter"):
-        detect(b'<?xml version="1.0"?><restingecgdata><x/></restingecgdata>' + b" " * 20)
+    with pytest.raises(IngestError, match="no signalcharacteristics"):
+        parse(b'<?xml version="1.0"?><restingecgdata><x/></restingecgdata>' + b" " * 20)
+    from cardiotic_engine.ingest.scp_ecg import DEFAULT_HUFFMAN, huffman_decode
+    with pytest.raises(IngestError, match="Huffman data ends"):
+        huffman_decode(b"\xfe", 5, [DEFAULT_HUFFMAN])  # stream ends in the middle of the second code
+    bad = w.philips_file(x, 500).replace(b'compression="XLI"', b'compression="ZIP"')
+    with pytest.raises(IngestError, match="compression ZIP"):
+        parse(bad)
     with pytest.raises(IngestError, match="too small"):
         detect(b"abc")
     with pytest.raises(IngestError, match="shorter"):
