@@ -1,6 +1,6 @@
 /** Settings screens that talk to the Cardiotic server: site, users and the HIS connection. */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Plug, Users } from "lucide-react";
+import { Building2, FolderInput, Plug, Plus, Trash2, Users } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useDemo } from "@/app/demo-store";
@@ -94,6 +94,15 @@ interface His { enabled: boolean; host?: string; port?: number; facility?: strin
 interface Outbox { id: number; ecg_id: string; status: string; attempts: number; last_error: string | null; created_at: string; sent_at: string | null }
 
 export function ServerIntegrations() {
+  return (
+    <div className="space-y-4">
+      <ServerFeeds />
+      <ServerHis />
+    </div>
+  );
+}
+
+function ServerHis() {
   const { user } = useDemo();
   const qc = useQueryClient();
   const admin = user?.role === "admin";
@@ -135,6 +144,81 @@ export function ServerIntegrations() {
           </div>
         </div>
         <p className="text-[0.75rem] text-muted-foreground">Reports go out as HL7 v2.5.1 ORU^R01 text; FHIR R4 bundles are available from each signed report. ADT feeds and PDF attachments are not connected yet.</p>
+      </div>
+    </Card>
+  );
+}
+
+
+interface FolderFeed { name: string; path: string; location?: string; enabled?: boolean }
+interface FeedStatus { received: number; failed: number; last_received?: string; last_error?: string; last_error_at?: string }
+interface Feeds { folders: FolderFeed[]; dicom: { enabled: boolean; port: number; ae_title: string; location?: string }; status: Record<string, FeedStatus>; dicom_running: boolean }
+
+export function useFeeds() {
+  return useQuery({ queryKey: ["feeds"], queryFn: () => api<Feeds>("/feeds"), refetchInterval: 15000 });
+}
+
+export function FeedStatusList({ feeds }: { feeds?: Feeds }) {
+  const entries = Object.entries(feeds?.status ?? {});
+  if (!entries.length) return <p className="text-sm text-muted-foreground">No recording has arrived from a machine yet.</p>;
+  return (
+    <div className="space-y-1.5">
+      {entries.map(([name, st]) => (
+        <div key={name} className="flex items-start gap-2 rounded-lg border bg-card/70 px-3 py-2 text-[0.8rem]">
+          <span className="min-w-0 flex-1"><span className="font-medium">{name}</span>
+            <span className="block text-muted-foreground">{st.received} received{st.last_received ? ` · last ${fmtDateTime(st.last_received)}` : ""}{st.failed ? ` · ${st.failed} refused` : ""}</span>
+            {st.last_error && <span className="block truncate text-danger-foreground" title={st.last_error}>{st.last_error}</span>}</span>
+          <Badge tone={st.last_error && (!st.last_received || (st.last_error_at ?? "") > st.last_received) ? "warning" : "success"}>{st.last_error && (!st.last_received || (st.last_error_at ?? "") > st.last_received) ? "Check" : "Receiving"}</Badge>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function ServerFeeds() {
+  const { user } = useDemo();
+  const qc = useQueryClient();
+  const admin = user?.role === "admin";
+  const feeds = useFeeds();
+  const [draft, setDraft] = useState<Pick<Feeds, "folders" | "dicom"> | null>(null);
+  const cur = draft ?? (feeds.data ? { folders: feeds.data.folders, dicom: feeds.data.dicom } : null);
+  const save = useMutation({
+    mutationFn: () => api("/feeds", { method: "PUT", json: cur }),
+    onSuccess: () => { toast.success("Machine feeds saved"); setDraft(null); qc.invalidateQueries({ queryKey: ["feeds"] }); },
+    onError: fail,
+  });
+  if (!cur) return null;
+  const setFolder = (i: number, patch: Partial<FolderFeed>) => setDraft({ ...cur, folders: cur.folders.map((f, j) => (j === i ? { ...f, ...patch } : f)) });
+  return (
+    <Card>
+      <CardHeader title="ECG machines" description="Recordings that arrive without anyone uploading them" icon={<FolderInput />} />
+      <div className="card-pad space-y-4">
+        {admin && (
+          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+            <div className="text-label">Export folders</div>
+            {cur.folders.map((f, i) => (
+              <div key={i} className="grid gap-2 sm:grid-cols-[1fr_2fr_1fr_auto]">
+                <Input aria-label="Feed name" placeholder="Name, e.g. MUSE export" value={f.name} onChange={(e) => setFolder(i, { name: e.target.value })} />
+                <Input aria-label="Folder path" placeholder="/inbox/muse" value={f.path} onChange={(e) => setFolder(i, { path: e.target.value })} />
+                <Input aria-label="Location" placeholder="Location" value={f.location ?? ""} onChange={(e) => setFolder(i, { location: e.target.value })} />
+                <Button type="button" variant="ghost" size="icon" aria-label="Remove folder" onClick={() => setDraft({ ...cur, folders: cur.folders.filter((_, j) => j !== i) })}><Trash2 /></Button>
+              </div>
+            ))}
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDraft({ ...cur, folders: [...cur.folders, { name: "", path: "", location: "" }] })}><Plus /> Add folder</Button>
+            <div className="text-label pt-2">DICOM receiver</div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Input aria-label="AE title" value={cur.dicom.ae_title} onChange={(e) => setDraft({ ...cur, dicom: { ...cur.dicom, ae_title: e.target.value } })} />
+              <Input aria-label="DICOM port" type="number" value={cur.dicom.port} onChange={(e) => setDraft({ ...cur, dicom: { ...cur.dicom, port: Number(e.target.value) } })} />
+              <Input aria-label="DICOM location" placeholder="Location" value={cur.dicom.location ?? ""} onChange={(e) => setDraft({ ...cur, dicom: { ...cur.dicom, location: e.target.value } })} />
+            </div>
+            <SwitchRow label="Receive ECGs over DICOM (C-STORE)" description={feeds.data?.dicom_running ? "Running" : "Stopped"} checked={cur.dicom.enabled} onCheckedChange={(v) => setDraft({ ...cur, dicom: { ...cur.dicom, enabled: v } })} />
+            <Button type="submit" variant="strong" disabled={save.isPending}>Save machine feeds</Button>
+          </form>
+        )}
+        <div>
+          <div className="text-label mb-2">Status</div>
+          <FeedStatusList feeds={feeds.data} />
+        </div>
       </div>
     </Card>
   );

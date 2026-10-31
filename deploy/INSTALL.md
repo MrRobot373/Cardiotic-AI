@@ -61,7 +61,11 @@ configuration is for other models or not signed off (exit code 4).
    ```
    This writes a **draft** and a report next to it. The cardiology lead reviews the report and fills in `approved_by` and `approved_at`; the server then starts with `--site-config site_config.json` (or `CARDIOTIC_SITE_CONFIG`). Without one, the model's own thresholds are used and the Site screen says so. Statements with fewer than 20 site examples keep the model's threshold. Do not claim atrial flutter or long QT: they stay weak even with site thresholds.
 4. **HIS** — Settings → Integrations: host, port, receiving facility. Signed reports are queued and delivered as HL7 v2.5.1 ORU^R01 over MLLP; failures retry with growing waits and show in the delivery list. Test against the hospital's test interface first: the measurement and statement codes (LOINC / SCP-ECG) are mapped to the hospital's dictionary during integration. Reports go as text, not PDF; ADT feeds are not implemented.
-5. **ECG machines** — export to a folder or send DICOM/HL7 aECG/MUSE XML, and upload. Direct machine feeds (a watched folder or DICOM storage endpoint) are **not built yet**: today a technician uploads files. Each cart model must be tested with real exports before it is listed as supported: the readers are tested against files built from the format specifications, not vendor files.
+5. **ECG machines** — Settings → Integrations → ECG machines.
+   - **Export folder:** point a cart or its management system (GE MUSE, Philips TraceMaster, Schiller SEMA…) at a shared folder and add the folder. Files are imported once fully written, then moved to `processed/`, or to `failed/` with the reason.
+   - **DICOM:** switch on the receiver (default AE title `CARDIOTIC`, port 11112) and enter this server as the cart's storage destination.
+
+   Status per machine (received, refused, last error) shows there and on the Upload screen. Test each cart model with a few real recordings during installation.
 
 ## 4. Operate
 

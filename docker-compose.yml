@@ -6,8 +6,10 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${CARDIOTIC_PORT:-8720}:8720"   # only the reverse proxy (TLS) talks to it; see deploy/nginx.conf.example
+      # - "11112:11112"              # DICOM receiver for ECG carts (Settings → Integrations → ECG machines)
     volumes:
       - cardiotic-data:/data         # the database: patients, ECGs, reviews, audit log
+      # - /srv/ecg-inbox:/inbox      # export folder(s) the machines write to; add each as /inbox/... under ECG machines
       # - ./site_config.json:/etc/cardiotic/site_config.json:ro   # signed-off per-site operating points
     environment:
       CARDIOTIC_COOKIE_SECURE: "1"   # the reverse proxy serves HTTPS

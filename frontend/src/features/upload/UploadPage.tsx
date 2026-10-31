@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { useDemo } from "@/app/demo-store";
 import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, Select } from "@/components/ui";
+import { FeedStatusList, useFeeds } from "@/features/settings/ServerSettings";
 import { api, ApiError, serverMode } from "@/lib/server";
 import { useCatalog } from "@/data/api";
 import { statementName } from "@/data/clinical";
@@ -149,6 +150,7 @@ function ServerUpload() {
   const [busy, setBusy] = useState<string | null>(null);
   const [done, setDone] = useState<{ name: string; rec?: Uploaded; error?: string }[]>([]);
   const allowed = user?.role === "technician" || user?.role === "cardiologist";
+  const feeds = useFeeds();
 
   const send = async (files: FileList | File[]) => {
     for (const f of Array.from(files)) {
@@ -213,6 +215,11 @@ function ServerUpload() {
             </Card>
           ))}
         </div>
+        <div className="space-y-4">
+        <Card>
+          <CardHeader title="Connected ECG machines" description="Recordings arrive here without anyone uploading" icon={<Monitor />} />
+          <div className="card-pad"><FeedStatusList feeds={feeds.data} /></div>
+        </Card>
         <Card>
           <CardHeader title="Supported files" description="The format is recognised from the content" icon={<Plug />} />
           <div className="card-pad space-y-2 text-[0.8rem] text-muted-foreground">
@@ -220,6 +227,7 @@ function ServerUpload() {
             <p>Not read yet: PDF and photographs of paper ECGs, Huffman-compressed SCP-ECG, Philips PageWriter XML. Export those from the machine as DICOM or HL7 aECG.</p>
           </div>
         </Card>
+        </div>
       </div>
     </div>
   );

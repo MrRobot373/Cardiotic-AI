@@ -22,7 +22,7 @@ from urllib.parse import parse_qs, urlparse
 
 from cardiotic_engine.api import Engine, InputError
 
-from . import auth, export
+from . import auth, export, feeds
 from .db import Database
 from .store import Conflict, Forbidden, NotFound, Store
 
@@ -57,6 +57,8 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
     db = Database(db_path)
     store = Store(db, engine or Engine())
     worker = export.Worker(store)
+    folders, dicom = feeds.FolderFeeds(store), feeds.DicomFeed(store)
+    store.folders, store.dicom = folders, dicom
     static = Path(static_dir).resolve() if static_dir else None
 
     class Handler(BaseHTTPRequestHandler):
@@ -282,6 +284,32 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                     db.set_setting("his", his)
                     db.audit(user["name"], "Changed HIS connection", f"{his['host']}:{his['port']} enabled={his['enabled']}")
                     return self._json(200, his)
+            if path == "/feeds":
+                _role(user, "admin", "technician", "cardiologist")
+                if method == "GET":
+                    return self._json(200, {**db.get_setting("feeds", {"folders": [], "dicom": {"enabled": False, "port": 11112, "ae_title": "CARDIOTIC"}}),
+                                            "status": db.get_setting("feed_status", {}), "dicom_running": store.dicom.server is not None})
+                if method == "PUT":
+                    _role(user, "admin")
+                    b = self._json_body()
+                    folders_cfg = []
+                    for f in b.get("folders", []):
+                        name, fpath = str(f.get("name", "")).strip()[:60], str(f.get("path", "")).strip()
+                        if not name or not fpath.startswith("/"):
+                            raise ValueError("each folder feed needs a name and an absolute path")
+                        folders_cfg.append({"name": name, "path": fpath, "location": str(f.get("location", ""))[:100], "enabled": bool(f.get("enabled", True))})
+                    d = b.get("dicom", {})
+                    dcfg = {"enabled": bool(d.get("enabled")), "port": int(d.get("port", 11112)), "ae_title": str(d.get("ae_title", "CARDIOTIC"))[:16].upper(),
+                            "location": str(d.get("location", ""))[:100]}
+                    if not 0 < dcfg["port"] < 65536:
+                        raise ValueError("port must be 1-65535")
+                    db.set_setting("feeds", {"folders": folders_cfg, "dicom": dcfg})
+                    try:
+                        store.dicom.apply(dcfg)
+                    except OSError as e:
+                        raise ValueError(f"DICOM receiver could not start on port {dcfg['port']}: {e}") from None
+                    db.audit(user["name"], "Changed machine feeds", f"{len(folders_cfg)} folders, DICOM {'on' if dcfg['enabled'] else 'off'}")
+                    return self._json(200, {"ok": True})
             if method == "GET" and path == "/outbox":
                 _role(user, "admin", "cardiologist")
                 rows = db.conn().execute("SELECT id, ecg_id, kind, status, attempts, last_error, created_at, sent_at FROM outbox ORDER BY id DESC LIMIT 200").fetchall()
@@ -348,4 +376,9 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
     httpd.daemon_threads = True
     if start_worker:
         worker.start()
+        folders.start()
+        try:
+            dicom.apply(db.get_setting("feeds", {}).get("dicom", {}))
+        except OSError as e:  # port in use: the server still runs; Integrations shows the error
+            log.error("DICOM receiver could not start: %s", e)
     return httpd, store, worker

@@ -28,7 +28,7 @@ COPY server/pyproject.toml server/README.md server/
 COPY server/cardiotic_server server/cardiotic_server
 RUN --mount=type=secret,id=ca,required=false \
     if [ -f /run/secrets/ca ]; then export PIP_CERT=/run/secrets/ca; fi && \
-    pip install --no-cache-dir ./ml ./engine "./server" "pydicom>=2.4" && rm -rf ml engine server
+    pip install --no-cache-dir ./ml ./engine ./server && rm -rf ml engine server
 COPY --from=web /web/dist /opt/cardiotic/web
 USER cardiotic
 VOLUME /data
