@@ -191,8 +191,8 @@ function ServerUpload() {
                 <div className="mt-5 flex max-w-xl flex-wrap justify-center gap-1.5">{["DICOM ECG waveform", "HL7 aECG (FDA XML)", "GE MUSE XML", "Philips PageWriter XML", "SCP-ECG", "EDF / EDF+", "CSV"].map((f) => <Badge key={f} tone="outline">{f}</Badge>)}</div>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <Field label="Patient MRN" hint="Only used when the file carries no patient ID"><Input value={mrn} onChange={(e) => setMrn(e.target.value)} placeholder="e.g. UH-20400" /></Field>
-                <Field label="Location"><Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. ECG room 1" /></Field>
+                <Field label="Patient MRN" htmlFor="up-mrn" hint="Only used when the file carries no patient ID"><Input id="up-mrn" value={mrn} onChange={(e) => setMrn(e.target.value)} placeholder="e.g. UH-20400" /></Field>
+                <Field label="Location" htmlFor="up-location"><Input id="up-location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. ECG room 1" /></Field>
               </div>
             </div>
           </Card>

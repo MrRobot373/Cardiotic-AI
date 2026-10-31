@@ -206,4 +206,6 @@ class Engine:
         notes = []
         if lead is None or str(lead).strip().upper() not in ("II", "MLII"):
             notes.append("beat and rhythm models were validated on lead II / MLII; other leads are less reliable")
-        return self._envelope("rhythm", pipeline.analyze(x.astype(np.float32), fs, self._m.single), t0, notes)
+        if dur > (pipeline.CHUNK_S + 2 * pipeline.MARGIN_S):
+            notes.append(f"long recording: analysed in {pipeline.CHUNK_S // 60}-minute sections")
+        return self._envelope("rhythm", pipeline.analyze_long(x.astype(np.float32), fs, self._m.single), t0, notes)

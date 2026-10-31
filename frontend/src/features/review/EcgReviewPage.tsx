@@ -365,7 +365,7 @@ function EcgPanel({ item, detail, signals, review, highlight }: {
           <>
             <Ecg12View leads={signals.leads} fs={detail.fs} layout={layout} speed={Number(speed) as 25 | 50} gain={Number(gain) as 5 | 10 | 20}
               beats={showBeats ? beats : []} leadQuality={r.lead_quality} highlightLeads={highlight ? leadsFor(highlight) : []} caliper={caliper}
-              header={{ left: `${item.patient.name.toUpperCase()} · ${item.patient.sex}/${item.patient.age ?? "?"}Y · ${item.patient.mrn}`, right: `${speed} mm/s · ${gain} mm/mV · 0.05–150 Hz · ${item.ecg.device}` }} />
+              header={{ left: `${item.patient.name.toUpperCase()} · ${item.patient.sex || "?"}/${item.patient.age ?? "?"}Y · ${item.patient.mrn}`, right: `${speed} mm/s · ${gain} mm/mV · 0.05–150 Hz · ${item.ecg.device}` }} />
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.72rem] text-muted-foreground">
               {caliper && <span className="font-medium text-primary">Drag across the ECG to measure; double-click to clear.</span>}
               {highlight && <span className="font-medium text-primary">Highlighted: leads that show {statementName(highlight)}.</span>}

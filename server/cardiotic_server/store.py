@@ -71,7 +71,7 @@ class Store:
 
     # ---------------------------------------------------------------- patients
     def patient_row(self, r) -> dict:
-        return {"id": r["id"], "name": r["name"], "mrn": r["mrn"], "sex": r["sex"] or "M", "age": _age(r["birth_date"]),
+        return {"id": r["id"], "name": r["name"], "mrn": r["mrn"], "sex": r["sex"], "age": _age(r["birth_date"]),
                 "age_90_plus": (_age(r["birth_date"]) or 0) >= 90, "birth_date": r["birth_date"], "origin": ""}
 
     def upsert_patient(self, c, mrn: str, name: str = "", sex: str = "", birth_date: str | None = None) -> str:

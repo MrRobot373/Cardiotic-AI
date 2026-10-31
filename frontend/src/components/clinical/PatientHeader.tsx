@@ -2,7 +2,7 @@ import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Avatar } from "@/components/ui";
-import { ageLabel } from "@/data/clinical";
+import { ageLabel, sexLabel } from "@/data/clinical";
 import type { Patient } from "@/data/types";
 
 export function PatientHeader({ patient, chips, actions, back = true }: { patient: Patient; chips?: ReactNode; actions?: ReactNode; back?: boolean }) {
@@ -19,7 +19,7 @@ export function PatientHeader({ patient, chips, actions, back = true }: { patien
         <h1 className="truncate text-[1.35rem] font-semibold tracking-tight">{patient.name}</h1>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.82rem] text-muted-foreground">
           <span className="font-medium text-foreground num">{patient.mrn}</span>
-          <span>{ageLabel(patient.age, patient.age_90_plus)} · {patient.sex === "F" ? "Female" : "Male"}</span>
+          <span>{ageLabel(patient.age, patient.age_90_plus)} · {sexLabel(patient.sex)}</span>
         </div>
       </div>
       {chips && <div className="flex flex-wrap items-center gap-1.5">{chips}</div>}

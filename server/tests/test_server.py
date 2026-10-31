@@ -436,3 +436,19 @@ def test_pdf_is_valid_for_a_pdf_reader(server, ecg, tmp_path):
     (tmp_path / "r.pdf").write_bytes(c.call("GET", f"/api/report/{rid}.pdf")[1])
     out = subprocess.run(["pdfinfo", str(tmp_path / "r.pdf")], capture_output=True, text=True)
     assert out.returncode == 0 and "Pages:           1" in out.stdout and "(A4)" in out.stdout
+
+
+def test_long_holter_is_analysed_in_sections_and_served_in_ranges(server, ecg):
+    import numpy as np
+    t = client(server, "rsawant")
+    strip = np.tile(ecg[1], 6 * 35)[: 500 * 35 * 60]  # 35 minutes of lead II: more than one 30-minute section
+    data = w.edf_file(np.vstack([strip] * 12), 500, leads=("II",))
+    code, rec = t.call("POST", "/api/upload", raw=data, headers={"X-Patient-MRN": "UH-H1"})
+    assert code == 201 and rec["id"].startswith("H") and rec["duration_s"] == pytest.approx(2100, abs=1)
+    d = t.call("GET", f"/api/holter/{rec['id']}")[1]
+    assert any("sections" in n for n in d["analysis"]["input_notes"])
+    beats = d["analysis"]["result"]["beats"]
+    assert beats and max(b["time_s"] for b in beats) > 1800  # beats from the second section, on the global clock
+    part = t.call("GET", f"/api/holter/{rec['id']}/signal?from=60&to=120")[1]
+    assert len(part) == 2 * 60 * 500
+    assert t.call("GET", f"/api/holter/{rec['id']}/signal?from=x")[0] == 400

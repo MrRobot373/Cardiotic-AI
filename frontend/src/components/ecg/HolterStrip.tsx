@@ -6,8 +6,9 @@ import { drawGrid, drawTrace, paperColors, setupCanvas } from "./paper";
 export const BEAT_COLORS: Record<string, string> = { N: "#246BFD", S: "#D97706", V: "#7C3AED", F: "#DC2626" };
 
 /** One strip of a long single-lead recording: 25 mm/s, 10 mm/mV, AI beat labels and RR intervals. */
-export function HolterStrip({ signal, fs, start, seconds, beats, unusable = [], rows = 1, onBeatClick }: {
-  signal: Float32Array; fs: number; start: number; seconds: number; beats: Beat[]; unusable?: [number, number][]; rows?: number;
+export function HolterStrip({ signal, fs, start, seconds, beats, unusable = [], rows = 1, onBeatClick, offset = 0 }: {
+  /** `offset`: the sample index of signal[0] in the recording (long recordings load only the part on screen) */
+  signal: Float32Array; fs: number; start: number; seconds: number; beats: Beat[]; unusable?: [number, number][]; rows?: number; offset?: number;
   onBeatClick?: (b: Beat) => void;
 }) {
   const wrap = useRef<HTMLDivElement>(null);
@@ -44,13 +45,13 @@ export function HolterStrip({ signal, fs, start, seconds, beats, unusable = [], 
         ctx.fillStyle = "rgba(148,163,184,0.3)";
         ctx.fillRect((Math.max(a, t0) - t0) * pxPerSec, y0, (Math.min(b, t1) - Math.max(a, t0)) * pxPerSec, rowH);
       }
-      const s0 = Math.floor(t0 * fs), s1 = Math.min(signal.length, Math.ceil(t1 * fs));
+      const s0 = Math.max(0, Math.floor(t0 * fs) - offset), s1 = Math.min(signal.length, Math.ceil(t1 * fs) - offset);
       let base = 0;
       if (s1 > s0) {
         const seg = Array.from(signal.subarray(s0, s1)).sort((x, y) => x - y);
         base = seg[Math.floor(seg.length / 2)];
       }
-      const shifted = new Float32Array(s1 - s0);
+      const shifted = new Float32Array(Math.max(0, s1 - s0));
       for (let i = 0; i < shifted.length; i++) shifted[i] = signal[s0 + i] - base;
       ctx.save();
       ctx.beginPath(); ctx.rect(0, y0, width, rowH); ctx.clip();
@@ -83,7 +84,7 @@ export function HolterStrip({ signal, fs, start, seconds, beats, unusable = [], 
       const mm = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
       ctx.fillText(mm(t0), 4, y0 + rowH - 5);
     }
-  }, [signal, fs, start, seconds, beats, unusable, rows, width, height, colors, pxPerMm, pxPerSec, rowH, perRow]);
+  }, [signal, offset, fs, start, seconds, beats, unusable, rows, width, height, colors, pxPerMm, pxPerSec, rowH, perRow]);
 
   return (
     <div ref={wrap}>

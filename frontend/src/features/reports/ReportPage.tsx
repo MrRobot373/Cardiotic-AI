@@ -7,7 +7,7 @@ import { CardioticMark } from "@/components/layout/BrandMark";
 import { Ecg12View } from "@/components/ecg/Ecg12View";
 import { Button, Skeleton } from "@/components/ui";
 import { useEcgSignals } from "@/data/api";
-import { ageLabel, axisLabel, qtcInterpretable, statementName } from "@/data/clinical";
+import { ageLabel, axisLabel, qtcInterpretable, sexLabel, statementName } from "@/data/clinical";
 import { useWorkItems } from "@/data/derived";
 import { effectiveMeasurements, finalStatements } from "@/features/review/EcgReviewPage";
 import { fmtDateTime } from "@/lib/utils";
@@ -51,7 +51,7 @@ export default function ReportPage() {
           </div>
         </header>
         <section className="grid grid-cols-3 gap-4 border-b border-slate-200 py-3 text-xs">
-          <div><div className="text-slate-500">Patient</div><div className="text-sm font-semibold">{item.patient.name}</div><div>{item.patient.mrn} · {ageLabel(item.patient.age, item.patient.age_90_plus)} · {item.patient.sex === "F" ? "Female" : "Male"}</div></div>
+          <div><div className="text-slate-500">Patient</div><div className="text-sm font-semibold">{item.patient.name}</div><div>{item.patient.mrn} · {ageLabel(item.patient.age, item.patient.age_90_plus)} · {sexLabel(item.patient.sex)}</div></div>
           <div><div className="text-slate-500">Recorded</div><div className="font-medium">{fmtDateTime(item.ecg.recorded_at)}</div><div>{item.ecg.location} · {item.ecg.device}</div></div>
           <div><div className="text-slate-500">Ordered by</div><div className="font-medium">{item.ecg.ordered_by}</div><div>25 mm/s · 10 mm/mV · 0.05–150 Hz</div></div>
         </section>

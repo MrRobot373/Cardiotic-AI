@@ -103,7 +103,7 @@ function BedTile({ bed, running }: { bed: Bed; running: boolean }) {
         <div className="flex h-24 items-center justify-center rounded-lg border border-dashed bg-[repeating-linear-gradient(135deg,transparent,transparent_8px,hsl(var(--muted))_8px,hsl(var(--muted))_16px)] px-4 text-center text-[0.78rem] text-muted-foreground">
           Stream lost 00:14 ago. No data is shown; check the bedside monitor.
         </div>
-      ) : data ? (
+      ) : data?.signal ? (
         <MonitorTrace signal={data.signal} fs={data.detail.fs} offset={bed.offset} beats={data.detail.analysis.result.beats} running={running} noisy={bed.state === "diathermy"} onHr={setHr} />
       ) : <div className="skeleton h-24 w-full" />}
       <div className="mt-3 flex items-end justify-between gap-3">

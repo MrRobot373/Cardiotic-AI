@@ -247,7 +247,15 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
             if method == "GET" and (g := m(r"/holter/(H\d+)", path)):
                 return self._json(200, store.recording(g[1], "holter"))
             if method == "GET" and (g := m(r"/holter/(H\d+)/signal", path)):
-                return self._bytes(200, store.holter_signal(g[1]), "application/octet-stream")
+                sig = store.holter_signal(g[1])
+                if "from" in q or "to" in q:  # long recordings: the app loads only the minutes on screen
+                    fs = float(store.recording(g[1], "holter")["fs"])
+                    try:
+                        a, b = max(0.0, float(q.get("from", 0))), float(q.get("to", 1e9))
+                    except ValueError:
+                        raise HttpError(400, "from / to must be seconds") from None
+                    sig = sig[2 * int(a * fs): 2 * int(b * fs)]
+                return self._bytes(200, sig, "application/octet-stream")
             if method == "GET" and path == "/reviews":
                 return self._json(200, store.reviews())
             if (g := m(r"/reviews/([EH]\d+)", path)):

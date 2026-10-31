@@ -95,13 +95,13 @@ export function Checkbox({ className, ...props }: ComponentPropsWithoutRef<typeo
 }
 
 /* ---------- Slider ---------- */
-export function Slider({ className, ...props }: ComponentPropsWithoutRef<typeof SliderPrimitive.Root>) {
+export function Slider({ className, "aria-label": label, ...props }: ComponentPropsWithoutRef<typeof SliderPrimitive.Root>) {
   return (
     <SliderPrimitive.Root className={cn("relative flex w-full touch-none select-none items-center py-1.5", className)} {...props}>
       <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-muted">
         <SliderPrimitive.Range className="absolute h-full bg-primary" />
       </SliderPrimitive.Track>
-      <SliderPrimitive.Thumb className="block size-4 rounded-full border-2 border-primary bg-card shadow transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20" />
+      <SliderPrimitive.Thumb aria-label={label} className="block size-4 rounded-full border-2 border-primary bg-card shadow transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20" />
     </SliderPrimitive.Root>
   );
 }

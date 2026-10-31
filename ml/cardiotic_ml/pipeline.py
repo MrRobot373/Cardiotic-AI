@@ -90,8 +90,8 @@ def _rhythm(signal: np.ndarray, fs: float, usable: np.ndarray, models: Models,
     return out
 
 
-def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
-    raw = np.asarray(signal, dtype=np.float32)
+def _stages(raw: np.ndarray, fs: float, models: Models) -> dict:
+    """Quality, beats and rhythm for one recording or one chunk of a long one (times from its start)."""
     x = dsp.resample(raw, fs, FS)
     win = q_data.WIN
     # 1. quality, per 2.5 s window
@@ -104,26 +104,43 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
     usable = np.zeros(len(x), dtype=bool)
     for s, l in zip(starts, q_label):
         usable[s:s + win] = l != 2
-    review = [f"{int((q_label == 2).sum())} of {len(q_label)} windows not analysable: shown for manual review"] if (q_label == 2).any() else []
+    st = {"segments": segments, "q_label": q_label, "usable_samples": int(usable.sum()), "n_samples": len(x), "beats": [], "rhythm": [],
+          "beat_t": np.zeros(0), "beat_cls": np.zeros(0, dtype=int), "early": None}
     if len(starts) == 0 or usable.mean() < 0.5:
-        return _result(segments, [], [], {}, ["Not analysable: less than half the recording has usable signal quality."] + review, models)
+        st["early"] = "Not analysable: less than half the recording has usable signal quality."
+        return st
     # 2. beats, only inside usable windows
     peaks = qrs.detect_beats(x, FS, QRS_METHOD)
     peaks = peaks[usable[peaks]]
     if len(peaks) < 3:
-        return _result(segments, [], [], {}, ["Not analysable: too few beats detected in usable segments."] + review, models)
+        st["early"] = "Not analysable: too few beats detected in usable segments."
+        return st
     # 3. classify beats (calibrated)
     bw, rr, ok = beat_data.from_signal(x, peaks, FS)
     bp = cal.softmax(_batched(models.beats, bw, rr),
                      models.cards[BEAT_MODEL].get("temperature", 1.0))
-    beats = [{"time_s": float(p / FS), "class": beat_data.CLASSES[c], "probability": float(bp[i, c]),
-              "confidence": confidence_level(float(bp[i, c]))}
-             for i, (p, c) in enumerate(zip(peaks[ok], bp.argmax(1)))]
+    st["beats"] = [{"time_s": float(p / FS), "class": beat_data.CLASSES[c], "probability": float(bp[i, c]),
+                    "confidence": confidence_level(float(bp[i, c]))}
+                   for i, (p, c) in enumerate(zip(peaks[ok], bp.argmax(1)))]
+    st["beat_t"], st["beat_cls"] = peaks[ok] / FS, bp.argmax(1)
     # 4. rhythm, per 30 s window
-    rhythm = _rhythm(raw, fs, usable, models, peaks[ok] / FS, bp.argmax(1))
+    st["rhythm"] = _rhythm(raw, fs, usable, models, peaks[ok] / FS, bp.argmax(1))
+    return st
+
+
+def _summarise(st: dict, models: Models) -> dict:
+    """Measurements and findings from the stages (of a whole recording, or of all chunks merged)."""
+    segments, q_label, beats, rhythm = st["segments"], st["q_label"], st["beats"], st["rhythm"]
+    review = [f"{int((q_label == 2).sum())} of {len(q_label)} windows not analysable: shown for manual review"] if (q_label == 2).any() else []
+    if st["early"] or len(q_label) == 0 or st["usable_samples"] / max(st["n_samples"], 1) < 0.5:
+        msg = st["early"] if st["early"] and "beats" in st["early"] and st["usable_samples"] / max(st["n_samples"], 1) >= 0.5 else \
+            "Not analysable: less than half the recording has usable signal quality."
+        return _result(segments, [], [], {}, [msg] + review, models)
+    if len(beats) < 3:
+        return _result(segments, [], [], {}, ["Not analysable: too few beats detected in usable segments."] + review, models)
     # 5. measurements: rate from normal-to-normal intervals only
-    cls = bp.argmax(1)
-    t = peaks[ok] / FS
+    cls = st["beat_cls"]
+    t = st["beat_t"]
     nn_rr = np.array([t[i + 1] - t[i] for i in range(len(t) - 1) if cls[i] == 0 and cls[i + 1] == 0])
     all_rr = np.diff(t)
     meas = {
@@ -131,7 +148,7 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
         "rr_min_s": float(all_rr.min()), "rr_max_s": float(all_rr.max()),
         "rr_cv": float(all_rr.std() / all_rr.mean()),
         "beats_analysed": int(len(beats)),
-        "usable_fraction": float(usable.mean()),
+        "usable_fraction": float(st["usable_samples"] / st["n_samples"]),
     }
     counts = {c: int((cls == i).sum()) for i, c in enumerate(beat_data.CLASSES)}
     findings = []
@@ -155,6 +172,45 @@ def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
         findings.append(f"Noisy signal in {int((q_label == 1).sum())} of {len(q_label)} windows: morphology less reliable there")
     meas["beat_counts"] = counts
     return _result(segments, beats, rhythm, meas, findings + review, models)
+
+
+def analyze(signal: np.ndarray, fs: float, models: Models) -> dict:
+    return _summarise(_stages(np.asarray(signal, dtype=np.float32), fs, models), models)
+
+
+CHUNK_S, MARGIN_S = 1800, 60  # multiples of the 2.5 s quality and 30 s rhythm windows, so all grids line up
+
+
+def analyze_long(signal: np.ndarray, fs: float, models: Models, chunk_s: int = CHUNK_S, margin_s: int = MARGIN_S) -> dict:
+    """Holter-length recordings in 30-minute chunks, each analysed with a minute of signal either side so beat
+    detection and RR context are the same as in one pass; results are merged and summarised once. Memory
+    stays bounded (a 24 h recording no longer holds every intermediate array at once)."""
+    raw = np.asarray(signal, dtype=np.float32)
+    n = len(raw)
+    if n <= (chunk_s + 2 * margin_s) * fs:
+        return analyze(raw, fs, models)
+    merged = {"segments": [], "q_label": [], "usable_samples": 0, "n_samples": 0, "beats": [], "rhythm": [], "beat_t": [], "beat_cls": [], "early": None}
+    for core0 in range(0, int(np.ceil(n / fs / chunk_s)) * chunk_s, chunk_s):
+        core1 = min(core0 + chunk_s, n / fs)
+        a = max(0, core0 - margin_s)
+        b = min(n / fs, core1 + margin_s)
+        st = _stages(raw[int(round(a * fs)):int(round(b * fs))], fs, models)
+        keep = lambda t: core0 <= t + a < core1  # noqa: E731
+        segs = [(i, s) for i, s in enumerate(st["segments"]) if keep(s["start_s"])]
+        merged["segments"] += [{**s, "start_s": s["start_s"] + a, "end_s": s["end_s"] + a} for _, s in segs]
+        merged["q_label"] += [int(st["q_label"][i]) for i, _ in segs]
+        win = q_data.WIN
+        merged["usable_samples"] += sum(win for i, _ in segs if st["q_label"][i] != 2)
+        bi = [i for i, bt in enumerate(st["beats"]) if keep(bt["time_s"])]
+        merged["beats"] += [{**st["beats"][i], "time_s": st["beats"][i]["time_s"] + a} for i in bi]
+        merged["beat_t"] += [float(st["beat_t"][i]) + a for i in bi]
+        merged["beat_cls"] += [int(st["beat_cls"][i]) for i in bi]
+        merged["rhythm"] += [{**r, "start_s": r["start_s"] + a, "end_s": r["end_s"] + a} for r in st["rhythm"] if keep(r["start_s"])]
+    merged["n_samples"] = int(round(n * FS / fs))
+    merged["usable_samples"] = min(merged["usable_samples"], merged["n_samples"])
+    merged["q_label"] = np.asarray(merged["q_label"], dtype=int)
+    merged["beat_t"], merged["beat_cls"] = np.asarray(merged["beat_t"]), np.asarray(merged["beat_cls"], dtype=int)
+    return _summarise(merged, models)
 
 
 def _result(segments, beats, rhythm, measurements, findings, models: Models) -> dict:

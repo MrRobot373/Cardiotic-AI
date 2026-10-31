@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { api, serverMode } from "@/lib/server";
 import { registerDescriptions } from "./clinical";
@@ -39,22 +39,52 @@ export function useEcg(id: string | undefined) {
   return useQuery({ queryKey: ["ecg", id], queryFn: () => (serverMode ? api<EcgDetail>(`/ecg/${id}`) : getJson<EcgDetail>(`ecg/${id}.json`)), enabled: !!id, staleTime: Infinity });
 }
 
+/** Recordings longer than this load the signal in blocks around what is on screen (a 24 h Holter is ~40 MB). */
+export const HOLTER_FULL_LOAD_S = 2 * 3600;
+const BLOCK_S = 300;
+
+/** The signal around [start, start + seconds) as { signal, offset } (offset = sample index of signal[0]). */
+export function useHolterWindow(id: string | undefined, fs: number, start: number, seconds: number, enabled: boolean) {
+  const first = Math.floor(Math.max(0, start) / BLOCK_S), last = Math.floor((start + seconds) / BLOCK_S);
+  const blocks = useQueries({
+    queries: Array.from({ length: last - first + 1 }, (_, k) => first + k).map((b) => ({
+      queryKey: ["holter-block", id, b],
+      enabled: enabled && !!id,
+      staleTime: Infinity,
+      queryFn: () => api<ArrayBuffer>(`/holter/${id}/signal?from=${b * BLOCK_S}&to=${(b + 1) * BLOCK_S}`).then((buf) => int16ToMv(new Int16Array(buf))),
+    })),
+  });
+  return useMemo(() => {
+    if (!enabled || blocks.some((b) => !b.data)) return null;
+    const parts = blocks.map((b) => b.data!);
+    const out = new Float32Array(parts.reduce((n, p) => n + p.length, 0));
+    let o = 0;
+    for (const p of parts) { out.set(p, o); o += p.length; }
+    return { signal: out, offset: Math.round(first * BLOCK_S * fs) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, first, fs, ...blocks.map((b) => b.data)]);
+}
+
 export function useHolter(id: string | undefined) {
   return useQuery({
     queryKey: ["holter", id],
     enabled: !!id,
     staleTime: Infinity,
     queryFn: async () => {
+      if (serverMode) {
+        const detail = await api<HolterDetail>(`/holter/${id}`);
+        const long = detail.n_samples / detail.fs > HOLTER_FULL_LOAD_S;
+        const signal = long ? null : int16ToMv(new Int16Array(await api<ArrayBuffer>(`/holter/${id}/signal`)));
+        return { detail, signal };
+      }
       const [detail, buf] = await Promise.all([
-        serverMode ? api<HolterDetail>(`/holter/${id}`) : getJson<HolterDetail>(`holter/${id}.json`),
-        serverMode
-          ? api<ArrayBuffer>(`/holter/${id}/signal`)
-          : fetch(`${BASE}/holter/${id}.i16`).then((r) => {
-              if (!r.ok) throw new Error(`holter signal: HTTP ${r.status}`);
-              return r.arrayBuffer();
-            }),
+        getJson<HolterDetail>(`holter/${id}.json`),
+        fetch(`${BASE}/holter/${id}.i16`).then((r) => {
+          if (!r.ok) throw new Error(`holter signal: HTTP ${r.status}`);
+          return r.arrayBuffer();
+        }),
       ]);
-      return { detail, signal: int16ToMv(new Int16Array(buf)) };
+      return { detail, signal: int16ToMv(new Int16Array(buf)) as Float32Array | null };
     },
   });
 }

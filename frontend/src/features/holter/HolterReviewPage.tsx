@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/clinical/badges";
 import { PatientHeader } from "@/components/clinical/PatientHeader";
 import { BEAT_COLORS, HolterStrip } from "@/components/ecg/HolterStrip";
 import { Badge, Button, Card, CardHeader, EmptyState, Segmented, Skeleton, Slider } from "@/components/ui";
-import { useCatalog, useHolter } from "@/data/api";
+import { useCatalog, useHolter, useHolterWindow } from "@/data/api";
 import { BEAT_NAMES, RHYTHM_NAMES } from "@/data/clinical";
 import { fmtClock, fmtDur, holterAnalytics, type HolterEvent } from "@/data/holter";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,7 @@ export default function HolterReviewPage() {
   const [span, setSpan] = useState<"10" | "30" | "60">("30");
   const [filter, setFilter] = useState<"all" | "af" | "ventricular" | "pause">("all");
   const a = useMemo(() => (data ? holterAnalytics(data.detail) : null), [data]);
+  const windowed = useHolterWindow(id, data?.detail.fs ?? 1, t, Number(span), !!data && !data.signal);
   const h = c?.holters.find((x) => x.id === id);
   if (isLoading || !c) return <div className="space-y-4"><Skeleton className="h-14 w-96" /><Skeleton className="h-96" /></div>;
   if (error || !data || !a || !h) return <EmptyState title="Recording not found" description={String(error ?? "")} />;
@@ -77,7 +78,7 @@ export default function HolterReviewPage() {
                     const x1 = a.hr.find((x) => x.t >= s0)?.min, x2 = [...a.hr].reverse().find((x) => x.t <= s1)?.min;
                     return x1 && x2 ? <ReferenceArea key={s0} x1={x1} x2={x2} fill="hsl(var(--danger))" fillOpacity={0.1} /> : null;
                   })}
-                  <XAxis dataKey="min" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} interval={5} />
+                  <XAxis dataKey="min" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" minTickGap={40} />
                   <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} domain={["auto", "auto"]} />
                   <RTooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12 }} formatter={(v) => [`${v} bpm`, "HR"]} />
                   <ReferenceLine x={a.hr.find((x) => x.t >= t)?.min} stroke="hsl(var(--primary))" strokeDasharray="4 3" />
@@ -117,8 +118,8 @@ export default function HolterReviewPage() {
               <Slider value={[t]} min={0} max={Math.max(0, a.dur - seconds)} step={1} onValueChange={([v]) => setT(v)} aria-label="Position in recording" />
             </div>
             <div className="card-pad">
-              <HolterStrip signal={data.signal} fs={data.detail.fs} start={t} seconds={seconds} rows={rows} beats={r.beats} unusable={a.unusable}
-                onBeatClick={(b) => toast(`${BEAT_NAMES[b.class]} beat at ${fmtClock(b.time_s)}`, { description: `AI probability ${Math.round(b.probability * 100)}% (${b.confidence}). Relabelling beats is part of the full review workflow.` })} />
+              {!data.signal && !windowed ? <Skeleton className="h-64" /> : <HolterStrip signal={data.signal ?? windowed!.signal} offset={data.signal ? 0 : windowed!.offset} fs={data.detail.fs} start={t} seconds={seconds} rows={rows} beats={r.beats} unusable={a.unusable}
+                onBeatClick={(b) => toast(`${BEAT_NAMES[b.class]} beat at ${fmtClock(b.time_s)}`, { description: `AI probability ${Math.round(b.probability * 100)}% (${b.confidence}). Relabelling beats is part of the full review workflow.` })} />}
               <div className="mt-2 flex flex-wrap gap-3 text-[0.72rem] text-muted-foreground">
                 {Object.entries(BEAT_COLORS).map(([k, col]) => <span key={k} className="flex items-center gap-1"><span className="font-bold" style={{ color: col }}>{k}</span>{BEAT_NAMES[k]}</span>)}
                 <span>· numbers: RR interval (ms); bold ≥ 2 s</span>

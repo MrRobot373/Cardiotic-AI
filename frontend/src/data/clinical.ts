@@ -113,6 +113,8 @@ export function primaryFindings(statements: Statement[]) {
   return statements.filter((s) => !isGroup(s.statement));
 }
 
+export const sexLabel = (s: string | undefined) => (s === "F" ? "Female" : s === "M" ? "Male" : "Sex not recorded");
+
 export function ageLabel(age: number | null, plus: boolean) {
   if (age === null) return "Age n/a";
   return plus ? "90+ y" : `${age} y`;

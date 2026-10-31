@@ -16,6 +16,13 @@ def make(out: Path = Path(__file__).parent / ".files") -> Path:
     (out / "ecg.dcm").write_bytes(w.dicom_file(ecg, 500))
     (out / "ecg-aecg.xml").write_bytes(w.aecg_file(ecg * 0.9, 500))
     (out / "scan.pdf").write_bytes(b"%PDF-1.4 " + b"0" * 200)
+    from cardiotic_ml.data import mitdb
+    try:  # a 2.5-hour single-lead Holter from five real MIT-BIH records (when the research data is present)
+        sig = np.concatenate([mitdb.load_record(r).signal for r in (221, 203, 210, 219, 201)])
+        fs = 360
+    except Exception:  # without the research data: the fixture ECG's lead II repeated
+        sig, fs = np.tile(ecg[1], 900), 500
+    (out / "holter-2h30.edf").write_bytes(w.edf_file(sig[None].repeat(12, 0)[:, : int(len(sig) // fs * fs)], fs, leads=("II",)))
     return out
 
 
