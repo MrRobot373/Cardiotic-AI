@@ -136,6 +136,8 @@ interface Uploaded {
   source: { dataset: string };
 }
 
+const FORMAT_NAMES: Record<string, string> = { "dicom-ecg": "DICOM ECG waveform", "hl7-aecg": "HL7 aECG", "ge-muse-xml": "GE MUSE XML", "scp-ecg": "SCP-ECG", edf: "EDF", csv: "CSV" };
+
 /** Upload to the Cardiotic server: the file is read, analysed and stored; nothing is faked. */
 function ServerUpload() {
   const qc = useQueryClient();
@@ -203,7 +205,7 @@ function ServerUpload() {
                     <div className="flex flex-wrap gap-1">
                       {(d.rec.statements ?? []).filter((s) => !s.statement.startsWith("SUPER_")).map((s) => <Badge key={s.statement}>{statementName(s.statement)}</Badge>)}
                     </div>
-                    <div className="text-[0.78rem] text-muted-foreground">Format {d.rec.source.dataset}. It is now in the worklist with its AI triage.</div>
+                    <div className="text-[0.78rem] text-muted-foreground">Read as {FORMAT_NAMES[d.rec.source.dataset] ?? d.rec.source.dataset}. It is now in the {d.rec.id.startsWith("H") ? "Holter list" : "worklist with its AI triage"}.</div>
                     <Button variant="strong" asChild><Link to={d.rec.id.startsWith("H") ? `/holter/${d.rec.id}` : `/ecg/${d.rec.id}`}>Open for reading</Link></Button>
                   </>
                 )}

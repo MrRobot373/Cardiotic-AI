@@ -370,3 +370,36 @@ def test_unread_request_bodies_do_not_corrupt_the_next_request_on_the_same_conne
     r = conn.getresponse()
     assert r.status == 200 and json.loads(r.read())["status"] == "ok"
     conn.close()
+
+
+def test_signing_while_other_requests_run(server, ecg):
+    """Signing builds the HL7 message inside its transaction; requests from other users at that moment must
+    keep working (a shared connection would fail across threads)."""
+    import threading
+    t, c, rid = _signable(server, ecg)
+    findings = [s["statement"] for s in c.call("GET", f"/api/ecg/{rid}")[1]["analysis"]["result"]["statements"] if not s["statement"].startswith("SUPER_")]
+    c.call("PUT", f"/api/reviews/{rid}", {"decisions": {f: "accepted" for f in findings}}, expect=200)
+    codes, stop = [], threading.Event()
+
+    def poll():
+        p = client(server, "rsawant")
+        while not stop.is_set():
+            codes.append(p.call("GET", "/api/reviews")[0])
+            codes.append(p.call("GET", "/api/catalog")[0])
+
+    threads = [threading.Thread(target=poll) for _ in range(4)]
+    for th in threads:
+        th.start()
+    try:
+        assert c.call("POST", f"/api/reviews/{rid}/sign", {})[0] == 200
+        for _ in range(20):  # sign more ECGs while the others poll
+            _, rec = upload(t, ecg * (1 + 0.01 * (_ + 1)), "dicom")
+            fs = [s["statement"] for s in c.call("GET", f"/api/ecg/{rec['id']}")[1]["analysis"]["result"]["statements"] if not s["statement"].startswith("SUPER_")]
+            c.call("PUT", f"/api/reviews/{rec['id']}", {"decisions": {f: "accepted" for f in fs}}, expect=200)
+            assert c.call("POST", f"/api/reviews/{rec['id']}/sign", {})[0] == 200
+    finally:
+        stop.set()
+        for th in threads:
+            th.join()
+    assert codes and set(codes) == {200}
+    assert server.db.conn().execute("SELECT COUNT(*) FROM outbox").fetchone()[0] == 21

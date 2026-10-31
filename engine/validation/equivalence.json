@@ -1,5 +1,5 @@
 {
-  "created_utc": "2026-10-27T17:32:04+00:00",
+  "created_utc": "2026-10-31T14:50:38+00:00",
   "engine": {
     "engine": "cardiotic-engine",
     "version": "0.1.0",
@@ -30,15 +30,15 @@
       "ecgs": 400,
       "mismatching": 0,
       "max_prob_diff": 8.642673492431641e-07,
-      "engine_ms_per_ecg": 30.10549028249841,
-      "pytorch_ms_per_ecg": 39.15499440000161
+      "engine_ms_per_ecg": 36.061978840001814,
+      "pytorch_ms_per_ecg": 129.26123197749803
     },
     "Chapman\u2013Shaoxing (500 Hz)": {
       "ecgs": 400,
       "mismatching": 0,
       "max_prob_diff": 1.0132789611816406e-06,
-      "engine_ms_per_ecg": 29.808695194999753,
-      "pytorch_ms_per_ecg": 37.92785851500071
+      "engine_ms_per_ecg": 36.087800602501545,
+      "pytorch_ms_per_ecg": 179.2739478925006
     },
     "MIT-BIH DS2, full 30 min records": {
       "records": 22,

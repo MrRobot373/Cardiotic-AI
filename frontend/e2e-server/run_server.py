@@ -19,11 +19,10 @@ from cardiotic_engine.api import Engine  # noqa: E402
 from cardiotic_server import auth  # noqa: E402
 from cardiotic_server.app import make_app  # noqa: E402
 
-out = Path(__file__).parent / ".files"
-out.mkdir(exist_ok=True)
-ecg = np.load(ROOT / "engine" / "tests" / "fixtures" / "fixtures.npz")["ecg12"]
-(out / "ecg.dcm").write_bytes(w.dicom_file(ecg, 500))
-(out / "scan.pdf").write_bytes(b"%PDF-1.4 " + b"0" * 200)
+sys.path.insert(0, str(Path(__file__).parent))
+from make_files import make  # noqa: E402
+
+make()
 
 db = Path(tempfile.mkdtemp()) / "e2e.db"
 httpd, store, _ = make_app(db, ROOT / "frontend" / "dist", Engine(), "127.0.0.1", int(os.environ.get("PORT", "8721")))

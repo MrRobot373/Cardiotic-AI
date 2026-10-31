@@ -4,6 +4,14 @@ import { expect, test, type Page } from "@playwright/test";
 
 const FILES = path.join(path.dirname(fileURLToPath(import.meta.url)), ".files");
 const PASSWORD = "correct horse battery";
+const SHOTS = process.env.SHOTS_DIR;
+let shot = 0;
+/** With SHOTS_DIR set, each step leaves a numbered screenshot: the visual record of the test run. */
+async function snap(page: Page, name: string) {
+  if (!SHOTS) return;
+  await page.addStyleTag({ content: "header, aside { position: static !important; }" }); // sticky bars would repeat in a full-page capture
+  await page.screenshot({ path: path.join(SHOTS, `${String(++shot).padStart(2, "0")}-${name}.png`), fullPage: true });
+}
 
 async function signIn(page: Page, user: string, password = PASSWORD) {
   await page.goto("/login");
@@ -16,7 +24,6 @@ async function signIn(page: Page, user: string, password = PASSWORD) {
 test("real sign-in, upload, reading, signing, delivery queue and audit", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  page.on("response", (r) => { if (r.status() >= 400) console.log("HTTP", r.status(), r.request().method(), r.url()); });
   page.on("console", (m) => m.type() === "error" && !/401|409|400/.test(m.text()) && errors.push(m.text()));
 
   // sign-in is real: no sample users, no single sign-on button, wrong password refused
@@ -25,8 +32,10 @@ test("real sign-in, upload, reading, signing, delivery queue and audit", async (
   await expect(page.getByText("Pulse Care")).toBeVisible();
   await expect(page.getByText("Recent on this workstation")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /SSO/ })).toHaveCount(0);
+  await snap(page, "sign-in");
   await signIn(page, "rsawant", "wrong password!!");
   await expect(page.getByRole("alert").or(page.getByText(/Wrong user name or password/))).toBeVisible();
+  await snap(page, "wrong-password-refused");
 
   // technician uploads a DICOM ECG and a PDF
   await signIn(page, "rsawant");
@@ -34,14 +43,17 @@ test("real sign-in, upload, reading, signing, delivery queue and audit", async (
   await page.goto("/upload");
   await page.getByLabel("ECG file").setInputFiles(path.join(FILES, "scan.pdf"));
   await expect(page.getByText(/digitiser/)).toBeVisible();
+  await snap(page, "pdf-refused-with-reason");
   await page.getByLabel("ECG file").setInputFiles(path.join(FILES, "ecg.dcm"));
   await expect(page.getByText("Analysed — ready for reading")).toBeVisible({ timeout: 20_000 });
+  await snap(page, "dicom-uploaded-and-analysed");
   await page.getByRole("link", { name: "Open for reading" }).click();
   await expect(page).toHaveURL(/\/ecg\/E\d+/);
   await expect(page.getByRole("heading", { name: "AI findings" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Sign & send report/ })).toHaveCount(0); // a technician cannot sign
   await page.getByRole("button", { name: /Send for reading/ }).click();
   await expect(page.getByText(/Sent to the cardiologist/)).toBeVisible();
+  await snap(page, "technician-sent-for-reading");
 
   // the cardiologist reads and signs
   await page.getByRole("button", { name: "Account menu" }).click();
@@ -49,6 +61,7 @@ test("real sign-in, upload, reading, signing, delivery queue and audit", async (
   await expect(page).toHaveURL(/\/login/);
   await signIn(page, "arao");
   await expect(page.getByRole("heading", { name: /Dr\. Ananya/ })).toBeVisible();
+  await snap(page, "cardiologist-worklist");
   await page.getByRole("button", { name: /Start reading/ }).click();
   await expect(page).toHaveURL(/\/ecg\/E\d+/);
   const sign = page.getByRole("button", { name: /Sign & send report/ });
@@ -56,9 +69,11 @@ test("real sign-in, upload, reading, signing, delivery queue and audit", async (
   await page.getByRole("button", { name: "Accept remaining" }).click();
   await page.getByPlaceholder(/Interpretation note/).fill("Reviewed; no change in therapy.");
   await expect(sign).toBeEnabled();
+  await snap(page, "findings-decided-ready-to-sign");
   await sign.click();
   await expect(page.getByText(/Signed by Dr\. Ananya Rao/)).toBeVisible();
   await expect(page.getByText(/queued for the HIS/).first()).toBeVisible();
+  await snap(page, "signed");
 
   // a reload shows the same state: it lives on the server, not in the browser
   await page.reload();
@@ -66,13 +81,15 @@ test("real sign-in, upload, reading, signing, delivery queue and audit", async (
   await page.getByRole("link", { name: /View report/ }).click();
   await expect(page.getByText("FINAL REPORT")).toBeVisible();
   await expect(page.getByText("Reviewed; no change in therapy.")).toBeVisible();
+  await snap(page, "final-report");
   await expect(page.getByText("Pulse Care").first()).toBeVisible();
 
   // the signed report left as HL7 and FHIR
-  const hl7 = await page.request.get("/api/report/E000001.hl7");
+  const id = page.url().match(/ecg\/(E\d+)/)![1];
+  const hl7 = await page.request.get(`/api/report/${id}.hl7`);
   expect(hl7.status()).toBe(200);
   expect(await hl7.text()).toContain("ORU^R01");
-  const fhir = await (await page.request.get("/api/report/E000001.fhir.json")).json();
+  const fhir = await (await page.request.get(`/api/report/${id}.fhir.json`)).json();
   expect(fhir.resourceType).toBe("Bundle");
 
   // the administrator sees the audit trail and the queued HIS message; no monitoring board with invented data
@@ -84,10 +101,13 @@ test("real sign-in, upload, reading, signing, delivery queue and audit", async (
   await page.goto("/audit");
   await expect(page.getByText("Signed ECG report")).toBeVisible();
   await expect(page.getByText("Uploaded ECG")).toBeVisible();
+  await snap(page, "audit-log");
   await page.goto("/settings/integrations");
   await expect(page.getByText("queued")).toBeVisible();
+  await snap(page, "his-delivery-queue");
   await page.goto("/settings/users");
   await expect(page.getByText("rsawant")).toBeVisible();
+  await snap(page, "users");
 
   expect(errors).toEqual([]);
 });

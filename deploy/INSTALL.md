@@ -3,10 +3,12 @@
 One server process (web app + API + AI engine + models) and one database file. Nothing is downloaded at run
 time and no patient data leaves the machine except the HL7 messages you configure to the HIS.
 
-**Status:** the steps below are tested on a clean Python environment (`deploy/smoke_test.sh`: install, model
-integrity check, server start, upload, analysis, web app, backup). The container image (`Dockerfile`) is
-written to the same steps but **has not been built or run yet** (no container daemon where this was developed):
-build it once on a machine with Docker and run `deploy/smoke_test.sh` against the running container before an install.
+**Status: both install paths are tested.**
+- `deploy/container_test.sh` checks the image as `docker compose` runs it (read-only, no capabilities, named volume). It checks:
+  - start-up and model verification, a non-root user, a read-only filesystem, users created with the CLI;
+  - the whole reading flow in a browser, with a screenshot per step in `deploy/test-screenshots/`;
+  - that data survives a restart, a backup with audit verification, and that a tampered model file is refused.
+- `deploy/smoke_test.sh` checks the same steps in a clean Python environment without containers.
 
 ## 1. What you need
 
@@ -24,9 +26,12 @@ build it once on a machine with Docker and run `deploy/smoke_test.sh` against th
 
 ```bash
 docker build -t cardiotic:0.1.0 .                       # where the internet is available
+#   Docker Hub rate-limited? the same official images: --build-arg NODE_IMAGE=mirror.gcr.io/library/node:22-slim --build-arg BASE_IMAGE=mirror.gcr.io/library/python:3.12-slim
+#   behind a TLS-inspecting proxy: --network host --secret id=ca,src=proxy-ca.pem --build-arg HTTPS_PROXY=…   (the CA is not stored in the image)
 docker save cardiotic:0.1.0 | gzip > cardiotic-0.1.0.tar.gz   # move to the hospital, then: docker load < …
 docker compose up -d
 docker compose exec cardiotic cardiotic-server create-user admin "IT Administrator" admin   # asks for a password
+deploy/container_test.sh                                 # optional: the acceptance test above (own project, volume and port; leaves the installation alone)
 ```
 
 **Without containers:**

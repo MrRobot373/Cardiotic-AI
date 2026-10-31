@@ -39,7 +39,6 @@ For hospitals and medical-equipment manufacturers. On-premise. Markets: India an
 | Gap | Why it matters |
 |---|---|
 | Regulatory clearance (CDSCO / FDA) and a clinical validation on a partner hospital's ECGs | Nothing here may be used for patient care until then |
-| Container image never built or run (no container daemon during development) | `deploy/smoke_test.sh` proves the same steps on a clean Python environment; build and test the image before an install |
 | ECG readers tested on files built from the specifications, not on real vendor exports; Philips PageWriter XML (XLI), Huffman SCP-ECG, PDF / paper images not read | Each cart model needs a real-export test before it is listed as supported |
 | No direct machine feed (watched folder, DICOM storage endpoint); technicians upload files | |
 | HIS: text report, no PDF; no ADT feed; tested against our own MLLP listener only | Integration testing with the hospital's interface engine |

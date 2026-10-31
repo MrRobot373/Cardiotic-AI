@@ -29,13 +29,15 @@ UCUM = {"/min": "/min", "ms": "ms", "deg": "deg"}
 
 
 # ------------------------------------------------------------------ what the report says
-def report_content(store, rid: str) -> dict:
-    """Everything a signed report needs, from the stored analysis and the cardiologist's review."""
-    c = store.db.conn()
+def report_content(store, rid: str, c=None) -> dict:
+    """Everything a signed report needs, from the stored analysis and the cardiologist's review.
+    `c`: the connection to read through (the signing transaction passes its own, so it sees the signature)."""
+    c = c or store.db.conn()
     rec = c.execute("SELECT * FROM recordings WHERE id=? AND kind='ecg12'", (rid,)).fetchone()
     if rec is None:
         raise KeyError(rid)
-    rv = store.review(rid)
+    row = c.execute("SELECT * FROM reviews WHERE ecg_id=?", (rid,)).fetchone()
+    rv = store._review(row)
     if rv["status"] != "signed":
         raise ValueError("only signed reports are exported")
     summary, detail = json.loads(rec["summary"]), _unz(rec["detail"])
@@ -171,20 +173,10 @@ def fhir_bundle(rep: dict) -> dict:
 # ------------------------------------------------------------------ outbox
 def enqueue(store, c, rid: str) -> None:
     """Called inside the signing transaction: the message is built now (what was signed is what is sent)."""
-    rep = _report_in_tx(store, c, rid)
+    rep = report_content(store, rid, c)
     his = store.db.get_setting("his", {})
     msg = hl7_oru(rep, sending_facility=rep["site"][:20], receiving_facility=his.get("facility", ""), receiving_app=his.get("application", "HIS"))
     c.execute("INSERT INTO outbox(ecg_id, kind, payload, created_at) VALUES (?,?,?,?)", (rid, "hl7-oru", msg, now()))
-
-
-def _report_in_tx(store, c, rid):
-    # the signing transaction has not committed yet; read the review through the same connection
-    orig = store.db.conn
-    store.db.conn = lambda: c
-    try:
-        return report_content(store, rid)
-    finally:
-        store.db.conn = orig
 
 
 class Worker(threading.Thread):

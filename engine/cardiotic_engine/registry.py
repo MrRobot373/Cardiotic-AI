@@ -24,6 +24,7 @@ class OnnxRunner:
     def __init__(self, path: Path, threads: int | None = None):
         import onnxruntime as ort
 
+        ort.disable_telemetry_events()  # on-premise: the runtime sends nothing anywhere
         opts = ort.SessionOptions()
         opts.intra_op_num_threads = threads or int(os.environ.get("CARDIOTIC_ENGINE_THREADS", "1"))
         opts.inter_op_num_threads = 1

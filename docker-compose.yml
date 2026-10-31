@@ -5,7 +5,7 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8720:8720"        # only the reverse proxy (TLS) talks to it; see deploy/nginx.conf.example
+      - "127.0.0.1:${CARDIOTIC_PORT:-8720}:8720"   # only the reverse proxy (TLS) talks to it; see deploy/nginx.conf.example
     volumes:
       - cardiotic-data:/data         # the database: patients, ECGs, reviews, audit log
       # - ./site_config.json:/etc/cardiotic/site_config.json:ro   # signed-off per-site operating points
