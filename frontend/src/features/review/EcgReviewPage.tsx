@@ -75,7 +75,7 @@ function Analysis({ item, detail, review }: { item: WorkItem; detail: EcgDetail;
   }
   return (
     <Card>
-      <CardHeader title="ECG analysis" description={`Median of ${r.measurements.beats_in_median ?? "?"} beats · ${r.measurements.beats_detected ?? "?"} detected`} icon={<Ruler />}
+      <CardHeader title="ECG analysis" description={r.measurements.beats_in_median != null ? `Median of ${r.measurements.beats_in_median} beats · ${r.measurements.beats_detected ?? "?"} detected` : "Rate and rhythm strip only"} icon={<Ruler />}
         actions={<Badge tone="outline">Draft · verify before acting</Badge>} />
       <div className="card-pad grid grid-cols-2 gap-2">
         <MeasureTile label="Heart rate" value={fmt(m.heart_rate_bpm)} unit="bpm" sub={r.measurements.rr_irregular ? "Irregular RR" : "Regular"} flag={rangeFlag("heart_rate_bpm", m.heart_rate_bpm)} edited={m.edited.has("heart_rate_bpm")} />
@@ -83,7 +83,7 @@ function Analysis({ item, detail, review }: { item: WorkItem; detail: EcgDetail;
         <MeasureTile label="QRS duration" value={fmt(m.qrs_ms)} unit="ms" flag={rangeFlag("qrs_ms", m.qrs_ms)} edited={m.edited.has("qrs_ms")} />
         <MeasureTile label="QT / QTc (Bazett)" value={`${fmt(m.qt_ms)} / ${fmt(m.qtc_bazett_ms)}`} unit="ms" sub={!qtcInterpretable(m, r.statements) ? "Wide QRS / paced: QTc not interpretable" : r.measurements.qtc_fridericia_ms ? `Fridericia ${fmt(r.measurements.qtc_fridericia_ms)}` : undefined}
           flag={qtcInterpretable(m, r.statements) ? rangeFlag("qtc_bazett_ms", m.qtc_bazett_ms, sex) : null} edited={m.edited.has("qt_ms")} />
-        <MeasureTile label="Frontal QRS axis" value={`${m.qrs_axis_deg! > 0 ? "+" : ""}${fmt(m.qrs_axis_deg)}°`} sub={axisLabel(m.qrs_axis_deg)} flag={rangeFlag("qrs_axis_deg", m.qrs_axis_deg)} />
+        <MeasureTile label="Frontal QRS axis" value={m.qrs_axis_deg == null ? "Not measured" : `${m.qrs_axis_deg > 0 ? "+" : ""}${fmt(m.qrs_axis_deg)}°`} sub={axisLabel(m.qrs_axis_deg ?? undefined)} flag={m.qrs_axis_deg == null ? null : rangeFlag("qrs_axis_deg", m.qrs_axis_deg)} />
         <MeasureTile label="Signal quality" value={`${good} / 12`} unit="leads good" sub={bad.length ? bad.map(([l, v]) => `${l === "AVR" ? "aVR" : l === "AVL" ? "aVL" : l === "AVF" ? "aVF" : l} ${v}`).join(", ") : "All leads good"} flag={bad.some(([, v]) => v === "unusable") ? "low" : null} />
       </div>
       {(r.notes.length > 0 || detail.analysis.input_notes.length > 0) && (
@@ -148,7 +148,10 @@ function Findings({ item, detail, review, onShow, showing }: { item: WorkItem; d
   return (
     <Card>
       <CardHeader title="AI findings" description={signed ? "Signed — read only" : "Accept or reject each one before signing"} icon={<BrainCircuit />}
-        actions={<Tooltip content={`${detail.analysis.engine.models.ecg12.model} · ${detail.analysis.engine.models.ecg12.sha256.slice(0, 12)}`}><span><Badge tone="primary"><Cpu /> {detail.analysis.engine.models.ecg12.model.replace("ecg12_net_", "ecg12 ")}</Badge></span></Tooltip>} />
+        actions={(() => {
+          const mm = (item.ecg.layout?.startsWith("print") && detail.analysis.engine.models.ecg12_print) || detail.analysis.engine.models.ecg12;
+          return <Tooltip content={`${mm.model} · ${mm.sha256.slice(0, 12)}`}><span><Badge tone="primary"><Cpu /> {mm.model.replace("ecg12_net_", "ecg12 ")}</Badge></span></Tooltip>;
+        })()} />
       <div className="card-pad space-y-2">
         {groups.length > 0 && (
           <div className="flex flex-wrap gap-1 pb-1">

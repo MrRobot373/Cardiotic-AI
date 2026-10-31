@@ -99,7 +99,7 @@ test("real sign-in, upload, reading, signing, delivery queue and audit", async (
   await signIn(page, "kdesai");
   await page.goto("/audit");
   await expect(page.getByText("Signed ECG report")).toBeVisible();
-  await expect(page.getByText("Uploaded ECG")).toBeVisible();
+  await expect(page.getByText("Uploaded ECG").first()).toBeVisible();
   await snap(page, "audit-log");
   await page.goto("/settings/integrations");
   await expect(page.getByText("queued")).toBeVisible();

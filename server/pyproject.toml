@@ -7,6 +7,8 @@ dependencies = [
   "cardiotic-engine>=0.1.0",   # install from ../engine (it brings numpy, scipy, onnxruntime and cardiotic-ml core)
   "pydicom>=2.4",              # DICOM ECG files
   "pynetdicom>=2.0",           # DICOM receiver (machine feed)
+  "ldap3>=2.9",                # Active Directory / LDAP sign-in
+  "cryptography>=42",          # OpenID Connect ID-token signature check
 ]
 
 [project.optional-dependencies]

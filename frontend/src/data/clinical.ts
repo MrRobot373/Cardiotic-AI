@@ -99,7 +99,7 @@ export function rangeFlag(key: keyof Measurements, v: number | null | undefined,
 }
 
 export function axisLabel(deg: number | undefined): string {
-  if (deg === undefined) return "";
+  if (deg === undefined || deg === null) return "";
   if (deg < -90 || deg > 180) return "Extreme axis";
   if (deg < -30) return "Left axis deviation";
   if (deg > 90) return "Right axis deviation";

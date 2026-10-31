@@ -44,6 +44,9 @@ curl -fs $URL/api/reviews -H "Authorization: Bearer $TOKEN" | grep -q '"status":
 docker compose exec -T cardiotic cardiotic-server backup /data/backup-test.db >/dev/null
 docker compose exec -T cardiotic cardiotic-server --db /data/backup-test.db verify-audit | grep -q "'ok': True" && ok "backup written and its audit chain verifies"
 
+docker compose exec -T cardiotic python - <<'PY' && ok "optional libraries present in the image (LDAP, OpenID signature check, DICOM receiver, PDF/image digitiser, Philips XLI)"
+import ldap3, cryptography, pynetdicom, pypdf, PIL, sierraecg, pydicom
+PY
 MODEL=$(docker compose exec -T cardiotic python -c 'import cardiotic_engine, pathlib; print(pathlib.Path(cardiotic_engine.__file__).parent / "models" / "quality_net_v0.3.onnx")' | tr -d '\r')
 head -c 4096 /dev/urandom > /tmp/tampered.onnx
 set +e

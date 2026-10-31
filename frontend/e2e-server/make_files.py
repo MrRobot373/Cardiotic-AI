@@ -16,6 +16,10 @@ def make(out: Path = Path(__file__).parent / ".files") -> Path:
     (out / "ecg.dcm").write_bytes(w.dicom_file(ecg, 500))
     (out / "ecg-aecg.xml").write_bytes(w.aecg_file(ecg * 0.9, 500))
     (out / "scan.pdf").write_bytes(b"%PDF-1.4 " + b"0" * 200)
+    try:  # a paper ECG as a PDF: the standard 3 x 4 + rhythm strip printout
+        (out / "printout.pdf").write_bytes(w.printout(ecg * 0.9, 500, "pdf"))
+    except ImportError:
+        pass
     from cardiotic_ml.data import mitdb
     try:  # a 2.5-hour single-lead Holter from five real MIT-BIH records (when the research data is present)
         sig = np.concatenate([mitdb.load_record(r).signal for r in (221, 203, 210, 219, 201)])
