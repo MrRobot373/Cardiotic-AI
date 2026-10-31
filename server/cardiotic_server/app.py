@@ -274,7 +274,7 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 if method == "PUT":
                     b = self._json_body()
                     his = {"enabled": bool(b.get("enabled")), "host": str(b.get("host", "")).strip(), "port": int(b.get("port", 2575)), "facility": str(b.get("facility", ""))[:40],
-                           "application": str(b.get("application", "HIS"))[:40]}
+                           "application": str(b.get("application", "HIS"))[:40], "attach_pdf": bool(b.get("attach_pdf", True))}
                     if his["enabled"] and not his["host"]:
                         raise ValueError("host is required to enable the HIS connection")
                     if not 0 < his["port"] < 65536:
@@ -293,6 +293,12 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                         raise NotFound(g[1])
                     db.audit(user["name"], "Retried HIS delivery", g[1], c)
                 return self._json(200, {"ok": True})
+            if method == "GET" and (g := m(r"/report/(E\d+)\.pdf", path)):
+                try:
+                    data = export.report_pdf(store, g[1], allow_draft=True)
+                except KeyError:
+                    raise NotFound(g[1]) from None
+                return self._bytes(200, data, "application/pdf", [("Content-Disposition", f'inline; filename="ECG-report-{g[1]}.pdf"')])
             if method == "GET" and (g := m(r"/report/(E\d+)\.(hl7|fhir\.json)", path)):
                 _role(user, "admin", "cardiologist", "technician")
                 try:
@@ -303,8 +309,9 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                     raise Conflict(str(e)) from None
                 if g[2] == "hl7":
                     his = db.get_setting("his", {})
-                    return self._bytes(200, export.hl7_oru(rep, sending_facility=rep["site"][:20], receiving_facility=his.get("facility", ""), receiving_app=his.get("application", "HIS")).encode("latin-1", "replace"), "text/plain; charset=iso-8859-1")
-                return self._json(200, export.fhir_bundle(rep))
+                    return self._bytes(200, export.hl7_oru(rep, sending_facility=rep["site"][:20], receiving_facility=his.get("facility", ""), receiving_app=his.get("application", "HIS"),
+                                                          pdf_bytes=export.report_pdf(store, g[1]) if his.get("attach_pdf", True) else None).encode("latin-1", "replace"), "text/plain; charset=iso-8859-1")
+                return self._json(200, export.fhir_bundle(rep, export.report_pdf(store, g[1])))
             if path == "/users" or m(r"/users/[a-z0-9._-]+", path):
                 _role(user, "admin")
                 return self._users(method, path, user)

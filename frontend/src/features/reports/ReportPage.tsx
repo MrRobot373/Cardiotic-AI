@@ -1,4 +1,5 @@
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, FileDown, Printer } from "lucide-react";
+import { serverMode } from "@/lib/server";
 import { Link, useParams } from "react-router";
 import { useDemo } from "@/app/demo-store";
 
@@ -31,7 +32,8 @@ export default function ReportPage() {
     <div className="min-h-screen bg-muted/50 py-6 print:bg-white print:py-0">
       <div className="no-print mx-auto mb-4 flex max-w-[900px] items-center gap-2 px-4">
         <Button variant="secondary" asChild><Link to={`/ecg/${item.ecg.id}`}><ArrowLeft /> Back to review</Link></Button>
-        <Button variant="strong" className="ml-auto" onClick={() => window.print()}><Printer /> Print / save PDF</Button>
+        {serverMode && <Button variant="secondary" className="ml-auto" asChild><a href={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/report/${item.ecg.id}.pdf`} target="_blank" rel="noreferrer"><FileDown /> PDF report</a></Button>}
+        <Button variant="strong" className={serverMode ? "" : "ml-auto"} onClick={() => window.print()}><Printer /> Print</Button>
       </div>
       <article className="relative mx-auto max-w-[900px] bg-white px-10 py-8 text-[13px] text-slate-900 shadow-card print:max-w-none print:px-6 print:py-4 print:shadow-none">
         {!signed && <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[110px] font-bold tracking-widest text-slate-900/[0.05] [transform:rotate(-24deg)]">DRAFT</div>}

@@ -11,6 +11,7 @@ not as a PDF (the printable report in the web app is the PDF source).
 
 from __future__ import annotations
 
+import base64
 import json
 import math
 import socket
@@ -29,7 +30,7 @@ UCUM = {"/min": "/min", "ms": "ms", "deg": "deg"}
 
 
 # ------------------------------------------------------------------ what the report says
-def report_content(store, rid: str, c=None) -> dict:
+def report_content(store, rid: str, c=None, allow_draft: bool = False) -> dict:
     """Everything a signed report needs, from the stored analysis and the cardiologist's review.
     `c`: the connection to read through (the signing transaction passes its own, so it sees the signature)."""
     c = c or store.db.conn()
@@ -38,7 +39,7 @@ def report_content(store, rid: str, c=None) -> dict:
         raise KeyError(rid)
     row = c.execute("SELECT * FROM reviews WHERE ecg_id=?", (rid,)).fetchone()
     rv = store._review(row)
-    if rv["status"] != "signed":
+    if rv["status"] != "signed" and not allow_draft:
         raise ValueError("only signed reports are exported")
     summary, detail = json.loads(rec["summary"]), _unz(rec["detail"])
     pat = c.execute("SELECT * FROM patients WHERE id=?", (rec["patient_id"],)).fetchone()
@@ -52,11 +53,15 @@ def report_content(store, rid: str, c=None) -> dict:
     ai = [s["statement"] for s in detail["analysis"]["result"]["statements"] if not s["statement"].startswith("SUPER_")]
     final = [s for s in ai if rv["decisions"].get(s) != "rejected"] + [s for s in rv["added"] if s not in ai]
     eng = detail["analysis"]["engine"]
-    return {"id": rid, "patient": {"id": pat["id"], "mrn": pat["mrn"], "name": pat["name"], "sex": pat["sex"], "birth_date": pat["birth_date"]},
+    return {"device": summary.get("device", ""), "id": rid, "patient": {"id": pat["id"], "mrn": pat["mrn"], "name": pat["name"], "sex": pat["sex"], "birth_date": pat["birth_date"]},
             "recorded_at": summary["recorded_at"], "ordered_by": summary["ordered_by"], "location": summary["location"],
             "measurements": {k: (round(m[k], 1) if m.get(k) is not None else None) for k, *_ in MEASUREMENTS}, "edited": sorted(k for k in rv["edits"] if not k.startswith("cal.")),
-            "statements": [{"code": s, "text": names.get(s, s)} for s in final], "note": rv["note"], "signed_by": rv["signedBy"], "signed_at": rv["signedAt"],
+            "statements": [{"code": s, "text": _cap(names.get(s, s))} for s in final], "note": rv["note"], "signed_by": rv["signedBy"], "signed_at": rv["signedAt"],
             "software": f"{eng['engine']} {eng['version']} (models {eng['models_version']})", "site": store.site()["siteName"]}
+
+
+def _cap(t: str) -> str:
+    return t[:1].upper() + t[1:]
 
 
 def _unz(b):
@@ -86,7 +91,16 @@ def _ts(iso: str | None) -> str:
     return d.strftime("%Y%m%d%H%M%S")
 
 
-def hl7_oru(rep: dict, sending_app: str = "CARDIOTIC", sending_facility: str = "", receiving_app: str = "HIS", receiving_facility: str = "", message_id: str | None = None) -> str:
+def report_pdf(store, rid: str, c=None, allow_draft: bool = False) -> bytes:
+    from . import pdf
+    c = c or store.db.conn()
+    rep = report_content(store, rid, c, allow_draft)
+    detail = _unz(c.execute("SELECT detail FROM recordings WHERE id=?", (rid,)).fetchone()["detail"])
+    return pdf.ecg_report(rep, detail["leads"], detail["fs"], draft=rep["signed_by"] is None)
+
+
+def hl7_oru(rep: dict, sending_app: str = "CARDIOTIC", sending_facility: str = "", receiving_app: str = "HIS", receiving_facility: str = "", message_id: str | None = None,
+            pdf_bytes: bytes | None = None) -> str:
     p = rep["patient"]
     family, _, given = (p["name"].rpartition(" ")[2], "", p["name"].rpartition(" ")[0]) if " " in p["name"] else (p["name"], "", "")
     mid = message_id or uuid.uuid4().hex[:20].upper()
@@ -105,6 +119,9 @@ def hl7_oru(rep: dict, sending_app: str = "CARDIOTIC", sending_facility: str = "
         seg.append(f"OBX|{n}|CWE|ECG-STMT^ECG statement^L||{_esc(s['code'])}^{_esc(s['text'])}^SCP-ECG||||||F")
     n += 1
     seg.append(f"OBX|{n}|FT|ECG-REPORT^ECG report text^L||{_esc(report_text(rep))}||||||F|||{_ts(rep['signed_at'])}||{_esc(rep['signed_by'])}")
+    if pdf_bytes:  # the signed report document itself, as HL7 encapsulated data
+        n += 1
+        seg.append(f"OBX|{n}|ED|ECG-PDF^ECG report PDF^L||^AP^PDF^Base64^{base64.b64encode(pdf_bytes).decode()}||||||F")
     return "\r".join(seg) + "\r"
 
 
@@ -133,7 +150,7 @@ def send_mllp(host: str, port: int, message: str, timeout: float = 10.0) -> tupl
 
 
 # ------------------------------------------------------------------ FHIR R4
-def fhir_bundle(rep: dict) -> dict:
+def fhir_bundle(rep: dict, pdf_bytes: bytes | None = None) -> dict:
     p = rep["patient"]
     pid, rid = str(uuid.uuid4()), str(uuid.uuid4())
     period = rep["recorded_at"]
@@ -165,6 +182,7 @@ def fhir_bundle(rep: dict) -> dict:
               "performer": [{"display": rep["signed_by"]}], "resultsInterpreter": [{"display": rep["signed_by"]}],
               "identifier": [{"system": "urn:cardiotic:report", "value": rep["id"]}],
               "result": obs_refs, "conclusion": report_text(rep),
+              **({"presentedForm": [{"contentType": "application/pdf", "title": f"ECG report {rep['id']}", "data": base64.b64encode(pdf_bytes).decode()}]} if pdf_bytes else {}),
               "conclusionCode": [{"coding": [{"system": "urn:cardiotic:scp-ecg", "code": s["code"], "display": s["text"]}], "text": s["text"]} for s in rep["statements"]]}
     entries.append({"fullUrl": f"urn:uuid:{rid}", "resource": report, "request": {"method": "POST", "url": "DiagnosticReport"}})
     return {"resourceType": "Bundle", "type": "transaction", "entry": entries}
@@ -175,7 +193,8 @@ def enqueue(store, c, rid: str) -> None:
     """Called inside the signing transaction: the message is built now (what was signed is what is sent)."""
     rep = report_content(store, rid, c)
     his = store.db.get_setting("his", {})
-    msg = hl7_oru(rep, sending_facility=rep["site"][:20], receiving_facility=his.get("facility", ""), receiving_app=his.get("application", "HIS"))
+    msg = hl7_oru(rep, sending_facility=rep["site"][:20], receiving_facility=his.get("facility", ""), receiving_app=his.get("application", "HIS"),
+                  pdf_bytes=report_pdf(store, rid, c) if his.get("attach_pdf", True) else None)
     c.execute("INSERT INTO outbox(ecg_id, kind, payload, created_at) VALUES (?,?,?,?)", (rid, "hl7-oru", msg, now()))
 
 

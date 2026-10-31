@@ -403,3 +403,36 @@ def test_signing_while_other_requests_run(server, ecg):
             th.join()
     assert codes and set(codes) == {200}
     assert server.db.conn().execute("SELECT COUNT(*) FROM outbox").fetchone()[0] == 21
+
+
+def test_pdf_report_draft_then_final_and_attached_to_hl7_and_fhir(server, ecg):
+    import base64
+    t, c, rid = _signable(server, ecg)
+    code, draft = c.call("GET", f"/api/report/{rid}.pdf")
+    assert code == 200 and draft.startswith(b"%PDF-1.4") and b"%%EOF" in draft[-10:]
+    assert c.call("GET", "/api/report/E999999.pdf")[0] == 404
+    findings = [s["statement"] for s in c.call("GET", f"/api/ecg/{rid}")[1]["analysis"]["result"]["statements"] if not s["statement"].startswith("SUPER_")]
+    c.call("PUT", f"/api/reviews/{rid}", {"decisions": {f: "accepted" for f in findings}}, expect=200)
+    c.call("POST", f"/api/reviews/{rid}/sign", {}, expect=200)
+    final = c.call("GET", f"/api/report/{rid}.pdf")[1]
+    assert final != draft and b"/Count 1" in final
+    hl7 = c.call("GET", f"/api/report/{rid}.hl7")[1].decode("latin-1")
+    ed = next(l.split("|") for l in hl7.split("\r") if l.startswith("OBX") and l.split("|")[2] == "ED")
+    parts = ed[5].split("^")
+    assert parts[1:4] == ["AP", "PDF", "Base64"] and base64.b64decode(parts[4]).startswith(b"%PDF")
+    fhir = c.call("GET", f"/api/report/{rid}.fhir.json")[1]
+    dr = next(e["resource"] for e in fhir["entry"] if e["resource"]["resourceType"] == "DiagnosticReport")
+    assert dr["presentedForm"][0]["contentType"] == "application/pdf" and base64.b64decode(dr["presentedForm"][0]["data"]).startswith(b"%PDF")
+    queued = server.db.conn().execute("SELECT payload FROM outbox").fetchone()["payload"]
+    assert "|ED|ECG-PDF" in queued  # the queued message carries the signed PDF
+
+
+def test_pdf_is_valid_for_a_pdf_reader(server, ecg, tmp_path):
+    import shutil
+    import subprocess
+    if not shutil.which("pdfinfo"):
+        pytest.skip("pdfinfo not installed")
+    t, c, rid = _signable(server, ecg)
+    (tmp_path / "r.pdf").write_bytes(c.call("GET", f"/api/report/{rid}.pdf")[1])
+    out = subprocess.run(["pdfinfo", str(tmp_path / "r.pdf")], capture_output=True, text=True)
+    assert out.returncode == 0 and "Pages:           1" in out.stdout and "(A4)" in out.stdout
