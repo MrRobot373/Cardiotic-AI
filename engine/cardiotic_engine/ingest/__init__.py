@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from . import csv_reader, dicom_waveform, edf, hl7_aecg, muse_xml, philips_xml, scp_ecg
+from . import csv_reader, dicom_waveform, digitise, edf, hl7_aecg, muse_xml, philips_xml, scp_ecg
 from .common import LEADS, IngestError, ParsedEcg
 
 __all__ = ["parse", "detect", "ParsedEcg", "IngestError", "LEADS"]
@@ -23,7 +23,7 @@ def detect(data: bytes) -> str:
     if data[:8] == b"0       ":
         return "edf"
     if data[:5] == b"%PDF-":
-        raise IngestError("PDF files are not read yet: paper-ECG images and PDFs need the ECG image digitiser; export the ECG as DICOM, HL7 aECG or MUSE XML")
+        return "pdf"
     if scp_ecg.looks_like_scp(data):
         return "scp"
     head = data[:4096].lstrip(b"\xef\xbb\xbf \t\r\n")
@@ -37,8 +37,8 @@ def detect(data: bytes) -> str:
         if tag == "restingecgdata":
             return "philips"
         raise IngestError(f"unknown XML ECG format (root element <{tag}>)")
-    if head[:2] == b"\x89P" or head[:3] == b"\xff\xd8\xff":
-        raise IngestError("images are not read yet: paper-ECG images need the ECG image digitiser")
+    if data[:4] == b"\x89PNG" or data[:3] == b"\xff\xd8\xff" or data[:4] in (b"II*\x00", b"MM\x00*"):
+        return "image"
     try:
         data[:2048].decode("utf-8-sig")
     except UnicodeDecodeError:
@@ -46,7 +46,7 @@ def detect(data: bytes) -> str:
     return "csv"
 
 
-_READERS = {"philips": philips_xml.read, "dicom": dicom_waveform.read, "edf": edf.read, "scp": scp_ecg.read, "aecg": hl7_aecg.read, "muse": muse_xml.read, "csv": csv_reader.read}
+_READERS = {"pdf": digitise.from_pdf, "image": digitise.from_image, "philips": philips_xml.read, "dicom": dicom_waveform.read, "edf": edf.read, "scp": scp_ecg.read, "aecg": hl7_aecg.read, "muse": muse_xml.read, "csv": csv_reader.read}
 
 
 def parse(data: bytes, fs: float | None = None, units: str | None = None) -> ParsedEcg:

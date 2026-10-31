@@ -301,3 +301,54 @@ def scp_huffman_file(x, fs, custom_table=False, enc=1, leads=("I", "II", "V1", "
     body = sec0 + b"".join(blocks.values())
     head = struct.pack("<I", 6 + len(body))
     return struct.pack("<H", _crc16(head + body)) + head + body
+
+
+# ------------------------------------------------------------------ printed ECGs, drawn by matplotlib (an independent renderer)
+def printout(x, fs, kind="pdf", layout="3x4", dpi=200, rotate=0.0, photo=False):
+    """A standard ECG printout of x (12, 10 s) on 1 mm / 5 mm pink grid at 25 mm/s and 10 mm/mV, as PDF or PNG/JPEG."""
+    import io as _io
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    grid = {"3x4": [["I", "AVR", "V1", "V4"], ["II", "AVL", "V2", "V5"], ["III", "AVF", "V3", "V6"], ["II*"]],
+            "12x1": [[l] for l in LEADS]}[layout]
+    rows = len(grid)
+    row_mm = 25 if layout == "3x4" else 15
+    w_mm, h_mm = 250, rows * row_mm
+    fig = plt.figure(figsize=((w_mm + 40) / 25.4, (h_mm + 40) / 25.4))
+    ax = fig.add_axes([20 / (w_mm + 40), 20 / (h_mm + 40), w_mm / (w_mm + 40), h_mm / (h_mm + 40)])
+    ax.set_xlim(0, w_mm); ax.set_ylim(0, h_mm); ax.axis("off")
+    for i in range(w_mm + 1):
+        ax.axvline(i, color="#f4a6a6" if i % 5 else "#e06666", lw=0.2 if i % 5 else 0.5, zorder=0)
+    for j in range(h_mm + 1):
+        ax.axhline(j, color="#f4a6a6" if j % 5 else "#e06666", lw=0.2 if j % 5 else 0.5, zorder=0)
+    n = x.shape[1]
+    t = np.arange(n) / fs * 25
+    for r, row in enumerate(grid):
+        base = h_mm - (r + 0.55) * row_mm
+        for c, lead in enumerate(row):
+            name = lead.rstrip("*")
+            s = x[LEADS.index(name)]
+            a, b = (0, n) if len(row) == 1 else (c * n // len(row), (c + 1) * n // len(row))
+            ax.plot(t[a:b], base + 10 * np.clip(s[a:b] - np.median(s), -1.2, 1.2), color="black", lw=0.6, zorder=2)
+            ax.text(t[a] + 1, base + 7, PRETTY.get(name, name), fontsize=6, zorder=3)
+    fig.text(0.02, 0.98, "25 mm/s  10 mm/mV", fontsize=7, va="top")
+    buf = _io.BytesIO()
+    if kind == "pdf":
+        fig.savefig(buf, format="pdf")
+        plt.close(fig)
+        return buf.getvalue()
+    fig.savefig(buf, format="png", dpi=dpi)
+    plt.close(fig)
+    if not (rotate or photo):
+        return buf.getvalue()
+    from PIL import Image, ImageEnhance, ImageFilter
+    im = Image.open(_io.BytesIO(buf.getvalue())).convert("RGB")
+    if rotate:
+        im = im.rotate(rotate, resample=Image.BICUBIC, fillcolor=(232, 232, 226))
+    if photo:
+        im = ImageEnhance.Brightness(im.filter(ImageFilter.GaussianBlur(0.8))).enhance(0.85)
+    out = _io.BytesIO()
+    im.save(out, format="JPEG" if photo else "PNG", quality=70)
+    return out.getvalue()

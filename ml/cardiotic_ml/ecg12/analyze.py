@@ -29,7 +29,7 @@ class Models12:
     """Statement and quality runners plus their cards. Default: PyTorch weights from ARTIFACTS_DIR
     (research); the engine passes ONNX runners and its manifest entries instead."""
 
-    def __init__(self, directory=ARTIFACTS_DIR, net=None, card=None, quality=None, q_card=None, site=None):
+    def __init__(self, directory=ARTIFACTS_DIR, net=None, card=None, quality=None, q_card=None, site=None, print_net=None, print_card=None):
         if net is None:
             import torch
 
@@ -44,6 +44,7 @@ class Models12:
             q.load_state_dict(torch.load(directory / f"{QUALITY_MODEL}.pt", weights_only=True))
             net, quality = TorchRunner(m), TorchRunner(q)
         self.net, self.card, self.quality, self.q_card = net, card, quality, q_card
+        self.print_net, self.print_card = print_net, print_card  # model for ECGs digitised from 3 x 4 printouts (optional)
         # per-site operating points (ecg12/site.py): thresholds only, never the model
         from cardiotic_ml.ecg12 import site as site_cfg
         self.site = site_cfg.validate(site, card) if site else None
@@ -60,14 +61,18 @@ def lead_quality(signal: np.ndarray, fs: float, models: Models12) -> dict[str, s
     return out
 
 
-def probabilities(signal: np.ndarray, fs: float, models: Models12) -> np.ndarray:
-    """Calibrated probability of every statement the model has (card["labels"] order), before any threshold."""
+def probabilities(signal: np.ndarray, fs: float, models: Models12, net=None, card=None, print_mask: bool = False) -> np.ndarray:
+    """Calibrated probability of every statement the model has (card["labels"] order), before any threshold.
+    net / card / print_mask: the printout model, which sees each lead only where a 3 x 4 printout shows it."""
     x = dsp.resample(signal, fs, FS_MODEL) if fs != FS_MODEL else signal.astype(np.float32)
     x = x[:, :N_MODEL] if x.shape[1] >= N_MODEL else np.pad(x, ((0, 0), (0, N_MODEL - x.shape[1])))
     x = dsp.bandpass(x, FS_MODEL, "diagnostic")
-    c = models.card
+    c = card or models.card
     x = (x - np.array(c["lead_mean"])[:, None]) / np.array(c["lead_std"])[:, None]
-    z = run_batched(models.net, x[None].astype(np.float32))[0] / c["temperature"]
+    if print_mask:
+        from cardiotic_ml.ecg12 import printlayout
+        x = printlayout.mask(x)
+    z = run_batched(net or models.net, x[None].astype(np.float32))[0] / c["temperature"]
     return 1 / (1 + np.exp(-z))
 
 
@@ -142,3 +147,59 @@ def plot_12lead(signal: np.ndarray, fs: float, result: dict, path, title: str = 
     fig.tight_layout()
     fig.savefig(path)
     plt.close(fig)
+
+
+def analyze_printout(signal: np.ndarray, fs: float, models: Models12, layout: str, windows: dict[str, tuple[int, int]]) -> dict:
+    """An ECG read back from paper or PDF (cardiotic_engine.ingest.digitise). A 3 x 4 printout shows each lead for
+    2.5 s and lead II for 10 s: statements come from the printout model (trained on exactly that), rate and PR
+    from the rhythm strip; QRS, QT and QTc need more beats per lead than a 2.5 s column holds and are not
+    reported (ml/reports/RESULTS.md, printouts). A 12 x 1 printout has every lead for 10 s: full analysis."""
+    from cardiotic_ml import dsp, qrs
+    signal = np.asarray(signal, dtype=np.float32)
+    if layout == "print-12x1":
+        out = analyze_12lead(signal, fs, models)
+        out["notes"] = ["Digitised from a printout (12 x 1): full analysis"] + out["notes"]
+        return out
+    quality = {}
+    for name, lead in zip(LEADS, signal):
+        a, b = windows[name]
+        seg = lead[a:b]
+        wins = q_data.signal_windows(seg, fs, q_data.lowpass_of(models.q_card))
+        if len(wins) == 0:
+            quality[name] = q_data.LABELS[2]
+            continue
+        lab = run_batched(models.quality, np.clip(wins, -10, 10)).argmax(1)
+        quality[name] = q_data.LABELS[2] if (lab == 2).mean() > 0.5 else q_data.LABELS[1] if (lab >= 1).mean() > 0.5 else q_data.LABELS[0]
+    notes = [f"Digitised from a printout ({layout.removeprefix('print-')}): each lead is shown for part of the 10 s",
+             "QRS, QT and QTc are not measured from a printout; use the cart's printed values or the digital recording"]
+    # rate from the rhythm strip (lead II, 10 s when printed), PR from its median beat
+    ii = signal[LEADS.index("II")]
+    a, b = windows["II"]
+    x360 = dsp.resample(ii[a:b], fs, 360)
+    peaks = qrs.detect_beats(x360, 360)
+    meas = {"ok": len(peaks) >= 3}
+    if meas["ok"]:
+        rr = np.diff(peaks) / 360
+        meas["heart_rate_bpm"] = float(60 / np.median(rr))
+        meas["rr_ms"] = float(1000 * np.median(rr))
+        meas["rr_irregular"] = bool(np.std(rr) / np.mean(rr) > 0.15)
+        m2 = measure.measure(np.repeat(ii[None, a:b], 12, 0), fs)
+        meas["pr_ms"] = m2.get("pr_ms") if m2.get("ok") and not meas["rr_irregular"] else None
+        for k in ("qrs_ms", "qt_ms", "qtc_bazett_ms", "qtc_fridericia_ms", "qrs_axis_deg", "t_axis_deg"):
+            meas[k] = None
+    stm = []
+    if layout == "print-3x4" and models.print_net is not None:
+        c = models.print_card
+        p = probabilities(signal, fs, models, net=models.print_net, card=c, print_mask=True)
+        th = models.thresholds  # the site's operating points apply to printouts too
+        stm = sorted(({"statement": n, "probability": float(pi), "threshold": float(c["thresholds"][n]) if n not in (models.site or {}).get("statements", {}) else th[n],
+                       "confidence": cal.confidence_level(float(pi))} for n, pi in zip(c["labels"], p)
+                      if pi >= (c["thresholds"][n] if n not in (models.site or {}).get("statements", {}) else th[n])), key=lambda d: -d["probability"])
+    else:
+        notes.append("Diagnostic statements are not given for this printout layout; rate and rhythm only")
+    if meas.get("rr_irregular"):
+        notes.append("Irregular rhythm: PR interval not reported")
+    return {"engine": {"name": "cardiotic-ml research pipeline (12-lead printout)", "version": __version__,
+                       "models": {k: {"sha256": v["sha256"][:12]} for k, v in ((models.print_card or {}).get("name", "") and {f"{models.print_card['name']}_{models.print_card['version']}": models.print_card} or {}).items()}},
+            "lead_quality": quality, "measurements": meas, "statements": stm, "notes": notes, "layout": layout,
+            "windows": {k: [int(v[0]), int(v[1])] for k, v in windows.items()}}

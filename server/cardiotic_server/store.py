@@ -142,7 +142,7 @@ class Store:
 
         sig = np.stack([parsed.leads[l] if l in parsed.leads else _derive(parsed.leads, l) for l in LEADS]).astype(np.float32)[:, : int(10 * parsed.fs)]
         view = dsp.resample(dsp.bandpass(sig, parsed.fs, "diagnostic"), parsed.fs, FS_VIEW)
-        mb = measure.median_beat(sig, parsed.fs)
+        mb = measure.median_beat(sig, parsed.fs) if parsed.layout == "recording" else None  # a printout has no simultaneous 10 s leads
         median = None
         if mb is not None:
             beat = dsp.resample(mb.beat, parsed.fs, FS_VIEW)
@@ -155,7 +155,7 @@ class Store:
             when = src.get("recorded_at") or datetime.now().isoformat(timespec="minutes")
             detail = {"id": eid, "fs": FS_VIEW, "leads": {l: _b64(view[i]) for i, l in enumerate(LEADS)}, "median": median,
                       "analysis": {k: out[k] for k in ("engine", "input_notes", "processing_ms", "result")}}
-            summary = {"id": eid, "patient_id": pid, "recorded_at": when[:16], "location": location, "ordered_by": ordered_by, "device": src.get("device") or "",
+            summary = {"layout": parsed.layout, "id": eid, "patient_id": pid, "recorded_at": when[:16], "location": location, "ordered_by": ordered_by, "device": src.get("device") or "",
                        "source": {"dataset": src["format"], "record": filename or digest[:12], "licence": "", "role": "uploaded file"},
                        "reference_statements": [],
                        "statements": [{k: s[k] for k in ("statement", "probability", "confidence")} for s in r["statements"]],

@@ -85,8 +85,8 @@ def test_muse_rhythm_waveform_is_chosen_over_median(x):
 
 
 def test_unsupported_and_damaged_files_are_refused_with_the_reason(x):
-    with pytest.raises(IngestError, match="digitiser"):
-        detect(b"%PDF-1.7 " + b"0" * 100)
+    with pytest.raises(IngestError, match="cannot read the PDF"):
+        parse(b"%PDF-1.7 " + b"0" * 100)
     with pytest.raises(IngestError, match="no signalcharacteristics"):
         parse(b'<?xml version="1.0"?><restingecgdata><x/></restingecgdata>' + b" " * 20)
     from cardiotic_engine.ingest.scp_ecg import DEFAULT_HUFFMAN, huffman_decode
@@ -134,7 +134,7 @@ def test_eight_lead_file_derives_the_limb_leads_and_says_so(engine, x):
 def test_analyze_file_refuses_files_it_cannot_analyse(engine, x):
     with pytest.raises(InputError, match="needs I, II and V1"):
         engine.analyze_file(w.csv_file(x, 500, leads=("I", "II", "III")))
-    with pytest.raises(InputError, match="digitiser"):
+    with pytest.raises(InputError, match="cannot read the PDF"):
         engine.analyze_file(b"%PDF-1.4 " + b"0" * 64)
     short = w.csv_file(x[:, :1500], 500)
     with pytest.raises(InputError, match="8–60 s"):
@@ -161,9 +161,60 @@ def test_http_file_endpoint(engine, x):
         assert json.loads(urllib.request.urlopen(req).read())["source_file"]["fs"] == 500
         with pytest.raises(urllib.error.HTTPError) as e:
             urllib.request.urlopen(urllib.request.Request(base + "/v1/file", data=b"%PDF-1.7 " + b"0" * 50, method="POST"))
-        assert e.value.code == 400 and "digitiser" in json.loads(e.value.read())["error"]
+        assert e.value.code == 400 and "PDF" in json.loads(e.value.read())["error"]
         with pytest.raises(urllib.error.HTTPError) as e:
             urllib.request.urlopen(urllib.request.Request(base + "/v1/file", data=w.csv_file(x, 500, comment=False), method="POST", headers={"X-Fs": "abc"}))
         assert e.value.code == 400
     finally:
         httpd.shutdown()
+
+
+# ------------------------------------------------------------------ digitiser (printouts drawn by matplotlib, an independent renderer)
+def _trace_r(e, x):
+    rs = []
+    for i, lead in enumerate(w.LEADS):
+        a, b = e.windows[lead]
+        ref = np.clip(x[i] - np.median(x[i]), -1.2, 1.2)[a:b]
+        got = e.leads[lead][a:b]
+        rs.append(np.corrcoef(ref - np.median(ref), got - np.median(got))[0, 1])
+    return np.median(rs), np.min(rs)
+
+
+@pytest.mark.parametrize("kind,kw,min_median_r", [
+    ("pdf", {}, 0.99), ("pdf", {"layout": "12x1"}, 0.99),
+    ("png", {}, 0.85), ("png", {"rotate": 1.5, "photo": True}, 0.85),
+])
+def test_digitiser_reads_printouts_back(kind, kw, min_median_r, x):
+    pytest.importorskip("matplotlib")
+    e = parse(w.printout(x, 500, kind, **kw))
+    assert e.layout == ("print-12x1" if kw.get("layout") == "12x1" else "print-3x4")
+    if e.layout == "print-3x4":
+        assert e.windows["II"] == (0, 5000) and e.windows["V4"] == (3750, 5000)
+    med, _ = _trace_r(e, x)
+    assert med >= min_median_r, med
+    if kw.get("rotate"):
+        assert any("straightened" in n for n in e.notes)
+
+
+def test_digitised_printout_is_analysed_with_its_limits_stated(engine, x):
+    pytest.importorskip("matplotlib")
+    out = engine.analyze_file(w.printout(x, 500, "pdf"))
+    r = out["result"]
+    assert out["source_file"]["layout"] == "print-3x4" and r["layout"] == "print-3x4"
+    assert r["measurements"]["heart_rate_bpm"] == pytest.approx(engine.analyze_ecg12({l: x[i].tolist() for i, l in enumerate(w.LEADS)}, 500)["result"]["measurements"]["heart_rate_bpm"], abs=3)
+    assert r["measurements"]["qrs_ms"] is None and any("QRS, QT and QTc are not measured" in n for n in r["notes"])
+    full = engine.analyze_file(w.printout(x, 500, "pdf", layout="12x1"))["result"]
+    assert full["measurements"]["qrs_ms"] is not None and any("12 x 1" in n for n in full["notes"])
+
+
+def test_digitiser_refuses_what_it_cannot_read(x):
+    from PIL import Image
+    import io as _io
+    blank = _io.BytesIO()
+    Image.new("RGB", (1200, 800), "white").save(blank, "PNG")
+    with pytest.raises(IngestError, match="no ECG traces"):
+        parse(blank.getvalue())
+    tiny = _io.BytesIO()
+    Image.new("RGB", (300, 200), "white").save(tiny, "PNG")
+    with pytest.raises(IngestError, match="too small"):
+        parse(tiny.getvalue())

@@ -11,6 +11,7 @@ import numpy as np
 
 MODELS_DIR = Path(os.environ.get("CARDIOTIC_ENGINE_MODELS", Path(__file__).resolve().parent / "models"))
 ROLES = ("quality", "beats", "rhythm", "ecg12")
+OPTIONAL_ROLES = ("ecg12_print",)  # verified exactly like the others whenever the manifest lists them
 
 
 class IntegrityError(RuntimeError):
@@ -61,11 +62,11 @@ def verify(directory: Path = MODELS_DIR) -> dict:
 
     manifest = load_manifest(directory)
     expected = {"quality": analyze.QUALITY_MODEL, "beats": pipeline.BEAT_MODEL, "rhythm": pipeline.RHYTHM_MODEL,
-                "ecg12": analyze.ECG12_MODEL}
+                "ecg12": analyze.ECG12_MODEL, "ecg12_print": getattr(analyze, "PRINT_MODEL", None)}
     if pipeline.QUALITY_MODEL != analyze.QUALITY_MODEL:
         raise IntegrityError("single-lead and 12-lead pipelines expect different quality models")
     report = {}
-    for role in ROLES:
+    for role in (*ROLES, *(r for r in OPTIONAL_ROLES if r in manifest["models"])):
         m = manifest["models"][role]
         path = directory / m["file"]
         if not path.exists():

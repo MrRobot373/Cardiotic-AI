@@ -83,7 +83,7 @@ class Engine:
         self.integrity = verify(models_dir)  # raises before any model is loaded if a file was altered
         manifest = load_manifest(models_dir)
         m = manifest["models"]
-        run = {role: OnnxRunner(models_dir / m[role]["file"]) for role in m}
+        run = {role: OnnxRunner(models_dir / m[role]["file"]) for role in m if role in self.integrity}
         cards = {f"{e['name']}_{e['version']}": e for e in m.values()}
         single = pipeline.Models(run["quality"], run["beats"], run["rhythm"], cards)
         import hashlib
@@ -97,7 +97,8 @@ class Engine:
             raw = Path(site_config).read_bytes()
             site = json.loads(raw)
         try:
-            ecg12 = a12.Models12(net=run["ecg12"], card=m["ecg12"], quality=run["quality"], q_card=m["quality"], site=site)
+            ecg12 = a12.Models12(net=run["ecg12"], card=m["ecg12"], quality=run["quality"], q_card=m["quality"], site=site,
+                             print_net=run.get("ecg12_print"), print_card=m.get("ecg12_print"))
         except ValueError as e:
             raise SiteConfigError(f"site configuration refused: {e}") from None
         if site:
@@ -178,6 +179,13 @@ class Engine:
             raise InputError(str(e)) from None
 
     def analyze_parsed(self, ecg) -> dict:
+        if ecg.layout.startswith("print"):  # read back from paper / PDF by the digitiser
+            from cardiotic_ml.ecg12.analyze import analyze_printout
+            t0 = time.perf_counter()
+            x = np.stack([ecg.leads[l] for l in LEADS]).astype(np.float32)
+            out = self._envelope("ecg12", analyze_printout(x, ecg.fs, self._m.ecg12, ecg.layout, ecg.windows), t0, list(ecg.notes))
+            out["source_file"] = ecg.info()
+            return out
         have = set(ecg.leads)
         if len(have) == 1:
             name = next(iter(have))

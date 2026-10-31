@@ -128,7 +128,7 @@ def ecg_report(rep: dict, leads_b64: dict[str, str], fs: float, draft: bool) -> 
 
     def trace(x0, ybase, s):
         t = np.arange(len(s)) / fs
-        step = max(1, len(s) // 600)  # ~0.4 mm resolution keeps the file small
+        step = max(1, int(round(fs / 250)))  # 4 ms (0.1 mm at 25 mm/s): the QRS keeps its shape
         pg.polyline([(x0 + 25 * ti * MM, ybase + 10 * vi * MM) for ti, vi in zip(t[::step], s[::step])], 0.55)
 
     for r, row in enumerate(LAYOUT):

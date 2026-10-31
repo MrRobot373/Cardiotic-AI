@@ -23,6 +23,7 @@
   ecg12-sex-gap   where the women / men gap comes from (validation fold only, --version)
   select-ecg12-sex  train v0.4 (women's MI weighted) if needed and apply the pre-declared sex-gap rule
   site-thresholds  simulate installation: thresholds from half of Chapman, scored on the other half
+  select-print    train the printout model (print-v0.1) if needed and apply the pre-declared rule
   select-ecg12    apply the pre-declared v0.1 / v0.2 rule (validation data only)
   analyze-12lead  run the 12-lead pipeline on one PTB-XL ECG (--ecg-id) and save JSON (+ optional plot)
   export-engine   export the adopted models to ONNX for the engine (checked against PyTorch) + manifest
@@ -61,7 +62,8 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("--seconds", type=float, default=60.0)
     a.add_argument("--out", default="analysis.json")
     a.add_argument("--plot", default=None)
-    e12 = sub.add_parser("train-ecg12"); e12.add_argument("--version", default="v0.3", choices=["v0.1", "v0.2", "v0.3", "v0.4", "v0.5"])
+    e12 = sub.add_parser("train-ecg12"); e12.add_argument("--version", default="v0.3", choices=["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "print-v0.1"])
+    sub.add_parser("select-print")
     tm = sub.add_parser("tune-ecg12-measure"); tm.add_argument("--version", default="v0.2")
     em = sub.add_parser("eval-ecg12-measure"); em.add_argument("--version", default="v0.2"); em.add_argument("--split", default="val", choices=["val", "test"])
     ex = sub.add_parser("eval-ecg12-external"); ex.add_argument("--version", default="v0.1")
@@ -97,6 +99,9 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "site-thresholds":
         from cardiotic_ml.experiments_ecg12 import site_thresholds_chapman
         site_thresholds_chapman(args.version, args.policy)
+    elif args.cmd == "select-print":
+        from cardiotic_ml.experiments_ecg12 import select_print
+        select_print()
     elif args.cmd == "select-quality":
         from cardiotic_ml.experiments import select_quality_12
         select_quality_12()

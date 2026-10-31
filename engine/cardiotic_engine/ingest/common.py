@@ -25,9 +25,11 @@ class ParsedEcg:
     recorded_at: str | None = None            # ISO 8601 as written in the file (no time zone is guessed)
     device: str | None = None
     notes: list[str] = field(default_factory=list)
+    layout: str = "recording"                 # "print-3x4" etc. when read back from a printout (digitise.py)
+    windows: dict | None = None               # printouts: the sample range each lead covers
 
     def info(self) -> dict:
-        return {"format": self.format, "patient": self.patient, "recorded_at": self.recorded_at, "device": self.device,
+        return {"layout": self.layout, "format": self.format, "patient": self.patient, "recorded_at": self.recorded_at, "device": self.device,
                 "fs": self.fs, "leads": list(self.leads), "seconds": round(len(next(iter(self.leads.values()))) / self.fs, 2)}
 
 

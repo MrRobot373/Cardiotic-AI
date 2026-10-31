@@ -42,7 +42,15 @@ ECG12_VERSIONS = {
     # on the MI outputs (SUPER_MI and every MI statement).
     "v0.4": {"epochs": 20, "width": 64, "lr": 1e-3, "weight_decay": 1e-2, "batch": 128, "ningbo": True, "ningbo_map": "v0.3",
              "women_mi_weight": 1.62},
+    # print-v0.1: v0.3 fine-tuned on what a printed 3x4 + lead II ECG contains (ecg12/printlayout.py), for ECGs read
+    # back from paper / PDF by the digitiser. Train, validation and test data are all masked the same way.
+    "print-v0.1": {"epochs": 8, "width": 64, "lr": 3e-4, "weight_decay": 1e-2, "batch": 128, "ningbo": True, "ningbo_map": "v0.3",
+                   "init_from": "v0.3", "print_mask": True},
 }
+# Pre-declared before print-v0.1 was trained: adopt it for digitised printouts only if, on VALIDATION data masked as a
+# printout, its macro-AUC (all statements) beats v0.3 on the same masked data by at least 0.03 and its superclass
+# macro-AUC is at least 0.90. Otherwise digitised printouts get rhythm and measurements only, no statements.
+PRINT_RULE = {"min_gain_all": 0.03, "min_superclass": 0.90}
 # Pre-declared before v0.4 was trained. Adopt v0.4 over v0.3 only if, on VALIDATION data:
 SEX_GAP_RULE = {
     "ptbxl_val_all_drop_max": 0.003,       # PTB-XL fold 9 macro-AUC, all statements
@@ -214,7 +222,17 @@ def train_ecg12(version: str = "v0.1") -> dict:
         ytr = torch.cat([ytr, torch.from_numpy(nb["train"][1])])
         mtr = torch.cat([mtr, torch.from_numpy(mn)])
         print(f"training ECGs: PTB-XL {int(tr.sum())} + Ningbo {len(nb['train'][1])}", flush=True)
+    if spec.get("print_mask"):
+        from cardiotic_ml.ecg12 import printlayout
+        x = printlayout.mask(x)  # after normalisation: 0 is the lead's mean, what a blank stretch of paper reads as
+        xtr = torch.from_numpy(x[tr])
+        if nb:
+            nb = {k: (printlayout.mask(v[0]), v[1], v[2]) for k, v in nb.items()}
+            xtr = torch.cat([xtr, torch.from_numpy(nb["train"][0])])
     model = ECG12Net(y.shape[1], width=spec["width"])
+    if spec.get("init_from"):
+        from cardiotic_ml.paths import ARTIFACTS_DIR
+        model.load_state_dict(torch.load(ARTIFACTS_DIR / f"ecg12_net_{spec['init_from']}.pt", weights_only=True))
     opt = torch.optim.AdamW(model.parameters(), lr=spec["lr"], weight_decay=spec["weight_decay"])
     steps = spec["epochs"] * int(np.ceil(len(xtr) / spec["batch"]))
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=spec["lr"], total_steps=steps)
@@ -477,7 +495,7 @@ def eval_measurements(version: str = "v0.2", split: str = "val") -> dict:
 EXTERNAL_MIN_POSITIVES = 20
 
 
-def predict_statements(x: np.ndarray, fs: float, version: str = "v0.1") -> tuple[np.ndarray, dict]:
+def predict_statements(x: np.ndarray, fs: float, version: str = "v0.1", print_mask: bool = False) -> tuple[np.ndarray, dict]:
     """(n, 12, samples) mV at fs -> calibrated probabilities (n, labels) with a shipped statement model."""
     from cardiotic_ml.paths import ARTIFACTS_DIR
 
@@ -489,6 +507,9 @@ def predict_statements(x: np.ndarray, fs: float, version: str = "v0.1") -> tuple
         xb = dsp.resample(x[i:i + 512], fs, FS_LR) if fs != FS_LR else x[i:i + 512]
         xb = xb[..., :1000] if xb.shape[-1] >= 1000 else np.pad(xb, ((0, 0), (0, 0), (0, 1000 - xb.shape[-1])))
         xb = (preprocess(xb) - np.array(card["lead_mean"])[None, :, None]) / np.array(card["lead_std"])[None, :, None]
+        if print_mask:
+            from cardiotic_ml.ecg12 import printlayout
+            xb = printlayout.mask(xb)
         out.append(_sigmoid(_logits(model, xb.astype(np.float32)) / card["temperature"]))
     return np.concatenate(out), card
 
@@ -753,4 +774,31 @@ def site_thresholds_chapman(version: str = "v0.3", policy: str = "max_f1", seed:
                    site_config={k: v for k, v in chosen.items() if v["source"] == "site"})
     _write(f"ecg12_site_thresholds_{version}", result)
     print(json.dumps({k: (v["model_threshold"]["f1"], v["site_threshold"]["f1"]) for k, v in rows.items()}), flush=True)
+    return result
+
+
+def select_print(candidate: str = "print-v0.1", current: str = "v0.3") -> dict:
+    """PRINT_RULE on PTB-XL validation masked as a printout; the test fold (masked) is scored once for the record."""
+    if not (REPORTS_DIR / f"ecg12_statements_{candidate}.json").exists():
+        train_ecg12(candidate)
+    stm, sup = label_space()
+    x = ptbxl.load_all_lr()
+    idx = {r.ecg_id: i for i, r in enumerate(ptbxl.records())}
+    cols = _task_cols(stm)
+    out = {}
+    for split, folds in (("val", ptbxl.VAL_FOLDS), ("test", ptbxl.TEST_FOLDS)):
+        recs = ptbxl.split(folds)
+        y = targets(recs, stm)
+        xs = x[[idx[r.ecg_id] for r in recs]]
+        row = {}
+        for v, masked in ((current, False), (current, True), (candidate, True)):
+            p, _ = predict_statements(xs, FS_LR, v, print_mask=masked)
+            row[f"{v}{' (printout)' if masked else ' (full ECG)'}"] = {k: macro_auc(y, p, c) for k, c in cols.items()}
+        out[split] = row
+    val = out["val"]
+    gain = val[f"{candidate} (printout)"]["all"] - val[f"{current} (printout)"]["all"]
+    adopt = gain >= PRINT_RULE["min_gain_all"] and val[f"{candidate} (printout)"]["superclass"] >= PRINT_RULE["min_superclass"]
+    result = _meta(task="ecg12_selection_print", rule=PRINT_RULE, results=out, gain_val_all=gain, chosen=candidate if adopt else None)
+    _write("ecg12_selection_print", result)
+    print(json.dumps({"val": val, "chosen": result["chosen"]}, indent=1), flush=True)
     return result

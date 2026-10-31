@@ -9,11 +9,13 @@ dependencies = [
   "onnxruntime>=1.18",
   "cardiotic-ml>=0.1.0",  # core signal processing only (no PyTorch); install from ../ml
   "sierraecg>=0.4,<0.5",  # Philips XLI waveform decoding (MIT)
+  "pypdf>=4",             # ECG printouts as PDF (digitiser)
+  "pillow>=10",           # ECG printouts as images (digitiser)
 ]
 
 [project.optional-dependencies]
 dicom = ["pydicom>=2.4"]   # read DICOM 12-lead ECG waveform files
-dev = ["pytest>=8", "pydicom>=2.4"]
+dev = ["pytest>=8", "pydicom>=2.4", "matplotlib>=3.8"]
 
 [project.scripts]
 cardiotic-engine = "cardiotic_engine.__main__:main"
