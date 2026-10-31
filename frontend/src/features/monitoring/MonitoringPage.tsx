@@ -1,3 +1,5 @@
+import { serverMode } from "@/lib/server";
+import { LiveBoard } from "./LiveBoard";
 import { Flag, Info, Pause, Play, WifiOff, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
@@ -125,11 +127,15 @@ function BedTile({ bed, running }: { bed: Bed; running: boolean }) {
 }
 
 export default function MonitoringPage() {
+  return serverMode ? <LiveBoard /> : <SampleBoard />;
+}
+
+function SampleBoard() {
   const [unit, setUnit] = useState<"all" | "OT" | "ICU">("all");
   const [running, setRunning] = useState(true);
   return (
     <div className="animate-fade-in">
-      <PageHeader eyebrow="Live Assist · in development"
+      <PageHeader eyebrow="Live Assist"
         title="Monitoring"
         description="Advisory review flags for connected OT and ICU beds. This board never replaces, delays or silences the bedside monitor's alarms, and it looks different from them on purpose."
         actions={<>

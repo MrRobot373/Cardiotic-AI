@@ -73,6 +73,12 @@ configuration is for other models or not signed off (exit code 4).
 
    Status per machine (received, refused, last error) shows there and on the Upload screen. Test each cart model with a few real recordings during installation.
 
+7. **Live Assist (OT / ICU)** — Settings → Integrations → Bedside monitors.
+   - **Connecting a bed:** the bed gets a device token, shown once. The hospital's monitor gateway (for example Philips IntelliBridge, GE Unity / CARESCAPE gateway or Mindray eGateway output, converted to the documented JSON) posts each bed's ECG to `POST /api/live/ingest` with header `X-Device-Token`.
+   - **Without a gateway yet:** `cardiotic-server live-simulator --url … --token … --file recording.edf` streams any recording the same way, for training and acceptance tests.
+   - **Silent mode** is on for every site until the administrator switches it off. Do that only after the silent-mode study in docs/PRODUCT_PLAN.md (flags compared with clinical events, no missed true events at the chosen settings).
+   - Flags are advisory and never replace the monitor's alarms.
+
 ## 4. Operate
 
 | Task | How |

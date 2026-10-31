@@ -25,6 +25,9 @@ def main(argv=None) -> int:
     b = sub.add_parser("backup"); b.add_argument("dest")
     sub.add_parser("verify-audit")
     sub.add_parser("init")
+    ls = sub.add_parser("live-simulator", help="stream a recording to Live Assist like a monitor gateway")
+    ls.add_argument("--url", required=True); ls.add_argument("--token", required=True); ls.add_argument("--file", required=True, help="any ECG file the engine reads; the first lead (or II) is streamed")
+    ls.add_argument("--speed", type=float, default=1.0); ls.add_argument("--vitals", action="store_true")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     from . import auth
@@ -46,6 +49,17 @@ def main(argv=None) -> int:
         logging.getLogger("cardiotic_server").info("listening on http://%s:%d (database %s)", args.host, args.port, args.db)
         try:
             httpd.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        return 0
+    if args.cmd == "live-simulator":
+        from cardiotic_engine.ingest import parse
+        from . import simulator
+        ecg = parse(open(args.file, "rb").read())
+        lead = "II" if "II" in ecg.leads else next(iter(ecg.leads))
+        print(f"streaming lead {lead} at {ecg.fs:g} Hz to {args.url} (Ctrl-C to stop)")
+        try:
+            simulator.stream(args.url, args.token, ecg.leads[lead], ecg.fs, args.speed, vitals=args.vitals)
         except KeyboardInterrupt:
             pass
         return 0

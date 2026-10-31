@@ -22,7 +22,7 @@ from urllib.parse import parse_qs, urlparse
 
 from cardiotic_engine.api import Engine, InputError
 
-from . import auth, export, feeds, hl7in
+from . import auth, export, feeds, hl7in, live
 from .db import Database
 from .store import Conflict, Forbidden, NotFound, Store
 
@@ -60,6 +60,7 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
     folders, dicom = feeds.FolderFeeds(store), feeds.DicomFeed(store)
     store.folders, store.dicom = folders, dicom
     store.hl7in = hl7in.Listener(store)
+    store.live = live.LiveHub(store)
     static = Path(static_dir).resolve() if static_dir else None
 
     class Handler(BaseHTTPRequestHandler):
@@ -218,6 +219,16 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 if "token" not in res:
                     return self._json(200, res)
                 return self._json(200, res, [("Set-Cookie", self._cookie(res["token"]))])
+            if method == "POST" and path == "/live/ingest":  # monitor gateways: a device token, not a user session
+                body = self._body(4 * 1024 * 1024)
+                try:
+                    payload = json.loads(body or b"{}")
+                except json.JSONDecodeError:
+                    raise HttpError(400, "body must be JSON") from None
+                try:
+                    return self._json(200, store.live.ingest(self.headers.get("X-Device-Token", ""), payload))
+                except PermissionError as e:
+                    raise HttpError(401, str(e)) from None
             if method == "GET" and path == "/auth/oidc/start":
                 return self._oidc_start(q)
             if method == "GET" and path == "/auth/oidc/callback":
@@ -345,6 +356,8 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                         raise ValueError(f"DICOM receiver could not start on port {dcfg['port']}: {e}") from None
                     db.audit(user["name"], "Changed machine feeds", f"{len(folders_cfg)} folders, DICOM {'on' if dcfg['enabled'] else 'off'}")
                     return self._json(200, {"ok": True})
+            if path.startswith("/live"):
+                return self._live(method, path, q, user)
             if method == "GET" and path == "/outbox":
                 _role(user, "admin", "cardiologist")
                 rows = db.conn().execute("SELECT id, ecg_id, kind, status, attempts, last_error, created_at, sent_at FROM outbox ORDER BY id DESC LIMIT 200").fetchall()
@@ -378,6 +391,47 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
             if path == "/users" or m(r"/users/[a-z0-9._-]+", path):
                 _role(user, "admin")
                 return self._users(method, path, user)
+            raise HttpError(404, "not found")
+
+        def _live(self, method, path, q, user):
+            hub = store.live
+            m_ = re.fullmatch
+            if method == "GET" and path == "/live":
+                return self._json(200, hub.board(user))
+            if method == "GET" and (g := m_(r"/live/([A-Z0-9-]+)/trace", path)):
+                try:
+                    return self._json(200, hub.trace(g[1], min(30.0, float(q.get("seconds", 10)))))
+                except KeyError:
+                    raise NotFound(g[1]) from None
+            if method == "POST" and (g := m_(r"/live/([A-Z0-9-]+)/flags/([0-9a-f]+)/ack", path)):
+                _role(user, "cardiologist", "technician")
+                try:
+                    hub.acknowledge(user, g[1], g[2])
+                except KeyError:
+                    raise NotFound(g[2]) from None
+                return self._json(200, {"ok": True})
+            _role(user, "admin")
+            if method == "GET" and path == "/live/beds":
+                return self._json(200, [{k: v for k, v in c.items() if k != "token_sha256"} for c in db.get_setting("live_beds", [])])
+            if method == "POST" and path == "/live/beds":
+                b = self._json_body()
+                token = hub.add_bed(str(b.get("bed", "")), str(b.get("unit", "")), str(b.get("label", "")), str(b.get("mrn", "")), b.get("silent"))
+                db.audit(user["name"], "Connected monitor bed", f"{b.get('bed')} ({b.get('unit')})")
+                return self._json(201, {"bed": str(b.get("bed")).upper(), "device_token": token, "note": "shown once: enter it in the monitor gateway"})
+            if (g := m_(r"/live/beds/([A-Z0-9-]+)", path)):
+                if method == "DELETE":
+                    hub.remove_bed(g[1])
+                    db.audit(user["name"], "Removed monitor bed", g[1])
+                    return self._json(200, {"ok": True})
+                if method == "PATCH":
+                    hub.update_bed(g[1], self._json_body())
+                    db.audit(user["name"], "Changed monitor bed", g[1])
+                    return self._json(200, {"ok": True})
+            if method == "PUT" and path == "/live/settings":
+                silent = bool(self._json_body().get("silent", True))
+                db.set_setting("live", {"silent": silent})
+                db.audit(user["name"], "Live Assist silent mode " + ("on" if silent else "off"), "site")
+                return self._json(200, {"silent": silent})
             raise HttpError(404, "not found")
 
         def _cookie(self, token: str) -> str:
@@ -491,6 +545,7 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
     if start_worker:
         worker.start()
         folders.start()
+        store.live.start()
         try:
             dicom.apply(db.get_setting("feeds", {}).get("dicom", {}))
         except OSError as e:  # port in use: the server still runs; Integrations shows the error

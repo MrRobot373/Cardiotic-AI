@@ -92,12 +92,11 @@ test("real sign-in, upload, reading, signing, delivery queue and audit", async (
   const fhir = await (await page.request.get(`/api/report/${id}.fhir.json`)).json();
   expect(fhir.resourceType).toBe("Bundle");
 
-  // the administrator sees the audit trail and the queued HIS message; no monitoring board with invented data
+  // the administrator sees the audit trail and the queued HIS message
   await page.goto("/");
   await page.getByRole("button", { name: "Account menu" }).click();
   await page.getByText("Sign out").click();
   await signIn(page, "kdesai");
-  await expect(page.getByRole("link", { name: "Monitoring" })).toHaveCount(0);
   await page.goto("/audit");
   await expect(page.getByText("Signed ECG report")).toBeVisible();
   await expect(page.getByText("Uploaded ECG")).toBeVisible();

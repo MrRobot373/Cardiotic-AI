@@ -101,10 +101,12 @@ interface His { enabled: boolean; host?: string; port?: number; facility?: strin
 interface Outbox { id: number; ecg_id: string; status: string; attempts: number; last_error: string | null; created_at: string; sent_at: string | null }
 
 export function ServerIntegrations() {
+  const { user } = useDemo();
   return (
     <div className="space-y-4">
       <ServerFeeds />
       <ServerHis />
+      {user?.role === "admin" && <ServerMonitors />}
     </div>
   );
 }
@@ -315,6 +317,48 @@ export function ServerAccount() {
         </div>
         {setting && !user?.two_factor && <TwoFactorSetup onDone={() => setSetting(false)} />}
         <p className="text-[0.75rem] text-muted-foreground">{user?.source === "ldap" ? "Your password is your hospital directory password." : user?.source === "oidc" ? "You sign in through the hospital identity provider." : "Lost your phone or password? An administrator can reset them."}</p>
+      </div>
+    </Card>
+  );
+}
+
+interface LiveBedCfg { bed: string; unit: string; label?: string; mrn?: string; silent?: boolean | null }
+
+export function ServerMonitors() {
+  const qc = useQueryClient();
+  const beds = useQuery({ queryKey: ["live-beds"], queryFn: () => api<LiveBedCfg[]>("/live/beds") });
+  const [form, setForm] = useState({ bed: "", unit: "ICU", label: "", mrn: "" });
+  const [token, setToken] = useState<{ bed: string; token: string } | null>(null);
+  const add = useMutation({
+    mutationFn: () => api<{ bed: string; device_token: string }>("/live/beds", { method: "POST", json: form }),
+    onSuccess: (r) => { setToken({ bed: r.bed, token: r.device_token }); setForm({ bed: "", unit: form.unit, label: "", mrn: "" }); qc.invalidateQueries({ queryKey: ["live-beds"] }); },
+    onError: fail,
+  });
+  const remove = useMutation({ mutationFn: (bed: string) => api(`/live/beds/${bed}`, { method: "DELETE" }), onSuccess: () => qc.invalidateQueries({ queryKey: ["live-beds"] }), onError: fail });
+  return (
+    <Card>
+      <CardHeader title="Bedside monitors" description="Live Assist: each bed's monitor gateway streams ECG with its own device token" icon={<Plug />} />
+      <div className="card-pad space-y-3">
+        {(beds.data ?? []).map((b) => (
+          <div key={b.bed} className="flex items-center gap-2 rounded-lg border bg-card/70 px-3 py-2 text-[0.82rem]">
+            <span className="font-medium">{b.bed}</span><span className="text-muted-foreground">{b.unit}{b.label ? ` · ${b.label}` : ""}{b.mrn ? ` · ${b.mrn}` : ""}</span>
+            <Button size="xs" variant="ghost" className="ml-auto" onClick={() => remove.mutate(b.bed)}><Trash2 /> Remove</Button>
+          </div>
+        ))}
+        <form className="grid gap-2 sm:grid-cols-5" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
+          <Input aria-label="Bed ID" placeholder="Bed ID, e.g. ICU-4" value={form.bed} onChange={(e) => setForm({ ...form, bed: e.target.value })} />
+          <Select value={form.unit} onValueChange={(v) => setForm({ ...form, unit: v })} options={["ICU", "OT", "ER", "WARD"].map((u) => ({ value: u, label: u }))} />
+          <Input aria-label="Bed label" placeholder="Label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
+          <Input aria-label="Patient MRN" placeholder="Patient MRN" value={form.mrn} onChange={(e) => setForm({ ...form, mrn: e.target.value })} />
+          <Button type="submit" variant="strong" disabled={add.isPending}><Plus /> Connect bed</Button>
+        </form>
+        {token && (
+          <div className="rounded-lg border border-success/40 bg-success-soft/40 p-3 text-[0.8rem]">
+            <div className="font-medium">Device token for {token.bed} (shown once)</div>
+            <code className="mt-1 block break-all font-mono text-xs" aria-label="Device token">{token.token}</code>
+            <div className="mt-1 text-muted-foreground">Enter it in the monitor gateway (header X-Device-Token on POST /api/live/ingest).</div>
+          </div>
+        )}
       </div>
     </Card>
   );

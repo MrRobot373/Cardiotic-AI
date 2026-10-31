@@ -22,6 +22,12 @@ def make(out: Path = Path(__file__).parent / ".files") -> Path:
         fs = 360
     except Exception:  # without the research data: the fixture ECG's lead II repeated
         sig, fs = np.tile(ecg[1], 900), 500
+    import json as _json
+    try:
+        strip = mitdb.load_record(203).signal[: 360 * 70]
+    except Exception:
+        strip = np.load(ROOT / "engine" / "tests" / "fixtures" / "fixtures.npz")["strip"]
+    (out / "live-strip.json").write_text(_json.dumps([round(float(v), 4) for v in strip]))
     (out / "holter-2h30.edf").write_bytes(w.edf_file(sig[None].repeat(12, 0)[:, : int(len(sig) // fs * fs)], fs, leads=("II",)))
     return out
 
