@@ -12,6 +12,12 @@ export interface DemoUser {
   role: Role;
   title: string;
   username: string;
+  /** server mode: two-factor sign-in is on for this account */
+  two_factor?: boolean;
+  /** server mode: "local", "ldap" (hospital directory) or "oidc" (identity provider) */
+  source?: string;
+  /** server mode: the hospital requires two-factor sign-in and this account must set it up first */
+  enrol_2fa?: boolean;
 }
 
 export const DEMO_USERS: DemoUser[] = [
@@ -77,7 +83,11 @@ export interface Ctx extends State {
   serverMode: boolean;
   /** server mode: false until the first "who am I" answer is in. */
   ready: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  /** Resolves with a challenge when a two-factor code is needed next. */
+  login: (username: string, password: string) => Promise<{ challenge?: string }>;
+  loginTotp: (challenge: string, code: string) => Promise<void>;
+  /** Reload who is signed in (after two-factor set-up). */
+  refreshMe: () => Promise<void>;
   signIn: (u: DemoUser) => void;
   signOut: () => void;
   review: (id: string) => Review;
@@ -117,6 +127,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       login: async () => {
         throw new Error("sign in with a sample user");
       },
+      loginTotp: async () => undefined,
+      refreshMe: async () => undefined,
       signIn: (u) => commit((s) => ({ ...s, user: u, audit: event({ ...s, user: u }, "Signed in", u.title) })),
       signOut: () => commit((s) => ({ ...s, user: null, audit: event(s, "Signed out", "") })),
       review: (id) => state.reviews[id] ?? EMPTY_REVIEW,

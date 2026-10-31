@@ -1,4 +1,4 @@
-import { Building2, Info, Palette, Plug, Users } from "lucide-react";
+import { Building2, Info, KeyRound, Palette, Plug, UserRound, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { NavLink, useParams } from "react-router";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ import { useCatalog } from "@/data/api";
 import { ACCENT_PRESETS } from "@/lib/color";
 import { serverMode } from "@/lib/server";
 import { cn } from "@/lib/utils";
-import { ServerIntegrations, ServerSite, ServerUsers } from "./ServerSettings";
+import { ServerAccount, ServerIntegrations, ServerSecurity, ServerSite, ServerUsers } from "./ServerSettings";
 
 const SECTIONS = [
   { id: "site", label: serverMode ? "Site" : "Site & AI operating points", icon: Building2 },
@@ -17,6 +17,12 @@ const SECTIONS = [
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "users", label: "Users & roles", icon: Users },
   { id: "about", label: "About", icon: Info },
+];
+const SERVER_SECTIONS = [
+  ...SECTIONS.slice(0, 4),
+  { id: "security", label: "Security", icon: KeyRound, admin: true },
+  { id: "account", label: "My account", icon: UserRound },
+  SECTIONS[4],
 ];
 
 function Row({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
@@ -140,15 +146,16 @@ function About() {
 
 export default function SettingsPage() {
   const { section = "site" } = useParams();
+  const { user } = useDemo();
   const body = serverMode
-    ? { site: <ServerSite />, appearance: <Appearance />, integrations: <ServerIntegrations />, users: <ServerUsers />, about: <About /> }[section] ?? <ServerSite />
+    ? { site: <ServerSite />, appearance: <Appearance />, integrations: <ServerIntegrations />, users: <ServerUsers />, security: <ServerSecurity />, account: <ServerAccount />, about: <About /> }[section] ?? <ServerSite />
     : { site: <Site />, appearance: <Appearance />, integrations: <Integrations />, users: <UsersSection />, about: <About /> }[section] ?? <Site />;
   return (
     <div className="animate-fade-in">
       <PageHeader title="Settings" />
       <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
         <nav className="flex gap-1 overflow-x-auto lg:flex-col">
-          {SECTIONS.map((s) => (
+          {(serverMode ? SERVER_SECTIONS.filter((s) => !("admin" in s) || user?.role === "admin") : SECTIONS).map((s) => (
             <NavLink key={s.id} to={`/settings/${s.id}`} className={({ isActive }) => cn("flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium", isActive || (section === s.id) ? "bg-strong text-strong-foreground" : "text-muted-foreground hover:bg-muted")}>
               <s.icon className="size-4" /> {s.label}
             </NavLink>

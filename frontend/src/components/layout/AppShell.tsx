@@ -11,6 +11,7 @@ import { BrandMark } from "./BrandMark";
 import { CommandPaletteProvider, usePalette } from "./CommandPalette";
 import { NAV, PRIMARY_NAV, RAIL_NAV, visibleFor } from "./nav";
 import { UserMenu } from "./UserMenu";
+import { TwoFactorSetup } from "@/features/auth/TwoFactorSetup";
 
 const iconBtn = "glass relative flex size-10 items-center justify-center rounded-xl border border-white/70 text-muted-foreground shadow-card transition-colors hover:text-foreground dark:border-white/[0.06] [&_svg]:size-[18px]";
 
@@ -112,11 +113,30 @@ function Rail() {
   );
 }
 
+/** This hospital requires two-factor sign-in: nothing else opens until it is set up. */
+function EnrolTwoFactor() {
+  const { signOut } = useDemo();
+  return (
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="mb-4 flex flex-col items-center text-center">
+          <BrandMark />
+          <h1 className="mt-4 text-xl font-semibold">Set up two-factor sign-in</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Your hospital requires a code from your phone at every sign-in.</p>
+        </div>
+        <div className="rounded-2xl border bg-card p-5 shadow-card"><TwoFactorSetup /></div>
+        <Button variant="ghost" className="mt-3 w-full" onClick={signOut}>Sign out</Button>
+      </div>
+    </div>
+  );
+}
+
 export function AppShell() {
   const { user, ready } = useDemo();
   const location = useLocation();
   if (!ready) return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  if (user.enrol_2fa) return <EnrolTwoFactor />;
   return (
     <CommandPaletteProvider>
       <div className="min-h-screen">

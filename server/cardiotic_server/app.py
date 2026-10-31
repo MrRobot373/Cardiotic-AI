@@ -208,18 +208,36 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
         def _api(self, method, path, q):
             m = re.fullmatch
             if method == "GET" and path == "/health":
-                return self._json(200, {"status": "ok", "models_verified": True, "site_name": store.site()["siteName"]})  # the sign-in page shows the hospital name
-            if method == "POST" and path == "/login":
+                oidc = db.get_setting("auth", {}).get("oidc", {})
+                return self._json(200, {"status": "ok", "models_verified": True, "site_name": store.site()["siteName"],  # the sign-in page shows these
+                                        "sso": oidc.get("display_name") or "single sign-on" if oidc.get("enabled") else None})
+            if method == "POST" and path in ("/login", "/login/totp"):
                 b = self._json_body()
-                token, user = auth.login(db, str(b.get("username", "")), str(b.get("password", "")))
-                cookie = f"{COOKIE}={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age={auth.ABSOLUTE_SECONDS}" + ("; Secure" if SECURE else "")
-                return self._json(200, {"user": user, "token": token}, [("Set-Cookie", cookie)])
+                res = (auth.login(db, str(b.get("username", "")), str(b.get("password", ""))) if path == "/login"
+                       else auth.login_totp(db, str(b.get("challenge", "")), str(b.get("code", ""))))
+                if "token" not in res:
+                    return self._json(200, res)
+                return self._json(200, res, [("Set-Cookie", self._cookie(res["token"]))])
+            if method == "GET" and path == "/auth/oidc/start":
+                return self._oidc_start(q)
+            if method == "GET" and path == "/auth/oidc/callback":
+                return self._oidc_callback(q)
             user = self._user(method != "GET")
+            if user.get("scope") == "enrol" and path not in ("/me", "/me/totp/setup", "/me/totp/enable", "/logout"):
+                raise Forbidden("set up two-factor sign-in first (required at this hospital)")
             if method == "POST" and path == "/logout":
                 auth.logout(db, self._tok, user)
                 return self._json(200, {"ok": True}, [("Set-Cookie", f"{COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")])
             if method == "GET" and path == "/me":
-                return self._json(200, {"user": user, "site": store.site()})
+                return self._json(200, {"user": {**user, "enrol_2fa": user.get("scope") == "enrol"}, "site": store.site()})
+            if method == "POST" and path == "/me/totp/setup":
+                return self._json(200, auth.totp_setup(db, user, f"Cardiotic AI ({store.site()['siteName']})"))
+            if method == "POST" and path == "/me/totp/enable":
+                auth.totp_enable(db, user, str(self._json_body().get("code", "")), self._tok)
+                return self._json(200, {"ok": True})
+            if path == "/auth-settings":
+                _role(user, "admin")
+                return self._auth_settings(method, user)
             if method == "GET" and path == "/models":
                 return self._json(200, store.engine.info())
             if method == "GET" and path == "/catalog":
@@ -354,9 +372,83 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 return self._users(method, path, user)
             raise HttpError(404, "not found")
 
+        def _cookie(self, token: str) -> str:
+            return f"{COOKIE}={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age={auth.ABSOLUTE_SECONDS}" + ("; Secure" if SECURE else "")
+
+        def _redirect(self, location: str, extra=()):
+            self._headers(302, "text/plain", 0, [("Location", location), ("Cache-Control", "no-store"), *extra])
+
+        def _oidc_start(self, q):
+            import secrets as _s
+            import time as _t
+            from . import sso
+            cfg = db.get_setting("auth", {}).get("oidc", {})
+            if not cfg.get("enabled"):
+                raise HttpError(404, "single sign-on is not configured")
+            url, saved = sso.oidc_start(cfg)
+            nxt = q.get("next", "/")
+            saved["next"] = nxt if nxt.startswith("/") and not nxt.startswith("//") else "/"
+            with db.tx() as c:
+                c.execute("DELETE FROM challenges WHERE expires < ?", (_t.time(),))
+                c.execute("INSERT INTO challenges(token_hash, kind, data, expires) VALUES (?,?,?,?)", (auth._th(saved["state"]), "oidc", json.dumps(saved), _t.time() + 600))
+            return self._redirect(url)
+
+        def _oidc_callback(self, q):
+            import time as _t
+            from urllib.parse import quote
+            from . import sso
+            cfg = db.get_setting("auth", {}).get("oidc", {})
+            with db.tx() as c:
+                row = c.execute("SELECT * FROM challenges WHERE token_hash=? AND kind='oidc'", (auth._th(q.get("state", "")),)).fetchone()
+                if row:
+                    c.execute("DELETE FROM challenges WHERE token_hash=?", (row["token_hash"],))
+            if not cfg.get("enabled") or row is None or row["expires"] < _t.time():
+                return self._redirect("/login?error=" + quote("The sign-in expired; try again"))
+            if q.get("error"):
+                return self._redirect("/login?error=" + quote(f"The identity provider refused: {q.get('error_description') or q['error']}"[:200]))
+            saved = json.loads(row["data"])
+            try:
+                info = sso.oidc_finish(cfg, q.get("code", ""), saved)
+                token, _ = auth.oidc_session(db, info)
+            except (ValueError, auth.AuthError) as e:
+                db.audit("identity provider", "Sign-in refused", str(e)[:120])
+                return self._redirect("/login?error=" + quote(str(e)[:200]))
+            return self._redirect(saved.get("next", "/"), [("Set-Cookie", self._cookie(token))])
+
+        def _auth_settings(self, method, admin):
+            cfg = db.get_setting("auth", {})
+            masked = lambda d, k: {**d, k: "********" if d.get(k) else ""}  # noqa: E731
+            if method == "GET":
+                return self._json(200, {"require_2fa": bool(cfg.get("require_2fa")), "ldap": masked(cfg.get("ldap", {}), "bind_password"),
+                                        "oidc": masked(cfg.get("oidc", {}), "client_secret")})
+            if method != "PUT":
+                raise HttpError(405, "method not allowed")
+            b = self._json_body()
+            new = {"require_2fa": bool(b.get("require_2fa", cfg.get("require_2fa", False)))}
+            for kind, secret in (("ldap", "bind_password"), ("oidc", "client_secret")):
+                d = b.get(kind, cfg.get(kind, {})) or {}
+                if not isinstance(d, dict):
+                    raise ValueError(f"{kind} must be an object")
+                if d.get(secret) == "********":
+                    d = {**d, secret: cfg.get(kind, {}).get(secret, "")}
+                if d.get("enabled"):
+                    need = ("url",) if kind == "ldap" else ("issuer", "client_id", "redirect_uri")
+                    missing = [k for k in need if not d.get(k)]
+                    if kind == "ldap" and not (d.get("user_dn_template") or (d.get("bind_dn") and d.get("base_dn"))):
+                        missing.append("user_dn_template or bind_dn + base_dn")
+                    if missing:
+                        raise ValueError(f"{kind}: missing {', '.join(missing)}")
+                    roles = d.get("role_groups" if kind == "ldap" else "role_map", {})
+                    if not roles:
+                        raise ValueError(f"{kind}: map at least one group or claim value to a role")
+                new[kind] = d
+            db.set_setting("auth", new)
+            db.audit(admin["name"], "Changed sign-in settings", f"2FA required={new['require_2fa']}, LDAP={'on' if new['ldap'].get('enabled') else 'off'}, OIDC={'on' if new['oidc'].get('enabled') else 'off'}")
+            return self._json(200, {"ok": True})
+
         def _users(self, method, path, admin):
             if method == "GET" and path == "/users":
-                rows = db.conn().execute("SELECT id, username, name, role, title, active FROM users ORDER BY name").fetchall()
+                rows = db.conn().execute("SELECT id, username, name, role, title, active, source, totp_enabled AS two_factor FROM users ORDER BY name").fetchall()
                 return self._json(200, [dict(r) for r in rows])
             if method == "POST" and path == "/users":
                 b = self._json_body()
@@ -369,6 +461,11 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 if "password" in b:
                     auth.set_password(db, uname, str(b["password"]))
                     db.audit(admin["name"], "Reset password", uname)
+                if b.get("reset_totp"):
+                    with db.tx() as c:
+                        if c.execute("UPDATE users SET totp_enabled=0, totp_secret=NULL WHERE username=?", (uname,)).rowcount == 0:
+                            raise NotFound(uname)
+                        db.audit(admin["name"], "Reset two-factor sign-in", uname, c)
                 if "active" in b:
                     if uname == admin["username"] and not b["active"]:
                         raise Conflict("you cannot deactivate your own account")

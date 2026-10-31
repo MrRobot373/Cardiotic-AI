@@ -54,14 +54,20 @@ configuration is for other models or not signed off (exit code 4).
 ## 3. Configure the site
 
 1. **Name** — Settings → Site. It appears on sign-in and on every report.
-2. **Users** — a cardiologist reads and signs; a technician uploads, matches patients, sends for reading; an administrator manages users, settings and the HIS connection. Passwords: 10+ characters; five wrong attempts lock the account for 5 minutes; sessions end after 15 minutes idle.
-3. **AI operating points** — the model's yes/no thresholds do not transfer between hospitals (ml/reports/RESULTS.md §7.3, §7.7). Collect a few hundred of the site's own ECGs, have cardiologists label them with SCP-ECG codes (`file,statements` CSV), then:
+2. **Sign-in** — Settings → Security:
+   - **Active Directory / LDAP:** a service account, a base DN and one group per role. People sign in with their hospital account, and the role follows the group.
+   - **OpenID Connect** (Azure AD / Entra ID, Keycloak, Okta): issuer, client ID and secret, and the redirect URI `https://<host>/api/auth/oidc/callback`. A "Sign in with …" button appears on the sign-in page.
+   - **Require two-factor sign-in:** every password sign-in also needs a code from an authenticator app. People set it up at their next sign-in or under Settings → My account.
+
+   Local accounts keep working alongside these.
+3. **Users** — a cardiologist reads and signs; a technician uploads, matches patients, sends for reading; an administrator manages users, settings and the HIS connection. Passwords: 10+ characters; five wrong attempts lock the account for 5 minutes; sessions end after 15 minutes idle.
+4. **AI operating points** — the model's yes/no thresholds do not transfer between hospitals (ml/reports/RESULTS.md §7.3, §7.7). Collect a few hundred of the site's own ECGs, have cardiologists label them with SCP-ECG codes (`file,statements` CSV), then:
    ```bash
    cardiotic-engine site-config --dir ecgs/ --labels labels.csv --site-id HOSPITAL-1 --out site_config.json
    ```
    This writes a **draft** and a report next to it. The cardiology lead reviews the report and fills in `approved_by` and `approved_at`; the server then starts with `--site-config site_config.json` (or `CARDIOTIC_SITE_CONFIG`). Without one, the model's own thresholds are used and the Site screen says so. Statements with fewer than 20 site examples keep the model's threshold. Do not claim atrial flutter or long QT: they stay weak even with site thresholds.
-4. **HIS** — Settings → Integrations: host, port, receiving facility. Signed reports are queued and delivered as HL7 v2.5.1 ORU^R01 over MLLP; failures retry with growing waits and show in the delivery list. Test against the hospital's test interface first: the measurement and statement codes (LOINC / SCP-ECG) are mapped to the hospital's dictionary during integration. Reports go with the PDF attached (OBX ED). Switch on *Receive patients and ECG orders* so the HIS registers, updates and merges patients (ADT A01/A04/A05/A08/A28/A31/A40) and sends ECG orders (ORM O01), which fill in the ordering doctor and location of the next ECG.
-5. **ECG machines** — Settings → Integrations → ECG machines.
+5. **HIS** — Settings → Integrations: host, port, receiving facility. Signed reports are queued and delivered as HL7 v2.5.1 ORU^R01 over MLLP; failures retry with growing waits and show in the delivery list. Test against the hospital's test interface first: the measurement and statement codes (LOINC / SCP-ECG) are mapped to the hospital's dictionary during integration. Reports go with the PDF attached (OBX ED). Switch on *Receive patients and ECG orders* so the HIS registers, updates and merges patients (ADT A01/A04/A05/A08/A28/A31/A40) and sends ECG orders (ORM O01), which fill in the ordering doctor and location of the next ECG.
+6. **ECG machines** — Settings → Integrations → ECG machines.
    - **Export folder:** point a cart or its management system (GE MUSE, Philips TraceMaster, Schiller SEMA…) at a shared folder and add the folder. Files are imported once fully written, then moved to `processed/`, or to `failed/` with the reason.
    - **DICOM:** switch on the receiver (default AE title `CARDIOTIC`, port 11112) and enter this server as the cart's storage destination.
 

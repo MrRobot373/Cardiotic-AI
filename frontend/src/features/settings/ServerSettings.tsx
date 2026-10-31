@@ -1,6 +1,7 @@
 /** Settings screens that talk to the Cardiotic server: site, users and the HIS connection. */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, FolderInput, Plug, Plus, Trash2, Users } from "lucide-react";
+import { Building2, FolderInput, Plug, Plus, ShieldCheck, Trash2, Users } from "lucide-react";
+import { TwoFactorSetup } from "@/features/auth/TwoFactorSetup";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useDemo } from "@/app/demo-store";
@@ -43,7 +44,7 @@ export function ServerSite() {
   );
 }
 
-interface UserRow { id: number; username: string; name: string; role: string; title: string; active: number }
+interface UserRow { id: number; username: string; name: string; role: string; title: string; active: number; source?: string; two_factor?: number }
 
 export function ServerUsers() {
   const { user } = useDemo();
@@ -54,6 +55,11 @@ export function ServerUsers() {
   const create = useMutation({
     mutationFn: () => api("/users", { method: "POST", json: form }),
     onSuccess: () => { toast.success(`User ${form.username} created`); setForm({ username: "", name: "", role: "technician", password: "", title: "" }); qc.invalidateQueries({ queryKey: ["users"] }); },
+    onError: fail,
+  });
+  const resetTotp = useMutation({
+    mutationFn: (username: string) => api(`/users/${username}`, { method: "PATCH", json: { reset_totp: true } }),
+    onSuccess: () => { toast.success("Two-factor sign-in reset; the user sets it up again at the next sign-in"); qc.invalidateQueries({ queryKey: ["users"] }); },
     onError: fail,
   });
   const toggle = useMutation({
@@ -69,7 +75,8 @@ export function ServerUsers() {
         {(users.data ?? []).map((u) => (
           <div key={u.username} className="flex items-center gap-3 rounded-xl border bg-card/70 p-3">
             <Avatar name={u.name} size="sm" />
-            <div className="flex-1"><div className="text-sm font-medium">{u.name} <span className="font-mono text-xs text-muted-foreground">{u.username}</span></div><div className="text-[0.78rem] text-muted-foreground">{u.title}</div></div>
+            <div className="flex-1"><div className="text-sm font-medium">{u.name} <span className="font-mono text-xs text-muted-foreground">{u.username}</span></div><div className="text-[0.78rem] text-muted-foreground">{[u.title, u.source === "ldap" ? "hospital directory" : u.source === "oidc" ? "identity provider" : "", u.two_factor ? "two-factor on" : ""].filter(Boolean).join(" · ")}</div></div>
+            {admin && !!u.two_factor && <Button size="xs" variant="ghost" onClick={() => resetTotp.mutate(u.username)}>Reset two-factor</Button>}
             <Badge tone="outline" className="capitalize">{u.role}</Badge>
             <Button size="xs" variant="secondary" disabled={u.username === user?.username} onClick={() => toggle.mutate(u)}>{u.active ? "Deactivate" : "Activate"}</Button>
           </div>
@@ -221,6 +228,93 @@ export function ServerFeeds() {
           <div className="text-label mb-2">Status</div>
           <FeedStatusList feeds={feeds.data} />
         </div>
+      </div>
+    </Card>
+  );
+}
+
+// ------------------------------------------------------------------ sign-in and two-factor
+const ROLES = ["cardiologist", "technician", "admin"] as const;
+interface Ldap { enabled?: boolean; url?: string; base_dn?: string; user_filter?: string; bind_dn?: string; bind_password?: string; user_dn_template?: string; role_groups?: Record<string, string> }
+interface Oidc { enabled?: boolean; display_name?: string; issuer?: string; client_id?: string; client_secret?: string; redirect_uri?: string; role_claim?: string; role_map?: Record<string, string> }
+interface AuthSettings { require_2fa: boolean; ldap: Ldap; oidc: Oidc }
+
+function Text({ label, value, onChange, type = "text", placeholder }: { label: string; value?: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
+  return <Input aria-label={label} placeholder={placeholder ?? label} type={type} value={value ?? ""} onChange={(e) => onChange(e.target.value)} />;
+}
+
+export function ServerSecurity() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["auth-settings"], queryFn: () => api<AuthSettings>("/auth-settings") });
+  const [d, setD] = useState<AuthSettings | null>(null);
+  const cur = d ?? q.data;
+  const save = useMutation({
+    mutationFn: () => api("/auth-settings", { method: "PUT", json: cur }),
+    onSuccess: () => { toast.success("Sign-in settings saved"); setD(null); qc.invalidateQueries({ queryKey: ["auth-settings"] }); },
+    onError: fail,
+  });
+  if (!cur) return null;
+  const ldap = (p: Partial<Ldap>) => setD({ ...cur, ldap: { ...cur.ldap, ...p } });
+  const oidc = (p: Partial<Oidc>) => setD({ ...cur, oidc: { ...cur.oidc, ...p } });
+  const roleMap = cur.oidc.role_map ?? {};
+  const valueFor = (role: string) => Object.entries(roleMap).find(([, r]) => r === role)?.[0] ?? "";
+  const setValueFor = (role: string, v: string) => {
+    const next = Object.fromEntries(Object.entries(roleMap).filter(([, r]) => r !== role));
+    if (v.trim()) next[v.trim()] = role;
+    oidc({ role_map: next });
+  };
+  return (
+    <Card>
+      <CardHeader title="Security" description="How people sign in" icon={<ShieldCheck />} />
+      <form className="card-pad space-y-5" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+        <SwitchRow label="Require two-factor sign-in" description="Everyone signing in with a password also enters a code from an authenticator app. Sign-ins through the identity provider use its own two-factor." checked={cur.require_2fa} onCheckedChange={(v) => setD({ ...cur, require_2fa: v })} />
+        <div className="space-y-2">
+          <SwitchRow label="Active Directory / LDAP" description="People sign in with their hospital account; their directory groups decide their role." checked={!!cur.ldap.enabled} onCheckedChange={(v) => ldap({ enabled: v })} />
+          {cur.ldap.enabled && (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Text label="Directory URL" placeholder="ldaps://dc1.hospital.local" value={cur.ldap.url} onChange={(v) => ldap({ url: v })} />
+              <Text label="Users under (base DN)" placeholder="OU=Staff,DC=hospital,DC=local" value={cur.ldap.base_dn} onChange={(v) => ldap({ base_dn: v })} />
+              <Text label="Service account DN" value={cur.ldap.bind_dn} onChange={(v) => ldap({ bind_dn: v })} />
+              <Text label="Service account password" type="password" value={cur.ldap.bind_password} onChange={(v) => ldap({ bind_password: v })} />
+              <Text label="User filter" placeholder="(sAMAccountName={username})" value={cur.ldap.user_filter} onChange={(v) => ldap({ user_filter: v })} />
+              <div />
+              {ROLES.map((r) => <Text key={r} label={`Group for ${r}s`} placeholder={`Group DN for ${r}s`} value={cur.ldap.role_groups?.[r]} onChange={(v) => ldap({ role_groups: { ...(cur.ldap.role_groups ?? {}), [r]: v } })} />)}
+            </div>
+          )}
+        </div>
+        <div className="space-y-2">
+          <SwitchRow label="Single sign-on (OpenID Connect)" description="Azure AD / Entra ID, Keycloak, Okta and other OpenID Connect providers. A button appears on the sign-in page." checked={!!cur.oidc.enabled} onCheckedChange={(v) => oidc({ enabled: v })} />
+          {cur.oidc.enabled && (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Text label="Button label" placeholder="e.g. Hospital account" value={cur.oidc.display_name} onChange={(v) => oidc({ display_name: v })} />
+              <Text label="Issuer URL" placeholder="https://login.microsoftonline.com/<tenant>/v2.0" value={cur.oidc.issuer} onChange={(v) => oidc({ issuer: v })} />
+              <Text label="Client ID" value={cur.oidc.client_id} onChange={(v) => oidc({ client_id: v })} />
+              <Text label="Client secret" type="password" value={cur.oidc.client_secret} onChange={(v) => oidc({ client_secret: v })} />
+              <Text label="Redirect URI" placeholder="https://cardiotic.hospital.local/api/auth/oidc/callback" value={cur.oidc.redirect_uri} onChange={(v) => oidc({ redirect_uri: v })} />
+              <Text label="Role claim" placeholder="roles" value={cur.oidc.role_claim} onChange={(v) => oidc({ role_claim: v })} />
+              {ROLES.map((r) => <Text key={r} label={`Claim value for ${r}s`} placeholder={`Claim value for ${r}s`} value={valueFor(r)} onChange={(v) => setValueFor(r, v)} />)}
+            </div>
+          )}
+        </div>
+        <Button type="submit" variant="strong" disabled={save.isPending}>Save sign-in settings</Button>
+      </form>
+    </Card>
+  );
+}
+
+export function ServerAccount() {
+  const { user } = useDemo();
+  const [setting, setSetting] = useState(false);
+  return (
+    <Card>
+      <CardHeader title="My account" description={`${user?.name} · ${user?.username}`} icon={<Users />} />
+      <div className="card-pad space-y-3 text-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div><div className="font-medium">Two-factor sign-in</div><div className="text-[0.78rem] text-muted-foreground">{user?.source === "oidc" ? "Handled by your identity provider." : "A code from your phone at every sign-in."}</div></div>
+          {user?.two_factor ? <Badge tone="success">On</Badge> : user?.source !== "oidc" && !setting && <Button variant="secondary" onClick={() => setSetting(true)}>Set up</Button>}
+        </div>
+        {setting && !user?.two_factor && <TwoFactorSetup onDone={() => setSetting(false)} />}
+        <p className="text-[0.75rem] text-muted-foreground">{user?.source === "ldap" ? "Your password is your hospital directory password." : user?.source === "oidc" ? "You sign in through the hospital identity provider." : "Lost your phone or password? An administrator can reset them."}</p>
       </div>
     </Card>
   );

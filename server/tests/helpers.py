@@ -28,6 +28,6 @@ class Client:
 
     def login(self, user, password="correct horse battery"):
         code, out = self.call("POST", "/api/login", {"username": user, "password": password})
-        if code == 200:
+        if code == 200 and "token" in out:
             self.token = out["token"]
         return code, out

@@ -6,6 +6,8 @@
 export let serverMode = false;
 /** The hospital's name, public so the sign-in page can show it before anyone has signed in. */
 export let siteName: string | undefined;
+/** The identity provider's button label when single sign-on is configured, else null. */
+export let ssoName: string | null = null;
 
 export async function detectMode(): Promise<boolean> {
   try {
@@ -13,6 +15,7 @@ export async function detectMode(): Promise<boolean> {
     const body = res.ok && (res.headers.get("content-type") ?? "").includes("json") ? await res.json() : null;
     serverMode = body?.status === "ok";
     siteName = body?.site_name;
+    ssoName = body?.sso ?? null;
   } catch {
     serverMode = false;
   }

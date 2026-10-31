@@ -9,7 +9,18 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+# Upgrades applied in order to databases created by an older version (each step runs once).
+MIGRATIONS = {
+    2: [  # single sign-on and two-factor authentication
+        "ALTER TABLE users ADD COLUMN source TEXT NOT NULL DEFAULT 'local'",
+        "ALTER TABLE users ADD COLUMN totp_secret TEXT",
+        "ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN totp_last_step INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE sessions ADD COLUMN scope TEXT NOT NULL DEFAULT 'full'",
+        "CREATE TABLE IF NOT EXISTS challenges (token_hash TEXT PRIMARY KEY, kind TEXT NOT NULL, user_id INTEGER, data TEXT NOT NULL DEFAULT '{}', expires REAL NOT NULL, attempts INTEGER NOT NULL DEFAULT 0)",
+    ],
+}
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS users (
@@ -50,9 +61,18 @@ class Database:
         self.path = str(path)
         self._local = threading.local()
         self.write_lock = threading.RLock()
-        with self.conn() as c:
-            c.executescript(SCHEMA)
-            c.execute("INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', ?)", (str(SCHEMA_VERSION),))
+        c = self.conn()
+        fresh = c.execute("SELECT name FROM sqlite_master WHERE name='users'").fetchone() is None
+        c.executescript(SCHEMA)
+        c.execute("INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', ?)", ("1",))
+        version = int(c.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0])
+        for v in sorted(MIGRATIONS):
+            if v > version:
+                with self.tx() as t:
+                    for stmt in MIGRATIONS[v]:
+                        t.execute(stmt)
+                    t.execute("UPDATE meta SET value=? WHERE key='schema_version'", (str(v),))
+        self.created = fresh
 
     def conn(self) -> sqlite3.Connection:
         c = getattr(self._local, "c", None)

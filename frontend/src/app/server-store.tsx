@@ -33,6 +33,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   const enter = useCallback(async (me: { user: DemoUser; site: SiteSettings }) => {
     setUser(me.user);
     setSite({ ...DEFAULTS.site, ...me.site });
+    if (me.user.enrol_2fa) return; // nothing else is open until two-factor sign-in is set up
     await Promise.all([loadReviews(), loadAudit(me.user)]);
   }, [loadReviews, loadAudit]);
 
@@ -58,9 +59,19 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     audit,
     site,
     login: async (username, password) => {
-      const res = await api<{ user: DemoUser }>("/login", { method: "POST", json: { username, password } });
+      const res = await api<{ user?: DemoUser; totp_required?: boolean; challenge?: string }>("/login", { method: "POST", json: { username, password } });
+      if (res.totp_required) return { challenge: res.challenge };
       qc.clear();
-      await enter({ user: res.user, site: await api<SiteSettings>("/settings") });
+      await enter(await api<{ user: DemoUser; site: SiteSettings }>("/me"));
+      return {};
+    },
+    loginTotp: async (challenge, code) => {
+      await api("/login/totp", { method: "POST", json: { challenge, code } });
+      qc.clear();
+      await enter(await api<{ user: DemoUser; site: SiteSettings }>("/me"));
+    },
+    refreshMe: async () => {
+      await enter(await api<{ user: DemoUser; site: SiteSettings }>("/me"));
     },
     signIn: () => undefined,
     signOut: () => {
