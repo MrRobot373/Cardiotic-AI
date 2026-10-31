@@ -1,0 +1,44 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-31T07:08:37+00:00",
+  "torch": "2.15.0+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "ecg12_selection_sex",
+  "rule": {
+    "ptbxl_val_all_drop_max": 0.003,
+    "ningbo_val_drop_max": 0.005,
+    "women_mi_auc_gain_min": 0.01,
+    "men_mi_auc_drop_max": 0.005
+  },
+  "current": "v0.3",
+  "candidate": "v0.4",
+  "validation": {
+    "v0.3": {
+      "ptbxl_val_all": 0.9313628914501311,
+      "ningbo_val_mapped": 0.9801936231714046,
+      "mi_auc_women": 0.9165800636267232,
+      "mi_auc_men": 0.9458236977227297,
+      "superclass_women": 0.9324589767990613,
+      "superclass_men": 0.9313045877891056
+    },
+    "v0.4": {
+      "ptbxl_val_all": 0.9319923433462368,
+      "ningbo_val_mapped": 0.9803775559956568,
+      "mi_auc_women": 0.9227518557794274,
+      "mi_auc_men": 0.9465958530945008,
+      "superclass_women": 0.9338734923077692,
+      "superclass_men": 0.9326307736509618
+    }
+  },
+  "checks": {
+    "ptbxl_val_all": true,
+    "ningbo_val_mapped": true,
+    "mi_auc_women": false,
+    "mi_auc_men": true
+  },
+  "chosen": "v0.3"
+}

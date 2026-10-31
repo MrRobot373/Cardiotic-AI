@@ -410,6 +410,19 @@ Validation fold only (1,050 women, mean age 69; 1,133 men, 61). Superclass AUC:
 
 **The gap is myocardial infarction**; the other superclasses are within about 0.01 either way. Largest statement gaps (women vs men): IVCD 0.780 vs 0.847, IMI 0.913 vs 0.941, ABQRS 0.775 vs 0.794. Women are MI-positive less often in training, so the model sees fewer female MI ECGs.
 
+Candidate v0.4: v0.3 recipe with women's MI-positive training ECGs weighted 1.62x on the MI outputs. Rule (validation, fixed before training): {'ptbxl_val_all_drop_max': 0.003, 'ningbo_val_drop_max': 0.005, 'women_mi_auc_gain_min': 0.01, 'men_mi_auc_drop_max': 0.005}.
+
+| Validation | v0.3 | v0.4 |
+|---|---:|---:|
+| ptbxl_val_all | 0.931 | 0.932 |
+| ningbo_val_mapped | 0.980 | 0.980 |
+| mi_auc_women | 0.917 | 0.923 |
+| mi_auc_men | 0.946 | 0.947 |
+| superclass_women | 0.932 | 0.934 |
+| superclass_men | 0.931 | 0.933 |
+
+**Chosen: v0.3.** Checks: ptbxl_val_all pass, ningbo_val_mapped pass, mi_auc_women fail, mi_auc_men pass.
+
 ### 7.7 Per-site operating points — simulated installation
 
 Thresholds were set on a random half of Chapman–Shaoxing (5,323 ECGs, policy `max_f1`, statements with fewer than 20 site positives keep the model's threshold) and scored on the other half (5,323). `ecg12/site.py` is the installation tool; a site configuration changes thresholds only, never the model.
