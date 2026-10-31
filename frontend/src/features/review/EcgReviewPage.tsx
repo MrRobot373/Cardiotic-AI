@@ -333,7 +333,7 @@ function EcgPanel({ item, detail, signals, review, highlight }: {
         <div className="flex min-w-0 items-start gap-3">
           <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary-soft-foreground ring-1 ring-primary/10"><HeartPulse className="size-4" /></div>
           <div className="min-w-0">
-            <h3 className="text-[0.95rem] font-semibold tracking-tight">ECG 12-lead — resting</h3>
+            <h3 className="text-[0.95rem] font-semibold tracking-tight">ECG 12-lead — resting{item.ecg.layout?.startsWith("print") && <Badge tone="outline" className="ml-2 align-middle">Digitised printout {item.ecg.layout.replace("print-", "").replace("x", " × ")}</Badge>}</h3>
             <p className="text-[0.8rem] text-muted-foreground">{[fmtDateTime(item.ecg.recorded_at), item.ecg.location, item.ecg.ordered_by && `ordered by ${item.ecg.ordered_by}`].filter(Boolean).join(" · ")}</p>
           </div>
         </div>

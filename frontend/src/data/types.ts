@@ -40,6 +40,8 @@ export interface Measurements {
 }
 
 export interface EcgSummary {
+  /** "recording" (digital ECG), or "print-3x4" / "print-6x2" / "print-12x1" when read back from paper or PDF */
+  layout?: string;
   id: string;
   patient_id: string;
   recorded_at: string;

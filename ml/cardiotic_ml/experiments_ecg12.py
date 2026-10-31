@@ -802,3 +802,70 @@ def select_print(candidate: str = "print-v0.1", current: str = "v0.3") -> dict:
     _write("ecg12_selection_print", result)
     print(json.dumps({"val": val, "chosen": result["chosen"]}, indent=1), flush=True)
     return result
+
+
+# ---------------------------------------------------------------- atrial flutter: model outputs + atrial-activity features
+# Pre-declared before any result was seen. Development data: the first half of Chapman–Shaoxing (seed 0, the half
+# already used for the site-threshold simulation); test: the other half, scored once. Adopt the flutter detector if
+# its 5-fold cross-validated F1 for flutter on the development half beats the best F1 of the model's own flutter
+# probability (any threshold) on the same half by at least 0.10.
+FLUTTER_RULE = {"min_f1_gain": 0.10, "folds": 5}
+
+
+def flutter_detector(version: str = "v0.3", seed: int = 0) -> dict:
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import StratifiedKFold, cross_val_predict
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    from cardiotic_ml.data import chapman
+    from cardiotic_ml.ecg12 import flutter
+
+    recs = chapman.records()
+    x = chapman.load_all()
+    p, card = predict_statements(x, chapman.FS, version)
+    labels = card["labels"]
+    ja, jf = labels.index("AFIB"), labels.index("AFLT")
+    feats, keep = [], []
+    for i in range(len(recs)):
+        f = flutter.features(x[i], chapman.FS)
+        keep.append(f is not None)
+        feats.append(f if f is not None else np.zeros(len(flutter.NAMES), dtype=np.float32))
+    feats, keep = np.array(feats), np.array(keep)
+    y = np.array(["AFLT" in r.scp() for r in recs])
+    X = np.column_stack([np.log(p[:, jf] + 1e-6), np.log(p[:, ja] + 1e-6), feats])
+    idx = np.random.default_rng(seed).permutation(len(recs))
+    dev, test = idx[: len(idx) // 2], idx[len(idx) // 2:]
+    dev, test = dev[keep[dev]], test[keep[test]]
+
+    def best_f1(yt, score):
+        order = np.argsort(-score)
+        tp = np.cumsum(yt[order]); fp = np.cumsum(~yt[order])
+        f1 = 2 * tp / (tp + fp + yt.sum())
+        k = int(np.argmax(f1))
+        return float(f1[k]), float(score[order][k])
+
+    def at(yt, score, th):
+        pred = score >= th
+        return {"sensitivity": float(pred[yt].mean()), "ppv": float(pred[yt].sum() / max(pred.sum(), 1)), "f1": float(2 * (pred & yt).sum() / max(pred.sum() + yt.sum(), 1))}
+
+    clf = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000, class_weight="balanced", C=0.5))
+    cv = cross_val_predict(clf, X[dev], y[dev], cv=StratifiedKFold(FLUTTER_RULE["folds"], shuffle=True, random_state=0), method="predict_proba")[:, 1]
+    f1_det, th_det = best_f1(y[dev], cv)
+    f1_model, th_model = best_f1(y[dev], p[dev, jf])
+    adopt = f1_det - f1_model >= FLUTTER_RULE["min_f1_gain"]
+    clf.fit(X[dev], y[dev])
+    det_test = clf.predict_proba(X[test])[:, 1]
+    from sklearn.metrics import roc_auc_score
+    result = _meta(task="ecg12_flutter_detector", version=version, rule=FLUTTER_RULE, features=["log p(AFLT)", "log p(AFIB)", *flutter.NAMES],
+                   n_dev=int(len(dev)), n_test=int(len(test)), flutter_dev=int(y[dev].sum()), flutter_test=int(y[test].sum()),
+                   dev={"detector_cv_f1": f1_det, "model_best_f1": f1_model},
+                   adopted=bool(adopt),
+                   test={"detector": {"auc": float(roc_auc_score(y[test], det_test)), **at(y[test], det_test, th_det)},
+                         "model_alone": {"auc": float(roc_auc_score(y[test], p[test, jf])), **at(y[test], p[test, jf], th_model)},
+                         "model_ptbxl_threshold": at(y[test], p[test, jf], card["thresholds"]["AFLT"])},
+                   coefficients=dict(zip(["log p(AFLT)", "log p(AFIB)", *flutter.NAMES], map(float, clf[-1].coef_[0]))),
+                   scaler={"mean": clf[0].mean_.tolist(), "scale": clf[0].scale_.tolist()}, intercept=float(clf[-1].intercept_[0]), threshold=th_det)
+    _write("ecg12_flutter_detector", result)
+    print(json.dumps({k: result[k] for k in ("dev", "adopted", "test")}, indent=1), flush=True)
+    return result

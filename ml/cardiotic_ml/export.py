@@ -45,6 +45,8 @@ def _build(role: str, card: dict) -> tuple[torch.nn.Module, dict[str, tuple[int,
         return QualityNet(len(card["labels"])), {"x": (qd.WIN,)}
     if role == "beats":
         return BeatNet(len(card["labels"])), {"x": (bd.PRE + bd.POST,), "rr": (bd.N_RR,)}
+    if role == "ecg12_print":
+        return ECG12Net(len(card["labels"]), width=card["recipe"]["width"]), {"x": (12, 1000)}
     if role == "rhythm":
         n_rrf = card.get("n_rrf", rd.N_RRF)
         return RhythmNet(len(card["labels"]), n_rrf=n_rrf), {"x": (rd.WIN,), "rr": (n_rrf,)}
@@ -88,13 +90,33 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def export_engine(out_dir: Path = ENGINE_MODELS_DIR) -> dict:
-    import onnxruntime as ort
+def add_to_engine(role: str, name: str, out_dir: Path = ENGINE_MODELS_DIR) -> dict:
+    """Export one more model into the existing engine manifest without touching the models already there
+    (their files and SHA-256 stay byte-identical, so their validation still holds)."""
+    manifest = json.loads((out_dir / "manifest.json").read_text())
+    entry = _export(role, name, out_dir, np.random.default_rng(0))
+    manifest["models"][role] = entry
+    manifest["engine_models_version"] = manifest["engine_models_version"] + "+" + role
+    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    return entry
 
+
+def export_engine(out_dir: Path = ENGINE_MODELS_DIR) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(0)
-    entries = {}
-    for role, name in _adopted().items():
+    entries = {role: _export(role, name, out_dir, rng) for role, name in _adopted().items()}
+    manifest = {"engine_models_version": "2026.10.1", "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "exported_by": f"cardiotic-ml {__version__}, torch {torch.__version__}, onnx opset {OPSET}",
+                "intended_use": "Research use only. Not a medical device. Not validated for clinical use.",
+                "models": entries}
+    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    return manifest
+
+
+def _export(role: str, name: str, out_dir: Path, rng) -> dict:
+    import onnxruntime as ort
+
+    if True:
         card = json.loads((ARTIFACTS_DIR / f"{name}.card.json").read_text())
         src = ARTIFACTS_DIR / card["file"]
         assert _sha(src) == card["sha256"], f"{name}: weights do not match their model card"
@@ -125,11 +147,5 @@ def export_engine(out_dir: Path = ENGINE_MODELS_DIR) -> dict:
         for k in ("thresholds", "lead_mean", "lead_std", "n_rrf", "recipe"):
             if k in card:
                 entry[k] = card[k]
-        entries[role] = entry
         print(f"{role:8s} {name}: max |ONNX − PyTorch| = {worst:.1e}", flush=True)
-    manifest = {"engine_models_version": "2026.10.1", "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                "exported_by": f"cardiotic-ml {__version__}, torch {torch.__version__}, onnx opset {OPSET}",
-                "intended_use": "Research use only. Not a medical device. Not validated for clinical use.",
-                "models": entries}
-    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
-    return manifest
+        return entry
