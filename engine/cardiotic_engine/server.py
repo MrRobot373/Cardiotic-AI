@@ -5,6 +5,8 @@ e.g. the hospital's reverse proxy, as the deployment guide requires).
   GET  /v1/models   engine version, model versions and SHA-256
   POST /v1/ecg12    {"fs": 500, "units": "mV", "leads": {"I": [...], "II": [...], ...}}
   POST /v1/rhythm   {"fs": 360, "units": "mV", "lead": "II", "signal": [...]}
+  POST /v1/file     the raw bytes of an ECG file (CSV, EDF, HL7 aECG, GE MUSE XML, DICOM, SCP-ECG); optional
+                    headers X-Fs (Hz) and X-Units (mV|uV) for files that do not state them
 
 Errors are JSON: {"error": "..."} with 400 (bad input), 404, 405, 413 (too large) or 500.
 """
@@ -56,7 +58,7 @@ def make_handler(engine: Engine):
                 self._send(404, {"error": "not found"})
 
         def do_POST(self):
-            if self.path not in ("/v1/ecg12", "/v1/rhythm"):
+            if self.path not in ("/v1/ecg12", "/v1/rhythm", "/v1/file"):
                 self._send(404, {"error": "not found"})
                 return
             try:
@@ -70,6 +72,10 @@ def make_handler(engine: Engine):
                 self._send(413, {"error": f"body larger than {MAX_BODY} bytes"})
                 return
             try:
+                if self.path == "/v1/file":  # raw file body; optional X-Fs / X-Units for formats that do not state them
+                    fs = self.headers.get("X-Fs")
+                    self._send(200, engine.analyze_file(self.rfile.read(n), float(fs) if fs else None, self.headers.get("X-Units")))
+                    return
                 req = json.loads(self.rfile.read(n))
                 if not isinstance(req, dict):
                     raise InputError("body must be a JSON object")
@@ -78,7 +84,7 @@ def make_handler(engine: Engine):
                 else:
                     out = engine.analyze_rhythm(req.get("signal"), req.get("fs"), req.get("units", "mV"), req.get("lead"))
                 self._send(200, out)
-            except (InputError, json.JSONDecodeError) as e:
+            except (InputError, json.JSONDecodeError, ValueError) as e:
                 self._send(400, {"error": str(e)})
             except Exception:  # never leak internals or data in the response
                 log.exception("analysis failed")

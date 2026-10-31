@@ -11,7 +11,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dicom = ["pydicom>=2.4"]   # read DICOM 12-lead ECG waveform files
+dev = ["pytest>=8", "pydicom>=2.4"]
 
 [project.scripts]
 cardiotic-engine = "cardiotic_engine.__main__:main"

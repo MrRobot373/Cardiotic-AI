@@ -161,6 +161,30 @@ class Engine:
             notes.append(f"sampled at {fs:g} Hz; measurements were validated at 500 Hz")
         return self._envelope("ecg12", analyze_12lead(x, fs, self._m.ecg12), t0, notes)
 
+    # ------------------------------------------------------------------ a file from an ECG machine
+    def analyze_file(self, data: bytes, fs=None, units: str | None = None) -> dict:
+        """Read an ECG file (CSV, EDF, HL7 aECG, GE MUSE XML, DICOM, SCP-ECG; format detected from the content)
+        and analyse it: 12-lead if it has I, II and V1–V6 (the other four limb leads are derived), rhythm if it
+        is a single lead. The result carries `source_file` (format, patient fields, time, device as written in the file)."""
+        from cardiotic_engine.ingest import IngestError, parse
+
+        try:
+            ecg = parse(data, fs=fs, units=units)
+        except IngestError as e:
+            raise InputError(str(e)) from None
+        have = set(ecg.leads)
+        if len(have) == 1:
+            name = next(iter(have))
+            out = self.analyze_rhythm(ecg.leads[name], ecg.fs, "mV", name)
+        elif {"I", "II"} <= have and set(LEADS[6:]) <= have:
+            out = self.analyze_ecg12({k: v for k, v in ecg.leads.items()}, ecg.fs, "mV")
+        else:
+            raise InputError(f"the file has leads {sorted(have)}; 12-lead analysis needs I, II and V1–V6 (or all 12), "
+                             "rhythm analysis needs a single lead")
+        out["input_notes"] = ecg.notes + out["input_notes"]
+        out["source_file"] = ecg.info()
+        return out
+
     # ------------------------------------------------------------------ single lead
     def analyze_rhythm(self, signal, fs, units: str = "mV", lead: str | None = None) -> dict:
         from cardiotic_ml import pipeline
