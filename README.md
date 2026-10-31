@@ -23,6 +23,10 @@ For hospitals and medical-equipment manufacturers. On-premise. Markets: India an
 | [engine/](engine/) | **The AI engine**: ONNX models with integrity checks, ECG file readers, per-site operating points, HTTP API ([API](engine/README.md)) |
 | [ml/](ml/) | AI research code: data loaders, signal processing, models, training, evaluation ([how to run](ml/README.md)) |
 | [ml/reports/RESULTS.md](ml/reports/RESULTS.md) | Measured results on patients the models never saw |
+| [docs/01_FEATURES_AND_LOGIC.md](docs/01_FEATURES_AND_LOGIC.md) | Every feature, how it works, the rules and logic behind it |
+| [docs/02_REMAINING_DEVELOPMENT.md](docs/02_REMAINING_DEVELOPMENT.md) | Engineering work still open, prioritised |
+| [docs/03_MANAGEMENT_ACTIONS.md](docs/03_MANAGEMENT_ACTIONS.md) | What the owner and management must do: regulatory, clinical, legal, security, people |
+| [docs/04_ARCHITECTURE.md](docs/04_ARCHITECTURE.md) | Architecture, modules, API, database, deployment, tests |
 | [docs/PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md) | Review of the original research, product definition, regulatory path, data, AI/ML design, architecture, roadmap, team, risks and **open decisions** (section 14) |
 | [docs/ui-concept/index.html](docs/ui-concept/index.html) | Earlier static UI concept (superseded by frontend/). Open it in a browser; switch screens with the bar at the top and switch theme with the moon icon |
 
