@@ -113,8 +113,9 @@ function Rail() {
 }
 
 export function AppShell() {
-  const { user } = useDemo();
+  const { user, ready } = useDemo();
   const location = useLocation();
+  if (!ready) return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   return (
     <CommandPaletteProvider>

@@ -160,6 +160,12 @@ def test_technician_can_send_for_reading_but_not_decide(server, ecg):
     assert c.call("PUT", f"/api/reviews/{rid}", {"status": "signed"})[0] == 400
 
 
+def test_client_supplied_audit_label_is_recorded_not_stored_as_a_review_field(server, ecg):
+    t, c, rid = _signable(server, ecg)
+    assert t.call("PUT", f"/api/reviews/{rid}", {"status": "in_review", "audit": "Sent ECG for reading"}, expect=200)
+    assert any(a["action"] == "Sent ECG for reading" for a in client(server, "kdesai").call("GET", "/api/audit")[1])
+
+
 def test_stale_version_is_refused(server, ecg):
     t, c, rid = _signable(server, ecg)
     c.call("PUT", f"/api/reviews/{rid}", {"note": "one"}, expect=200)
@@ -334,7 +340,7 @@ def test_web_app_is_served_with_security_headers(tmp_path, engine):
     import urllib.request
     from cardiotic_server.app import make_app
     (tmp_path / "web").mkdir()
-    (tmp_path / "web" / "index.html").write_text("<html>app</html>")
+    (tmp_path / "web" / "index.html").write_text("<html><script>document.x=1</script><script type=module src=/assets/a.js></script>app</html>")
     (tmp_path / "web" / "assets").mkdir()
     (tmp_path / "web" / "assets" / "a.js").write_text("1")
     httpd, _, _ = make_app(tmp_path / "s.db", tmp_path / "web", engine, "127.0.0.1", 0, start_worker=False)
@@ -342,9 +348,25 @@ def test_web_app_is_served_with_security_headers(tmp_path, engine):
     base = f"http://127.0.0.1:{httpd.server_address[1]}"
     try:
         r = urllib.request.urlopen(base + "/worklist/anything")  # single-page app fallback
-        assert r.read() == b"<html>app</html>" and "frame-ancestors 'none'" in r.headers["Content-Security-Policy"]
+        body = r.read()
+        csp = r.headers["Content-Security-Policy"]
+        assert b"app</html>" in body and "frame-ancestors 'none'" in csp
+        import base64, hashlib
+        assert "'sha256-" + base64.b64encode(hashlib.sha256(b"document.x=1").digest()).decode() + "'" in csp and "unsafe-inline'" not in csp.split("script-src")[1]
         assert "immutable" in urllib.request.urlopen(base + "/assets/a.js").headers["Cache-Control"]
         r = urllib.request.urlopen(base + "/../../etc/passwd")  # path traversal falls back to the app, never a file
-        assert r.read() == b"<html>app</html>"
+        assert b"app</html>" in r.read()
     finally:
         httpd.shutdown()
+
+
+def test_unread_request_bodies_do_not_corrupt_the_next_request_on_the_same_connection(server):
+    import http.client
+    conn = http.client.HTTPConnection(server.base.split("//")[1])
+    conn.request("POST", "/api/logout", body=b'{"x": 1}', headers={"Content-Type": "application/json"})  # no session: refused before reading the body
+    r = conn.getresponse(); r.read()
+    assert r.status == 401
+    conn.request("GET", "/api/health")
+    r = conn.getresponse()
+    assert r.status == 200 and json.loads(r.read())["status"] == "ok"
+    conn.close()

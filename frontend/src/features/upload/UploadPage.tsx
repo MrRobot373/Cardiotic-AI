@@ -1,8 +1,10 @@
-import { CheckCircle2, FileUp, Loader2, Monitor, Plug, UploadCloud } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, CheckCircle2, FileUp, Loader2, Monitor, Plug, UploadCloud } from "lucide-react";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { useDemo } from "@/app/demo-store";
-import { Badge, Button, Card, CardHeader, PageHeader, Select } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, Select } from "@/components/ui";
+import { api, ApiError, serverMode } from "@/lib/server";
 import { useCatalog } from "@/data/api";
 import { statementName } from "@/data/clinical";
 import { cn } from "@/lib/utils";
@@ -16,7 +18,7 @@ const DEVICES = [
   { name: "Ward 4B · BPL Cardiart 9108", via: "PDF only (image) — needs the digitiser", last: "yesterday", ok: false },
 ];
 
-export default function UploadPage() {
+function StaticUpload() {
   const { data: c } = useCatalog();
   const { log } = useDemo();
   const [sample, setSample] = useState<string>("");
@@ -122,4 +124,105 @@ export default function UploadPage() {
       </div>
     </div>
   );
+}
+
+
+interface Uploaded {
+  id: string;
+  patient_id: string;
+  statements?: { statement: string }[];
+  measurements?: { heart_rate_bpm?: number };
+  duration_s?: number;
+  source: { dataset: string };
+}
+
+/** Upload to the Cardiotic server: the file is read, analysed and stored; nothing is faked. */
+function ServerUpload() {
+  const qc = useQueryClient();
+  const { user } = useDemo();
+  const input = useRef<HTMLInputElement>(null);
+  const [over, setOver] = useState(false);
+  const [mrn, setMrn] = useState("");
+  const [location, setLocation] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [done, setDone] = useState<{ name: string; rec?: Uploaded; error?: string }[]>([]);
+  const allowed = user?.role === "technician" || user?.role === "cardiologist";
+
+  const send = async (files: FileList | File[]) => {
+    for (const f of Array.from(files)) {
+      setBusy(f.name);
+      try {
+        const rec = await api<Uploaded>("/upload", {
+          method: "POST",
+          body: await f.arrayBuffer(),
+          headers: { "Content-Type": "application/octet-stream", "X-Filename": f.name, ...(mrn.trim() ? { "X-Patient-MRN": mrn.trim() } : {}), ...(location.trim() ? { "X-Location": location.trim() } : {}) },
+        });
+        setDone((d) => [{ name: f.name, rec }, ...d]);
+        qc.invalidateQueries({ queryKey: ["catalog"] });
+      } catch (e) {
+        setDone((d) => [{ name: f.name, error: e instanceof ApiError ? e.message : "Could not reach the server" }, ...d]);
+      }
+    }
+    setBusy(null);
+  };
+
+  return (
+    <div className="animate-fade-in">
+      <PageHeader title="Upload ECG" description="ECG machines normally send recordings to Cardiotic AI automatically. Upload is for the odd file from a USB stick, another hospital or a referral." />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="space-y-4">
+          <Card>
+            <div className="card-pad">
+              {!allowed && <p className="mb-3 rounded-lg bg-warning-soft p-3 text-sm">Only technicians and cardiologists can upload ECGs.</p>}
+              <div onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
+                onDrop={(e) => { e.preventDefault(); setOver(false); if (allowed && e.dataTransfer.files.length) void send(e.dataTransfer.files); }}
+                className={cn("flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-colors", over ? "border-primary bg-primary-soft/40" : "border-border bg-subtle/60")}>
+                <UploadCloud className="size-10 text-primary" />
+                <div className="mt-3 text-base font-semibold">Drop an ECG file here</div>
+                <div className="mt-1 text-sm text-muted-foreground">or</div>
+                <div className="mt-3">
+                  <Button variant="strong" disabled={!allowed || !!busy} onClick={() => input.current?.click()}><FileUp /> Choose file</Button>
+                  <input ref={input} type="file" multiple className="hidden" aria-label="ECG file" onChange={(e) => { if (e.target.files?.length) void send(e.target.files); e.target.value = ""; }} />
+                </div>
+                <div className="mt-5 flex max-w-xl flex-wrap justify-center gap-1.5">{["DICOM ECG waveform", "HL7 aECG (FDA XML, SierraECG)", "GE MUSE XML", "SCP-ECG (uncompressed)", "EDF / EDF+", "CSV"].map((f) => <Badge key={f} tone="outline">{f}</Badge>)}</div>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <Field label="Patient MRN" hint="Only used when the file carries no patient ID"><Input value={mrn} onChange={(e) => setMrn(e.target.value)} placeholder="e.g. UH-20400" /></Field>
+                <Field label="Location"><Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. ECG room 1" /></Field>
+              </div>
+            </div>
+          </Card>
+          {busy && <Card><div className="card-pad flex items-center gap-2 text-sm"><Loader2 className="size-4 animate-spin text-primary" /> Reading and analysing {busy}…</div></Card>}
+          {done.map((d, i) => (
+            <Card key={i} className="animate-slide-up">
+              <CardHeader title={d.name} description={d.error ? "Not accepted" : d.rec?.id.startsWith("H") ? "Analysed — Holter recording" : "Analysed — ready for reading"} icon={d.error ? <AlertTriangle /> : <CheckCircle2 />} />
+              <div className="card-pad space-y-2">
+                {d.error && <p className="text-sm text-danger-foreground" role="alert">{d.error}</p>}
+                {d.rec && (
+                  <>
+                    <div className="flex flex-wrap gap-1">
+                      {(d.rec.statements ?? []).filter((s) => !s.statement.startsWith("SUPER_")).map((s) => <Badge key={s.statement}>{statementName(s.statement)}</Badge>)}
+                    </div>
+                    <div className="text-[0.78rem] text-muted-foreground">Format {d.rec.source.dataset}. It is now in the worklist with its AI triage.</div>
+                    <Button variant="strong" asChild><Link to={d.rec.id.startsWith("H") ? `/holter/${d.rec.id}` : `/ecg/${d.rec.id}`}>Open for reading</Link></Button>
+                  </>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader title="Supported files" description="The format is recognised from the content" icon={<Plug />} />
+          <div className="card-pad space-y-2 text-[0.8rem] text-muted-foreground">
+            <p>12 leads (or I, II and V1–V6) are read as an ECG; a single lead as a Holter recording. A file without a patient ID is kept under “Unidentified patient” until it is matched.</p>
+            <p>Not read yet: PDF and photographs of paper ECGs, Huffman-compressed SCP-ECG, Philips PageWriter XML. Export those from the machine as DICOM or HL7 aECG.</p>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default function UploadPage() {
+  return serverMode ? <ServerUpload /> : <StaticUpload />;
 }

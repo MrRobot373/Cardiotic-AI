@@ -8,6 +8,8 @@ State-changing requests that authenticate by cookie must carry `X-Requested-With
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import logging
 import mimetypes
@@ -30,6 +32,14 @@ MAX_UPLOAD = int(os.environ.get("CARDIOTIC_MAX_UPLOAD", str(256 * 1024 * 1024)))
 COOKIE = "cardiotic_session"
 SECURE = os.environ.get("CARDIOTIC_COOKIE_SECURE") == "1"
 CSP = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+
+def _csp_for_page(html: bytes) -> str:
+    """The page's own inline scripts (the theme set-up that runs before first paint) are allowed by hash; nothing else inline."""
+    hashes = []
+    for m in re.finditer(rb"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, flags=re.S):
+        hashes.append("'sha256-" + base64.b64encode(hashlib.sha256(m.group(1)).digest()).decode() + "'")
+    return CSP + ("; script-src 'self' " + " ".join(hashes) if hashes else "")
 
 
 class HttpError(Exception):
@@ -57,13 +67,13 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
         def log_message(self, fmt, *args):  # request lines only: no bodies, no patient data
             log.info("%s %s", self.address_string(), fmt % args)
 
-        def _headers(self, code, ctype, length, extra=()):
+        def _headers(self, code, ctype, length, extra=(), csp=CSP):
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(length))
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
-            self.send_header("Content-Security-Policy", CSP)
+            self.send_header("Content-Security-Policy", csp)
             self.send_header("X-Frame-Options", "DENY")
             for k, v in extra:
                 self.send_header(k, v)
@@ -87,6 +97,7 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 raise HttpError(400, "bad Content-Length")
             if n > limit:
                 raise HttpError(413, f"body larger than {limit} bytes")
+            self._read = True
             return self.rfile.read(n)
 
         def _json_body(self) -> dict:
@@ -115,6 +126,29 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
             return user
 
         def _dispatch(self, method):
+            self._read = False
+            try:
+                self._dispatch_inner(method)
+            finally:
+                try:
+                    self._drain()
+                except OSError:
+                    self.close_connection = True
+
+        def _drain(self):
+            """Keep-alive connections: a body nobody read (logout, a refused upload) must not be parsed as the next request."""
+            if self._read:
+                return
+            try:
+                n = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                n = -1
+            if n > MAX_JSON or n < 0:
+                self.close_connection = True
+            elif n > 0:
+                self.rfile.read(n)
+
+        def _dispatch_inner(self, method):
             u = urlparse(self.path)
             path, q = u.path, {k: v[0] for k, v in parse_qs(u.query).items()}
             try:
@@ -136,9 +170,14 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 self._json(409, {"error": str(e)})
             except (InputError, ValueError) as e:
                 self._json(400, {"error": str(e)})
+            except (BrokenPipeError, ConnectionResetError):  # the browser went away (page closed or reloaded): nothing to answer
+                self.close_connection = True
             except Exception:  # never leak internals or patient data
                 log.exception("request failed")
-                self._json(500, {"error": "internal error; see the server log"})
+                try:
+                    self._json(500, {"error": "internal error; see the server log"})
+                except (BrokenPipeError, ConnectionResetError):
+                    self.close_connection = True
 
         def do_GET(self): self._dispatch("GET")
         def do_POST(self): self._dispatch("POST")
@@ -158,14 +197,15 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
             data = f.read_bytes()
             immutable = "assets/" in rel
             self._headers(200, mimetypes.guess_type(f.name)[0] or "application/octet-stream", len(data),
-                          [("Cache-Control", "public, max-age=31536000, immutable" if immutable else "no-cache")])
+                          [("Cache-Control", "public, max-age=31536000, immutable" if immutable else "no-cache")],
+                          csp=_csp_for_page(data) if f.suffix == ".html" else CSP)
             self.wfile.write(data)
 
         # ------------------------------------------------------------ API
         def _api(self, method, path, q):
             m = re.fullmatch
             if method == "GET" and path == "/health":
-                return self._json(200, {"status": "ok", "models_verified": True})
+                return self._json(200, {"status": "ok", "models_verified": True, "site_name": store.site()["siteName"]})  # the sign-in page shows the hospital name
             if method == "POST" and path == "/login":
                 b = self._json_body()
                 token, user = auth.login(db, str(b.get("username", "")), str(b.get("password", "")))
@@ -194,7 +234,7 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                     return self._json(200, store.review(g[1]))
                 if method == "PUT":
                     b = self._json_body()
-                    return self._json(200, store.update_review(user, g[1], {k: v for k, v in b.items() if k != "version"}, b.get("version"), b.get("audit") if isinstance(b.get("audit"), str) else None))
+                    return self._json(200, store.update_review(user, g[1], {k: v for k, v in b.items() if k not in ("version", "audit")}, b.get("version"), b["audit"][:100] if isinstance(b.get("audit"), str) else None))
             if method == "POST" and (g := m(r"/reviews/([EH]\d+)/sign", path)):
                 b = self._json_body()
                 return self._json(200, store.sign(user, g[1], b.get("note"), b.get("version")))

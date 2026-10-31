@@ -4,10 +4,10 @@ import { Card, EmptyState, PageHeader, Table, TBody, TD, TH, THead, TR } from "@
 import { fmtDateTime } from "@/lib/utils";
 
 export default function AuditPage() {
-  const { audit } = useDemo();
+  const { audit, serverMode } = useDemo();
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Audit log" description="Who did what, when. In the product this log is append-only, signed and kept for the legally required period (DPDP Act 2023, HIPAA)." />
+      <PageHeader title="Audit log" description={serverMode ? "Who did what, when. Entries are chained with hashes, so an edited or deleted entry is detected (Settings → verify)." : "Who did what, when. In the product this log is append-only, signed and kept for the legally required period (DPDP Act 2023, HIPAA)."} />
       <Card className="overflow-hidden">
         {audit.length === 0 ? <EmptyState icon={<ScrollText />} title="No events yet" description="Review an ECG, accept a finding or sign a report and it appears here." /> : (
           <Table>

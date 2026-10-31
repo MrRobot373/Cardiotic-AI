@@ -1,5 +1,6 @@
 import { Activity, BrainCircuit, FileText, HeartPulse, Inbox, ScrollText, Settings, Upload, Users, type LucideIcon } from "lucide-react";
 import type { Role } from "@/app/demo-store";
+import { serverMode } from "@/lib/server";
 
 export interface NavItem {
   to: string;
@@ -26,7 +27,8 @@ export const RAIL_NAV: NavItem[] = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
-export const visibleFor = (items: NavItem[], role?: Role) => items.filter((i) => !i.roles || (role && i.roles.includes(role)));
+export const visibleFor = (items: NavItem[], role?: Role) =>
+  items.filter((i) => (!i.roles || (role && i.roles.includes(role))) && !(serverMode && i.to === "/monitoring"));
 
 export const NAV: { group: string; items: NavItem[] }[] = [
   { group: "Workspace", items: PRIMARY_NAV },

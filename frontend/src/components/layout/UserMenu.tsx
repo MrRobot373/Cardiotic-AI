@@ -10,7 +10,7 @@ import {
 import { initials } from "@/lib/utils";
 
 export function UserMenu() {
-  const { user, signIn, signOut } = useDemo();
+  const { user, signIn, signOut, serverMode } = useDemo();
   const { appearance, update } = useAppearance();
   const navigate = useNavigate();
   if (!user) return null;
@@ -27,14 +27,14 @@ export function UserMenu() {
           <div>{user.title}</div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuSub>
+        {!serverMode && <DropdownMenuSub>
           <DropdownMenuSubTrigger><UserRound /> Switch user</DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             <DropdownMenuRadioGroup value={user.name} onValueChange={(v) => { const u = DEMO_USERS.find((d) => d.name === v); if (u) { signIn(u); toast.success(`Signed in as ${u.name}`); } }}>
               {DEMO_USERS.map((u) => <DropdownMenuRadioItem key={u.name} value={u.name}>{u.name} · {u.title}</DropdownMenuRadioItem>)}
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>
-        </DropdownMenuSub>
+        </DropdownMenuSub>}
         <DropdownMenuItem onSelect={() => navigate("/settings/appearance")}><Palette /> Appearance</DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>{appearance.theme === "dark" ? <Moon /> : appearance.theme === "system" ? <Monitor /> : <Sun />} Theme</DropdownMenuSubTrigger>

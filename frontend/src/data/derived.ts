@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useDemo, type Review } from "@/app/demo-store";
+import { serverMode } from "@/lib/server";
 import { useCatalog } from "./api";
 import { ecgTriage, PRIORITY_META, type Priority } from "./clinical";
 import type { EcgSummary, Patient } from "./types";
@@ -9,7 +10,7 @@ const COLLEAGUE = "Dr. Vivek Sharma";
 /** Earlier ECGs of a patient were read before today: unless the demo user re-opened one, show it as
  *  signed by a colleague two hours after recording, with the AI findings accepted. */
 function withHistory(r: Review, ecg: EcgSummary, historical: boolean): Review {
-  if (!historical || r.status !== "new" || Object.keys(r.decisions).length || r.added.length) return r;
+  if (serverMode || !historical || r.status !== "new" || Object.keys(r.decisions).length || r.added.length) return r;
   const at = new Date(new Date(ecg.recorded_at).getTime() + 2 * 3600e3).toISOString();
   return { ...r, status: "signed", signedBy: COLLEAGUE, signedAt: at,
     decisions: Object.fromEntries(ecg.statements.filter((s) => !s.statement.startsWith("SUPER_")).map((s) => [s.statement, "accepted" as const])) };

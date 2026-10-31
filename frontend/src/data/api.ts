@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { api, serverMode } from "@/lib/server";
 import { registerDescriptions } from "./clinical";
 import type { Catalog, EcgDetail, HolterDetail } from "./types";
 
@@ -27,7 +28,7 @@ export function useCatalog() {
     queryKey: ["catalog"],
     staleTime: Infinity,
     queryFn: async () => {
-      const c = shiftTimes(await getJson<Catalog>("catalog.json"));
+      const c = serverMode ? await api<Catalog>("/catalog") : shiftTimes(await getJson<Catalog>("catalog.json"));
       registerDescriptions(c.statement_descriptions);
       return c;
     },
@@ -35,7 +36,7 @@ export function useCatalog() {
 }
 
 export function useEcg(id: string | undefined) {
-  return useQuery({ queryKey: ["ecg", id], queryFn: () => getJson<EcgDetail>(`ecg/${id}.json`), enabled: !!id, staleTime: Infinity });
+  return useQuery({ queryKey: ["ecg", id], queryFn: () => (serverMode ? api<EcgDetail>(`/ecg/${id}`) : getJson<EcgDetail>(`ecg/${id}.json`)), enabled: !!id, staleTime: Infinity });
 }
 
 export function useHolter(id: string | undefined) {
@@ -45,11 +46,13 @@ export function useHolter(id: string | undefined) {
     staleTime: Infinity,
     queryFn: async () => {
       const [detail, buf] = await Promise.all([
-        getJson<HolterDetail>(`holter/${id}.json`),
-        fetch(`${BASE}/holter/${id}.i16`).then((r) => {
-          if (!r.ok) throw new Error(`holter signal: HTTP ${r.status}`);
-          return r.arrayBuffer();
-        }),
+        serverMode ? api<HolterDetail>(`/holter/${id}`) : getJson<HolterDetail>(`holter/${id}.json`),
+        serverMode
+          ? api<ArrayBuffer>(`/holter/${id}/signal`)
+          : fetch(`${BASE}/holter/${id}.i16`).then((r) => {
+              if (!r.ok) throw new Error(`holter signal: HTTP ${r.status}`);
+              return r.arrayBuffer();
+            }),
       ]);
       return { detail, signal: int16ToMv(new Int16Array(buf)) };
     },

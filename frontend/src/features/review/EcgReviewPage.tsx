@@ -255,7 +255,7 @@ function Compare({ item }: { item: WorkItem }) {
 }
 
 function SignPanel({ item, detail, review }: { item: WorkItem; detail: EcgDetail; review: Review }) {
-  const { user, updateReview } = useDemo();
+  const { user, updateReview, serverMode, site } = useDemo();
   const navigate = useNavigate();
   const [note, setNote] = useState(review.note);
   const findings = detail.analysis.result.statements.filter((s) => !isGroup(s.statement));
@@ -265,7 +265,7 @@ function SignPanel({ item, detail, review }: { item: WorkItem; detail: EcgDetail
       <Card className="border-success/30">
         <div className="card-pad space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-success-foreground"><ShieldCheck className="size-4" /> Signed by {review.signedBy}</div>
-          <div className="text-xs text-muted-foreground">{fmtDateTime(review.signedAt)} · report sent to HIS (HL7 ORU^R01) · ordering doctor {item.ecg.ordered_by} notified</div>
+          <div className="text-xs text-muted-foreground">{fmtDateTime(review.signedAt)} · {serverMode ? (site.autoSendHis ? "queued for the HIS (HL7 ORU^R01)" : "automatic sending to the HIS is off") : `report sent to HIS (HL7 ORU^R01) · ordering doctor ${item.ecg.ordered_by} notified`}</div>
           {review.note && <p className="rounded-lg bg-subtle p-2.5 text-[0.82rem]">{review.note}</p>}
           <div className="flex gap-2">
             <Button size="sm" variant="strong" asChild><Link to={`/ecg/${item.ecg.id}/report`}><FileText /> View report</Link></Button>
@@ -275,9 +275,9 @@ function SignPanel({ item, detail, review }: { item: WorkItem; detail: EcgDetail
       </Card>
     );
   }
-  const sign = () => {
-    updateReview(item.ecg.id, { status: "signed", note, signedBy: user!.name, signedAt: new Date().toISOString() }, "Signed ECG report");
-    toast.success("Report signed and sent", { description: "HL7 ORU^R01 to the HIS · PDF stored · ordering doctor notified" });
+  const sign = async () => {
+    const ok = await updateReview(item.ecg.id, { status: "signed", note, signedBy: user!.name, signedAt: new Date().toISOString() }, "Signed ECG report");
+    if (ok) toast.success(serverMode ? "Report signed" : "Report signed and sent", { description: serverMode ? (site.autoSendHis ? "Queued for the HIS (HL7 ORU^R01)" : "Automatic sending to the HIS is off") : "HL7 ORU^R01 to the HIS · PDF stored · ordering doctor notified" });
   };
   return (
     <Card>
@@ -286,13 +286,13 @@ function SignPanel({ item, detail, review }: { item: WorkItem; detail: EcgDetail
         {canSign(user) ? (
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="strong" className="flex-1" disabled={pending > 0} onClick={sign}><ShieldCheck /> Sign & send report</Button>
-            <Button variant="secondary" onClick={() => { updateReview(item.ecg.id, { status: "repeat", note }, "Requested repeat ECG"); toast("Repeat ECG requested", { description: `${item.ecg.location} notified` }); navigate("/"); }}>Request repeat</Button>
+            <Button variant="secondary" onClick={async () => { if (await updateReview(item.ecg.id, { status: "repeat", note }, "Requested repeat ECG")) { toast("Repeat ECG requested", serverMode ? undefined : { description: `${item.ecg.location} notified` }); navigate("/"); } }}>Request repeat</Button>
           </div>
         ) : (
-          <Button variant="strong" className="w-full" onClick={() => { updateReview(item.ecg.id, { status: "in_review", note }, "Sent ECG for reading"); toast.success("Sent to the cardiologist's worklist"); }}><Send /> Send for reading</Button>
+          <Button variant="strong" className="w-full" onClick={async () => { if (await updateReview(item.ecg.id, { status: "in_review", note }, "Sent ECG for reading")) toast.success("Sent to the cardiologist's worklist"); }}><Send /> Send for reading</Button>
         )}
         <p className="text-[0.72rem] text-muted-foreground">
-          {canSign(user) ? (pending > 0 ? `Decide on ${pending} more AI finding${pending > 1 ? "s" : ""} to sign.` : "Nothing leaves Cardiotic AI before sign-off.") : "Only a cardiologist can sign. Switch user from the account menu."}
+          {canSign(user) ? (pending > 0 ? `Decide on ${pending} more AI finding${pending > 1 ? "s" : ""} to sign.` : "Nothing leaves Cardiotic AI before sign-off.") : serverMode ? "Only a cardiologist can sign." : "Only a cardiologist can sign. Switch user from the account menu."}
         </p>
       </div>
     </Card>

@@ -7,10 +7,12 @@ import { DEMO_USERS, useDemo } from "@/app/demo-store";
 import { Avatar, Badge, Button, Card, CardHeader, Input, PageHeader, Segmented, SwitchRow } from "@/components/ui";
 import { useCatalog } from "@/data/api";
 import { ACCENT_PRESETS } from "@/lib/color";
+import { serverMode } from "@/lib/server";
 import { cn } from "@/lib/utils";
+import { ServerIntegrations, ServerSite, ServerUsers } from "./ServerSettings";
 
 const SECTIONS = [
-  { id: "site", label: "Site & AI operating points", icon: Building2 },
+  { id: "site", label: serverMode ? "Site" : "Site & AI operating points", icon: Building2 },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "users", label: "Users & roles", icon: Users },
@@ -138,7 +140,9 @@ function About() {
 
 export default function SettingsPage() {
   const { section = "site" } = useParams();
-  const body = { site: <Site />, appearance: <Appearance />, integrations: <Integrations />, users: <UsersSection />, about: <About /> }[section] ?? <Site />;
+  const body = serverMode
+    ? { site: <ServerSite />, appearance: <Appearance />, integrations: <ServerIntegrations />, users: <ServerUsers />, about: <About /> }[section] ?? <ServerSite />
+    : { site: <Site />, appearance: <Appearance />, integrations: <Integrations />, users: <UsersSection />, about: <About /> }[section] ?? <Site />;
   return (
     <div className="animate-fade-in">
       <PageHeader title="Settings" />

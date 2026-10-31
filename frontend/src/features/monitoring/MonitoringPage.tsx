@@ -129,7 +129,7 @@ export default function MonitoringPage() {
   const [running, setRunning] = useState(true);
   return (
     <div className="animate-fade-in">
-      <PageHeader eyebrow="Live Assist"
+      <PageHeader eyebrow="Live Assist · in development"
         title="Monitoring"
         description="Advisory review flags for connected OT and ICU beds. This board never replaces, delays or silences the bedside monitor's alarms, and it looks different from them on purpose."
         actions={<>

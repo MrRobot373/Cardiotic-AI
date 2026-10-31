@@ -1,6 +1,7 @@
 /**
- * Demo state (no backend): who is signed in, review decisions, sign-off and the audit trail.
- * Kept in this browser's localStorage; Settings → "Reset local review data" clears it.
+ * Static build state (no server): who is signed in, review decisions, sign-off and the audit trail, kept in
+ * this browser's localStorage (Settings → "Reset local review data" clears it). With the Cardiotic server the
+ * same context is provided by server-store.tsx instead.
  */
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
@@ -23,6 +24,7 @@ export type ReviewStatus = "new" | "in_review" | "signed" | "repeat";
 export type Decision = "accepted" | "rejected";
 
 export interface Review {
+  version?: number; // server mode: used to refuse edits made on a stale copy
   status: ReviewStatus;
   decisions: Record<string, Decision>;
   added: string[];
@@ -70,17 +72,25 @@ function load(): State {
   }
 }
 
-interface Ctx extends State {
+export interface Ctx extends State {
+  /** true when running against the Cardiotic server (real accounts), false for the static sample build. */
+  serverMode: boolean;
+  /** server mode: false until the first "who am I" answer is in. */
+  ready: boolean;
+  login: (username: string, password: string) => Promise<void>;
   signIn: (u: DemoUser) => void;
   signOut: () => void;
   review: (id: string) => Review;
-  updateReview: (id: string, patch: Partial<Review> | ((r: Review) => Partial<Review>), auditAction?: string) => void;
+  /** Resolves true when the change was applied (server mode: accepted by the server). */
+  updateReview: (id: string, patch: Partial<Review> | ((r: Review) => Partial<Review>), auditAction?: string) => Promise<boolean>;
   log: (action: string, target: string) => void;
   updateSite: (patch: Partial<SiteSettings>) => void;
   reset: () => void;
 }
 
-const DemoContext = createContext<Ctx | null>(null);
+export const DemoContext = createContext<Ctx | null>(null);
+export const EMPTY = EMPTY_REVIEW;
+export const DEFAULTS = { site: DEFAULT_SITE };
 
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>(load);
@@ -102,15 +112,22 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       [{ at: new Date().toISOString(), user: s.user?.name ?? "system", action, target }, ...s.audit].slice(0, 300);
     return {
       ...state,
+      serverMode: false,
+      ready: true,
+      login: async () => {
+        throw new Error("sign in with a sample user");
+      },
       signIn: (u) => commit((s) => ({ ...s, user: u, audit: event({ ...s, user: u }, "Signed in", u.title) })),
       signOut: () => commit((s) => ({ ...s, user: null, audit: event(s, "Signed out", "") })),
       review: (id) => state.reviews[id] ?? EMPTY_REVIEW,
-      updateReview: (id, patch, auditAction) =>
+      updateReview: (id, patch, auditAction) => {
         commit((s) => {
           const cur = s.reviews[id] ?? EMPTY_REVIEW;
           const p = typeof patch === "function" ? patch(cur) : patch;
           return { ...s, reviews: { ...s.reviews, [id]: { ...cur, ...p } }, audit: auditAction ? event(s, auditAction, id) : s.audit };
-        }),
+        });
+        return Promise.resolve(true);
+      },
       log: (action, target) => commit((s) => ({ ...s, audit: event(s, action, target) })),
       updateSite: (patch) => commit((s) => ({ ...s, site: { ...s.site, ...patch }, audit: event(s, "Changed site settings", Object.keys(patch).join(", ")) })),
       reset: () => commit((s) => ({ ...INITIAL, user: s.user })),

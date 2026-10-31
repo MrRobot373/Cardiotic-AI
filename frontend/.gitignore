@@ -4,3 +4,4 @@ shots/
 test-results/
 playwright-report/
 public/data.new/
+e2e-server/.files/
