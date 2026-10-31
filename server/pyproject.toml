@@ -1,0 +1,27 @@
+[project]
+name = "cardiotic-server"
+version = "0.1.0"
+description = "Cardiotic AI server: accounts, ECG upload and analysis, worklist, review and sign-off, audit log, HIS export. Runs on the hospital's own server."
+requires-python = ">=3.11"
+dependencies = [
+  "cardiotic-engine>=0.1.0",   # install from ../engine (it brings numpy, scipy, onnxruntime and cardiotic-ml core)
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pydicom>=2.4"]
+
+[project.scripts]
+cardiotic-server = "cardiotic_server.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-data]
+cardiotic_server = ["statements.json"]
+
+[tool.setuptools.packages.find]
+include = ["cardiotic_server*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,304 @@
+"""HTTP API and web app host (standard library). Put TLS in front (the hospital's reverse proxy, or set
+CARDIOTIC_COOKIE_SECURE=1 behind one): the server speaks plain HTTP on the address it is given.
+
+Sign-in sets an HttpOnly, SameSite=Strict cookie; API clients may send `Authorization: Bearer <token>`.
+State-changing requests that authenticate by cookie must carry `X-Requested-With: cardiotic`
+(a header a cross-site page cannot add), so another site cannot drive a signed-in browser.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import mimetypes
+import os
+import re
+from http.cookies import SimpleCookie
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+from cardiotic_engine.api import Engine, InputError
+
+from . import auth, export
+from .db import Database
+from .store import Conflict, Forbidden, NotFound, Store
+
+log = logging.getLogger("cardiotic_server")
+MAX_JSON = 1 << 20
+MAX_UPLOAD = int(os.environ.get("CARDIOTIC_MAX_UPLOAD", str(256 * 1024 * 1024)))
+COOKIE = "cardiotic_session"
+SECURE = os.environ.get("CARDIOTIC_COOKIE_SECURE") == "1"
+CSP = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+
+class HttpError(Exception):
+    def __init__(self, code: int, message: str):
+        self.code, self.message = code, message
+
+
+def _role(user, *roles):
+    if user["role"] not in roles:
+        raise Forbidden(f"this needs the role: {' or '.join(roles)}")
+
+
+def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: Engine | None = None, host: str = "127.0.0.1", port: int = 8720,
+             start_worker: bool = True):
+    db = Database(db_path)
+    store = Store(db, engine or Engine())
+    worker = export.Worker(store)
+    static = Path(static_dir).resolve() if static_dir else None
+
+    class Handler(BaseHTTPRequestHandler):
+        server_version = "cardiotic-server"
+        protocol_version = "HTTP/1.1"
+
+        # ------------------------------------------------------------ plumbing
+        def log_message(self, fmt, *args):  # request lines only: no bodies, no patient data
+            log.info("%s %s", self.address_string(), fmt % args)
+
+        def _headers(self, code, ctype, length, extra=()):
+            self.send_response(code)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(length))
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("Content-Security-Policy", CSP)
+            self.send_header("X-Frame-Options", "DENY")
+            for k, v in extra:
+                self.send_header(k, v)
+            self.end_headers()
+
+        def _json(self, code, payload, extra=()):
+            body = json.dumps(payload, default=float).encode()
+            self._headers(code, "application/json", len(body), [("Cache-Control", "no-store"), *extra])
+            self.wfile.write(body)
+
+        def _bytes(self, code, data, ctype, extra=()):
+            self._headers(code, ctype, len(data), [("Cache-Control", "no-store"), *extra])
+            self.wfile.write(data)
+
+        def _body(self, limit) -> bytes:
+            try:
+                n = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                raise HttpError(400, "bad Content-Length") from None
+            if n < 0:
+                raise HttpError(400, "bad Content-Length")
+            if n > limit:
+                raise HttpError(413, f"body larger than {limit} bytes")
+            return self.rfile.read(n)
+
+        def _json_body(self) -> dict:
+            raw = self._body(MAX_JSON)
+            try:
+                v = json.loads(raw or b"{}")
+            except json.JSONDecodeError:
+                raise HttpError(400, "body must be JSON") from None
+            if not isinstance(v, dict):
+                raise HttpError(400, "body must be a JSON object")
+            return v
+
+        def _token(self):
+            h = self.headers.get("Authorization", "")
+            if h.startswith("Bearer "):
+                return h[7:].strip(), "bearer"
+            c = SimpleCookie(self.headers.get("Cookie", ""))
+            return (c[COOKIE].value, "cookie") if COOKIE in c else (None, None)
+
+        def _user(self, mutating: bool):
+            token, how = self._token()
+            user = auth.session_user(db, token)
+            if mutating and how == "cookie" and self.headers.get("X-Requested-With") != "cardiotic":
+                raise HttpError(403, "missing X-Requested-With header")
+            self._tok = token
+            return user
+
+        def _dispatch(self, method):
+            u = urlparse(self.path)
+            path, q = u.path, {k: v[0] for k, v in parse_qs(u.query).items()}
+            try:
+                if path.startswith("/api/"):
+                    self._api(method, path[4:], q)
+                elif method == "GET" and static:
+                    self._static(path)
+                else:
+                    raise HttpError(404, "not found")
+            except HttpError as e:
+                self._json(e.code, {"error": e.message})
+            except auth.AuthError as e:
+                self._json(401, {"error": str(e)})
+            except Forbidden as e:
+                self._json(403, {"error": str(e)})
+            except NotFound as e:
+                self._json(404, {"error": f"not found: {e}"})
+            except Conflict as e:
+                self._json(409, {"error": str(e)})
+            except (InputError, ValueError) as e:
+                self._json(400, {"error": str(e)})
+            except Exception:  # never leak internals or patient data
+                log.exception("request failed")
+                self._json(500, {"error": "internal error; see the server log"})
+
+        def do_GET(self): self._dispatch("GET")
+        def do_POST(self): self._dispatch("POST")
+        def do_PUT(self): self._dispatch("PUT")
+        def do_PATCH(self): self._dispatch("PATCH")
+        def do_DELETE(self): self._dispatch("DELETE")
+
+        # ------------------------------------------------------------ static web app
+        def _static(self, path):
+            root = static
+            rel = path.lstrip("/") or "index.html"
+            f = (root / rel).resolve()
+            if root not in f.parents and f != root or not f.is_file():
+                f = root / "index.html"  # single-page app: unknown paths go to the app
+                if not f.is_file():
+                    raise HttpError(404, "web app not installed")
+            data = f.read_bytes()
+            immutable = "assets/" in rel
+            self._headers(200, mimetypes.guess_type(f.name)[0] or "application/octet-stream", len(data),
+                          [("Cache-Control", "public, max-age=31536000, immutable" if immutable else "no-cache")])
+            self.wfile.write(data)
+
+        # ------------------------------------------------------------ API
+        def _api(self, method, path, q):
+            m = re.fullmatch
+            if method == "GET" and path == "/health":
+                return self._json(200, {"status": "ok", "models_verified": True})
+            if method == "POST" and path == "/login":
+                b = self._json_body()
+                token, user = auth.login(db, str(b.get("username", "")), str(b.get("password", "")))
+                cookie = f"{COOKIE}={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age={auth.ABSOLUTE_SECONDS}" + ("; Secure" if SECURE else "")
+                return self._json(200, {"user": user, "token": token}, [("Set-Cookie", cookie)])
+            user = self._user(method != "GET")
+            if method == "POST" and path == "/logout":
+                auth.logout(db, self._tok, user)
+                return self._json(200, {"ok": True}, [("Set-Cookie", f"{COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")])
+            if method == "GET" and path == "/me":
+                return self._json(200, {"user": user, "site": store.site()})
+            if method == "GET" and path == "/models":
+                return self._json(200, store.engine.info())
+            if method == "GET" and path == "/catalog":
+                return self._json(200, store.catalog())
+            if method == "GET" and (g := m(r"/ecg/(E\d+)", path)):
+                return self._json(200, store.recording(g[1], "ecg12"))
+            if method == "GET" and (g := m(r"/holter/(H\d+)", path)):
+                return self._json(200, store.recording(g[1], "holter"))
+            if method == "GET" and (g := m(r"/holter/(H\d+)/signal", path)):
+                return self._bytes(200, store.holter_signal(g[1]), "application/octet-stream")
+            if method == "GET" and path == "/reviews":
+                return self._json(200, store.reviews())
+            if (g := m(r"/reviews/([EH]\d+)", path)):
+                if method == "GET":
+                    return self._json(200, store.review(g[1]))
+                if method == "PUT":
+                    b = self._json_body()
+                    return self._json(200, store.update_review(user, g[1], {k: v for k, v in b.items() if k != "version"}, b.get("version"), b.get("audit") if isinstance(b.get("audit"), str) else None))
+            if method == "POST" and (g := m(r"/reviews/([EH]\d+)/sign", path)):
+                b = self._json_body()
+                return self._json(200, store.sign(user, g[1], b.get("note"), b.get("version")))
+            if method == "POST" and path == "/upload":
+                data = self._body(MAX_UPLOAD)
+                if not data:
+                    raise HttpError(400, "the request body must be the ECG file")
+                h = self.headers
+                fs = h.get("X-Fs")
+                try:
+                    fs = float(fs) if fs else None
+                except ValueError:
+                    raise HttpError(400, "X-Fs must be a number") from None
+                rec = store.add_file(user, data, filename=os.path.basename(h.get("X-Filename", ""))[:200], fs=fs, units=h.get("X-Units"), mrn=h.get("X-Patient-MRN"),
+                                     location=h.get("X-Location", "")[:100], ordered_by=h.get("X-Ordered-By", "")[:100])
+                return self._json(201, rec)
+            if method == "POST" and path == "/patients":
+                b = self._json_body()
+                return self._json(201, store.create_patient(user, str(b.get("mrn", "")), str(b.get("name", "")), str(b.get("sex", "")), b.get("birth_date")))
+            if method == "POST" and (g := m(r"/recordings/([EH]\d+)/patient", path)):
+                return self._json(200, store.assign_patient(user, g[1], str(self._json_body().get("mrn", ""))))
+            if method == "GET" and path == "/audit":
+                _role(user, "admin", "cardiologist")
+                rows = db.conn().execute("SELECT at, user, action, target FROM audit ORDER BY id DESC LIMIT ?", (min(int(q.get("limit", 300)), 2000),)).fetchall()
+                return self._json(200, [dict(r) for r in rows])
+            if method == "GET" and path == "/audit/verify":
+                _role(user, "admin")
+                return self._json(200, db.verify_audit())
+            if method == "GET" and path == "/settings":
+                return self._json(200, store.site())
+            if method == "PUT" and path == "/settings":
+                return self._json(200, store.update_site(user, self._json_body()))
+            if path == "/his":
+                _role(user, "admin")
+                if method == "GET":
+                    return self._json(200, db.get_setting("his", {"enabled": False}))
+                if method == "PUT":
+                    b = self._json_body()
+                    his = {"enabled": bool(b.get("enabled")), "host": str(b.get("host", "")).strip(), "port": int(b.get("port", 2575)), "facility": str(b.get("facility", ""))[:40],
+                           "application": str(b.get("application", "HIS"))[:40]}
+                    if his["enabled"] and not his["host"]:
+                        raise ValueError("host is required to enable the HIS connection")
+                    if not 0 < his["port"] < 65536:
+                        raise ValueError("port must be 1-65535")
+                    db.set_setting("his", his)
+                    db.audit(user["name"], "Changed HIS connection", f"{his['host']}:{his['port']} enabled={his['enabled']}")
+                    return self._json(200, his)
+            if method == "GET" and path == "/outbox":
+                _role(user, "admin", "cardiologist")
+                rows = db.conn().execute("SELECT id, ecg_id, kind, status, attempts, last_error, created_at, sent_at FROM outbox ORDER BY id DESC LIMIT 200").fetchall()
+                return self._json(200, [dict(r) for r in rows])
+            if method == "POST" and (g := m(r"/outbox/(\d+)/retry", path)):
+                _role(user, "admin")
+                with db.tx() as c:
+                    if c.execute("UPDATE outbox SET status='pending', next_try=0 WHERE id=? AND status!='sent'", (int(g[1]),)).rowcount == 0:
+                        raise NotFound(g[1])
+                    db.audit(user["name"], "Retried HIS delivery", g[1], c)
+                return self._json(200, {"ok": True})
+            if method == "GET" and (g := m(r"/report/(E\d+)\.(hl7|fhir\.json)", path)):
+                _role(user, "admin", "cardiologist", "technician")
+                try:
+                    rep = export.report_content(store, g[1])
+                except KeyError:
+                    raise NotFound(g[1]) from None
+                except ValueError as e:
+                    raise Conflict(str(e)) from None
+                if g[2] == "hl7":
+                    his = db.get_setting("his", {})
+                    return self._bytes(200, export.hl7_oru(rep, sending_facility=rep["site"][:20], receiving_facility=his.get("facility", ""), receiving_app=his.get("application", "HIS")).encode("latin-1", "replace"), "text/plain; charset=iso-8859-1")
+                return self._json(200, export.fhir_bundle(rep))
+            if path == "/users" or m(r"/users/[a-z0-9._-]+", path):
+                _role(user, "admin")
+                return self._users(method, path, user)
+            raise HttpError(404, "not found")
+
+        def _users(self, method, path, admin):
+            if method == "GET" and path == "/users":
+                rows = db.conn().execute("SELECT id, username, name, role, title, active FROM users ORDER BY name").fetchall()
+                return self._json(200, [dict(r) for r in rows])
+            if method == "POST" and path == "/users":
+                b = self._json_body()
+                uid = auth.create_user(db, str(b.get("username", "")), str(b.get("name", "")), str(b.get("role", "")), str(b.get("password", "")), str(b.get("title", "")))
+                db.audit(admin["name"], "Created user", f"{b.get('username')} ({b.get('role')})")
+                return self._json(201, {"id": uid})
+            if method == "PATCH":
+                uname = path.rsplit("/", 1)[1]
+                b = self._json_body()
+                if "password" in b:
+                    auth.set_password(db, uname, str(b["password"]))
+                    db.audit(admin["name"], "Reset password", uname)
+                if "active" in b:
+                    if uname == admin["username"] and not b["active"]:
+                        raise Conflict("you cannot deactivate your own account")
+                    with db.tx() as c:
+                        if c.execute("UPDATE users SET active=? WHERE username=?", (1 if b["active"] else 0, uname)).rowcount == 0:
+                            raise NotFound(uname)
+                        if not b["active"]:
+                            c.execute("DELETE FROM sessions WHERE user_id=(SELECT id FROM users WHERE username=?)", (uname,))
+                        db.audit(admin["name"], "Activated user" if b["active"] else "Deactivated user", uname, c)
+                return self._json(200, {"ok": True})
+            raise HttpError(405, "method not allowed")
+
+    httpd = ThreadingHTTPServer((host, port), Handler)
+    httpd.daemon_threads = True
+    if start_worker:
+        worker.start()
+    return httpd, store, worker

@@ -44,7 +44,8 @@ def read(data: bytes, fs: float | None = None, units: str | None = None):
     if getattr(ds, "PatientID", ""):
         pat["id"] = str(ds.PatientID)
     if getattr(ds, "PatientName", ""):
-        pat["name"] = str(ds.PatientName).replace("^", " ").strip()
+        family, _, rest = str(ds.PatientName).partition("^")  # DICOM: Family^Given^Middle^Prefix^Suffix -> "Given Family"
+        pat["name"] = " ".join(x for x in (rest.split("^")[0].strip(), family.strip()) if x)
     if getattr(ds, "PatientSex", "") in ("M", "F"):
         pat["sex"] = str(ds.PatientSex)
     if getattr(ds, "PatientBirthDate", ""):

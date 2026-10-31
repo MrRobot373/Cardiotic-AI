@@ -166,12 +166,18 @@ class Engine:
         """Read an ECG file (CSV, EDF, HL7 aECG, GE MUSE XML, DICOM, SCP-ECG; format detected from the content)
         and analyse it: 12-lead if it has I, II and V1–V6 (the other four limb leads are derived), rhythm if it
         is a single lead. The result carries `source_file` (format, patient fields, time, device as written in the file)."""
+        return self.analyze_parsed(self.read_file(data, fs, units))
+
+    def read_file(self, data: bytes, fs=None, units: str | None = None):
+        """Parse an ECG file into a ParsedEcg (InputError with the reason if it cannot be read)."""
         from cardiotic_engine.ingest import IngestError, parse
 
         try:
-            ecg = parse(data, fs=fs, units=units)
+            return parse(data, fs=fs, units=units)
         except IngestError as e:
             raise InputError(str(e)) from None
+
+    def analyze_parsed(self, ecg) -> dict:
         have = set(ecg.leads)
         if len(have) == 1:
             name = next(iter(have))
