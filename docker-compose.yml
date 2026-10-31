@@ -1,0 +1,21 @@
+# docker compose up -d      (first time: see deploy/INSTALL.md for creating the first administrator)
+services:
+  cardiotic:
+    image: cardiotic:0.1.0
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8720:8720"        # only the reverse proxy (TLS) talks to it; see deploy/nginx.conf.example
+    volumes:
+      - cardiotic-data:/data         # the database: patients, ECGs, reviews, audit log
+      # - ./site_config.json:/etc/cardiotic/site_config.json:ro   # signed-off per-site operating points
+    environment:
+      CARDIOTIC_COOKIE_SECURE: "1"   # the reverse proxy serves HTTPS
+      # CARDIOTIC_SITE_CONFIG: /etc/cardiotic/site_config.json
+      # CARDIOTIC_IDLE_MINUTES: "15"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+volumes:
+  cardiotic-data:

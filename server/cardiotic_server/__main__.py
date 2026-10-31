@@ -50,6 +50,14 @@ def main(argv=None) -> int:
             pass
         return 0
     db = Database(args.db)
+    try:
+        return _run(args, db, auth)
+    except ValueError as e:  # a refused password, an unknown user…: say why, no traceback
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+
+def _run(args, db, auth) -> int:
     if args.cmd == "init":
         print(f"database ready: {Path(args.db).resolve()}")
     elif args.cmd == "create-user":

@@ -4,13 +4,14 @@ The deployable part of Cardiotic AI: one component that hospitals run on their o
 ECG-equipment makers embed in their software. It analyses ECGs with the exported, registered AI
 models and returns a versioned result.
 
-**Research use only. Not a medical device. Not validated for clinical use.**
+Not a cleared medical device and not validated for clinical use (see ../deploy/INSTALL.md §5).
 
 ## What it does
 
 | Analysis | Input | Output |
 |---|---|---|
 | `ecg12` | 10 s 12-lead ECG (8–60 s accepted; the first 10 s is analysed), ≥ 200 Hz | Per-lead signal quality, HR, PR, QRS, QT, QTc, axes with caliper positions, diagnostic statements with calibrated probability and confidence, notes |
+| `file` | An ECG file as written by a machine: DICOM, HL7 aECG, GE MUSE XML, SCP-ECG, EDF, CSV (format detected from the content) | `ecg12` or `rhythm` analysis plus `source_file` (format, patient, time, device) |
 | `rhythm` | Single-lead strip or Holter, 10 s to 48 h, ≥ 100 Hz | Signal-quality segments, every beat with its class (N/S/V/F), 30 s rhythm windows (sinus / AF / other / too noisy), heart rate, findings |
 
 8-lead input (I, II, V1–V6, as many ECG carts store it) is accepted: III, aVR, aVL and aVF are derived
@@ -75,6 +76,7 @@ docker run -p 8710:8710 cardiotic-engine:0.1.0
 | GET | `/v1/health` | — |
 | GET | `/v1/models` | — (engine version, model versions and SHA-256) |
 | POST | `/v1/ecg12` | `{"fs": 500, "units": "mV", "leads": {"I": [...], "II": [...], ..., "V6": [...]}}` |
+| POST | `/v1/file` | the raw bytes of an ECG file; optional headers `X-Fs`, `X-Units` for formats that do not state them |
 | POST | `/v1/rhythm` | `{"fs": 360, "units": "mV", "lead": "II", "signal": [...]}` |
 
 Response: `{"analysis", "engine": {version, models_version, model SHA-256s, intended_use}, "input_notes",

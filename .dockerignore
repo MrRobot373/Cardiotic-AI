@@ -1,0 +1,12 @@
+data
+**/node_modules
+**/dist
+**/__pycache__
+**/*.egg-info
+ml/cache
+ml/artifacts
+ml/reports
+frontend/screenshots
+frontend/test-results
+frontend/e2e-server/.files
+.git

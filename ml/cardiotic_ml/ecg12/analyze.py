@@ -60,14 +60,20 @@ def lead_quality(signal: np.ndarray, fs: float, models: Models12) -> dict[str, s
     return out
 
 
-def statements(signal: np.ndarray, fs: float, models: Models12) -> list[dict]:
+def probabilities(signal: np.ndarray, fs: float, models: Models12) -> np.ndarray:
+    """Calibrated probability of every statement the model has (card["labels"] order), before any threshold."""
     x = dsp.resample(signal, fs, FS_MODEL) if fs != FS_MODEL else signal.astype(np.float32)
     x = x[:, :N_MODEL] if x.shape[1] >= N_MODEL else np.pad(x, ((0, 0), (0, N_MODEL - x.shape[1])))
     x = dsp.bandpass(x, FS_MODEL, "diagnostic")
     c = models.card
     x = (x - np.array(c["lead_mean"])[:, None]) / np.array(c["lead_std"])[:, None]
     z = run_batched(models.net, x[None].astype(np.float32))[0] / c["temperature"]
-    p = 1 / (1 + np.exp(-z))
+    return 1 / (1 + np.exp(-z))
+
+
+def statements(signal: np.ndarray, fs: float, models: Models12) -> list[dict]:
+    c = models.card
+    p = probabilities(signal, fs, models)
     th = models.thresholds
     out = [{"statement": name, "probability": float(pi), "threshold": th[name],
             "confidence": cal.confidence_level(float(pi))}  # how sure the finding is present

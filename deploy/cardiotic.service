@@ -1,0 +1,24 @@
+# systemd unit for an install without containers (see deploy/INSTALL.md)
+[Unit]
+Description=Cardiotic AI server
+After=network.target
+
+[Service]
+User=cardiotic
+Group=cardiotic
+Environment=CARDIOTIC_DB=/var/lib/cardiotic/cardiotic.db
+Environment=CARDIOTIC_STATIC=/opt/cardiotic/web
+Environment=CARDIOTIC_COOKIE_SECURE=1
+Environment=CARDIOTIC_ENGINE_THREADS=1
+# Environment=CARDIOTIC_SITE_CONFIG=/etc/cardiotic/site_config.json
+ExecStart=/opt/cardiotic/venv/bin/cardiotic-server serve --host 127.0.0.1 --port 8720
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/cardiotic
+
+[Install]
+WantedBy=multi-user.target
