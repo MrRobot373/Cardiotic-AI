@@ -1,0 +1,57 @@
+{
+ "created_utc": "2026-10-31T16:33:40+00:00",
+ "two_hour_comparisons": [
+  {
+   "data": "one patient (record 221, repeated)",
+   "hours": 2.006172839506173,
+   "beats": [
+    9677,
+    9677
+   ],
+   "beats_same_position": 1.0,
+   "beats_same_class": 0.9997933243773897,
+   "rhythm_windows_same": 0.997920997920998,
+   "heart_rate": [
+    84.37500000004077,
+    84.37500000004077
+   ]
+  },
+  {
+   "data": "one patient (record 203, repeated)",
+   "hours": 2.006172839506173,
+   "beats": [
+    11722,
+    11722
+   ],
+   "beats_same_position": 1.0,
+   "beats_same_class": 0.9994028322811807,
+   "rhythm_windows_same": 1.0,
+   "heart_rate": [
+    92.30769230761481,
+    92.30769230761481
+   ]
+  },
+  {
+   "data": "four different patients joined",
+   "hours": 2.006172839506173,
+   "beats": [
+    9605,
+    9605
+   ],
+   "beats_same_position": 0.9994794377928162,
+   "beats_same_class": 0.9240625,
+   "rhythm_windows_same": 1.0,
+   "heart_rate": [
+    85.03937007877182,
+    84.04669260694203
+   ]
+  }
+ ],
+ "recording_24h": {
+  "seconds": 59.11292600631714,
+  "beats": 115818,
+  "peak_memory_mb": 1289.9296875,
+  "single_pass_peak_memory_mb_measured_before": 2839,
+  "note": "30-minute sections; peak memory measured in this process"
+ }
+}

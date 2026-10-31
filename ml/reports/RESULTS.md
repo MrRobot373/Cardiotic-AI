@@ -466,9 +466,70 @@ Site thresholds help where the hospital's convention differs (AF PPV, SVT and fl
 11. **Proxy and weak labels.** Synthetic quality labels come from known noise levels; CinC 'too noisy' labels are per recording, not per window. Clinician-labelled windows are needed.
 12. **Public data only.** MIT-BIH (1970s Holter, MLII) and CinC 2017 (handheld, lead I). Performance on modern 12-lead carts and OT/ICU monitors is unknown until tested on partner-hospital data.
 13. **CinC split is by record, not patient** (no patient IDs are published), so some test records may share a patient with training records. The cross-dataset MIT-BIH result is the stronger generalisation evidence.
-14. **Rare 12-lead statements are still weak.** Atrial flutter: Chapman sensitivity 9% (no trustworthy flutter training labels: Ningbo's are mislabelled fibrillation). Long QT: AUC 0.93 on Chapman but sensitivity 22% at the PTB-XL threshold. WPW has 8 PTB-XL test ECGs. Per-site thresholds raise flutter sensitivity to about 67% but at about 22% PPV (section 7.7), so flutter must not be claimed. Next: flutter data with verified labels (e.g. CODE-15%, MIMIC-IV-ECG; licences in PRODUCT_PLAN §7).
+14. **Rare 12-lead statements are still weak.** Atrial flutter: Chapman sensitivity 9% (no trustworthy flutter training labels: Ningbo's are mislabelled fibrillation). Long QT: AUC 0.93 on Chapman but sensitivity 22% at the PTB-XL threshold. WPW has 8 PTB-XL test ECGs. Per-site thresholds raise flutter sensitivity to about 67% but at about 22% PPV (section 7.7), and atrial-activity features (section 11) did not clear the pre-declared bar, so flutter must not be claimed. Next: flutter data with verified labels (e.g. CODE-15%, MIMIC-IV-ECG; licences in PRODUCT_PLAN §7).
 15. **Sex gap in the 12-lead model.** Superclass macro-AUC on PTB-XL test: v0.1 0.914 women vs 0.935 men; v0.3 0.917 vs 0.939 — more data did not close it. Section 7.6: the gap is myocardial infarction (validation, age 40–80: about 0.905 women vs 0.941 men); other superclasses are even. Subgroup results must be part of every future model card.
 16. **12-lead measurements are checked against other algorithms, not a referee.** IEC 60601-2-25 requires the CSE database (licensed). PR is not measured beyond 300 ms (very long first-degree AV block) and paced ECGs are not handled specially.
 17. **The signal-quality model was trained on Holter lead II, not 12-lead ECGs.** On clean PTB-XL validation ECGs it rates 0.35% of leads unusable and 19% noisy (76% of ECGs show a 'noisy' lead). Three 12-lead candidates were rejected by a pre-declared rule (section 2.1). Next: clinician-labelled 12-lead leads (readable / noisy / unusable); until then the review screen should show 'noisy' as a soft hint, not a warning.
 18. **Two countries, no Indian or US data yet.** PTB-XL (Schiller devices, Germany, 1989–1996) and Chapman/Ningbo (China, 2013–2018). Performance on today's ECG carts in Indian and US hospitals is unknown until tested on partner data.
-19. **Thresholds are per site.** The same model needs different yes/no thresholds where hospitals label differently (section 7.3–7.4). Tool and simulated installation: section 7.7. Next: wire site configurations into the engine (versioned, approved by the cardiology lead, audit-logged).
+19. **Thresholds are per site.** The same model needs different yes/no thresholds where hospitals label differently (section 7.3–7.4). Tool and simulated installation: section 7.7. The engine loads a signed-off site configuration (`cardiotic-engine site-config` drafts it; the cardiology lead approves it).
+
+## 9. ECG image digitiser
+
+Real PTB-XL test-fold ECGs (40) were rendered as the product's PDF report, read back by the digitiser and compared with the original samples (lead by lead, in the 10 s a printout shows). A scan is the page rendered at 200 dpi; the 'photo' is that scan rotated 2°, blurred and JPEG-compressed at quality 70.
+
+| Input | Leads compared | Median correlation | 10th percentile | Median error (µV) |
+|---|---:|---:|---:|---:|
+| vector PDF | 480 | 1.000 | 0.998 | 4 |
+| scan, 200 dpi | 480 | 0.948 | 0.888 | 47 |
+| rotated, blurred JPEG (photo) | 480 | 0.943 | 0.879 | 50 |
+
+Files that failed to read: 0. The digitiser is also tested against printouts drawn by another renderer (matplotlib). Limits: real phone photos add perspective, shadows and curved paper that are not simulated here; each cart's own printout style needs a check with real printouts.
+
+### 9.1 What a printed 3 × 4 ECG still contains
+
+A 3 × 4 printout shows each lead for 2.5 s (lead II for 10 s). PTB-XL validation fold (500 ECGs) masked that way:
+
+- Statements from the full-ECG model with no retraining: macro-AUC 0.939 → 0.870; superclass 0.950 → 0.864; atrial fibrillation AUC 0.994 → 0.991.
+
+| Measurement vs GE 12SL | From | Mean ± SD of difference | Within tolerance |
+|---|---|---:|---:|
+| Heart rate (±5 bpm) | full 12 leads | +0.1 ± 1.9 | 97.6% |
+| Heart rate (±5 bpm) | lead II strip only | +1.1 ± 6.3 | 92.0% |
+| PR (±10 ms) | full 12 leads | -6.4 ± 14.1 | 60.6% |
+| PR (±10 ms) | lead II strip only | +0.3 ± 16.8 | 67.4% |
+| QRS (±10 ms) | full 12 leads | +0.4 ± 13.3 | 83.4% |
+| QRS (±10 ms) | lead II strip only | -7.1 ± 41.3 | 37.0% |
+| QRS (±10 ms) | 2.5 s columns | +5.4 ± 34.5 | 57.6% |
+| QT (±20 ms) | full 12 leads | +0.1 ± 22.9 | 88.4% |
+| QT (±20 ms) | lead II strip only | +11.5 ± 67.6 | 69.8% |
+| QT (±20 ms) | 2.5 s columns | -2.1 ± 44.9 | 65.9% |
+
+**Decision:** from a 3 × 4 printout the engine reports heart rate and PR (from the 10 s rhythm strip) but not QRS, QT or QTc: their error from one lead or 2.5 s columns is several times larger than from the full ECG. A 12 × 1 printout carries all leads for 10 s and is analysed in full.
+
+## 10. 24-hour Holter: analysis in 30-minute sections
+
+Recordings longer than 32 minutes are analysed in 30-minute sections with a minute of overlap either side, then merged and summarised once (the beat model was trained on 30-minute records). One-pass against sectioned analysis on 2 h of real MIT-BIH data:
+
+| Data | Beats (one pass / sections) | Same beat position | Same beat class | Same rhythm window | Heart rate |
+|---|---:|---:|---:|---:|---|
+| one patient (record 221, repeated) | 9,677 / 9,677 | 100.00% | 100.0% | 99.8% | 84.4 / 84.4 |
+| one patient (record 203, repeated) | 11,722 / 11,722 | 100.00% | 99.9% | 100.0% | 92.3 / 92.3 |
+| four different patients joined | 9,605 / 9,605 | 99.95% | 92.4% | 100.0% | 85.0 / 84.0 |
+
+A 24 h recording (115,818 beats) takes 59 s and about 1290 MB (one pass: about 2,800 MB). Where classes differ (joined records of different patients), the beat model's record-level amplitude scale is computed per section instead of over the joined recording; for a single patient the two agree.
+
+## 11. Atrial flutter: can signal processing help?
+
+Flutter is the weakest statement (Chapman sensitivity 9% at the PTB-XL threshold). Atrial-activity features (QRST cancellation, then spectral peak and organisation at 3–10 Hz in II, aVF and V1; `ecg12/flutter.py`) were added to the model's own flutter and AF probabilities in a logistic regression. Rule, fixed before any result: adopt if 5-fold cross-validated F1 on the development half of Chapman–Shaoxing (5,322 ECGs, 236 with flutter) beats the best F1 of the model's flutter probability alone by at least 0.1.
+
+Development half: detector F1 0.438 vs model alone 0.346 (gain +0.091). **Not adopted.**
+
+Held-out half (5,323 ECGs, 209 with flutter), scored once:
+
+| | AUC | Sensitivity | PPV | F1 |
+|---|---:|---:|---:|---:|
+| Detector | 0.928 | 54.1% | 30.2% | 0.388 |
+| Model alone, best threshold | 0.903 | 67.5% | 22.2% | 0.335 |
+| Model, PTB-XL threshold | — | 11.0% | 25.6% | 0.154 |
+
+The features help a little (AUC 0.90 → 0.93) but not enough to claim flutter detection: at about 54% sensitivity the PPV is about 30%. Flutter stays out of the product's claims; the per-site thresholds (§7.7) remain the way to trade sensitivity against false alarms.

@@ -1,0 +1,107 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-10-31T16:33:27+00:00",
+  "torch": "2.15.0+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "ecg12_printout_limits",
+  "n_ecgs": 500,
+  "split": "PTB-XL validation fold 9",
+  "statements_full_model": {
+    "full ECG": {
+      "all": 0.9390544578295019,
+      "superclass": 0.9503684789129252
+    },
+    "printout layout (no retraining)": {
+      "all": 0.870375365771066,
+      "superclass": 0.8637769666521006
+    },
+    "afib_auc": [
+      0.9944086021505376,
+      0.9909062980030723
+    ]
+  },
+  "measurements_vs_ge12sl": {
+    "full 12 leads": {
+      "heart_rate_bpm": {
+        "mean_diff": 0.1320726819141666,
+        "sd_diff": 1.8714686527406517,
+        "within_tolerance": 0.976,
+        "n": 500
+      },
+      "pr_ms": {
+        "mean_diff": -6.4105011933174225,
+        "sd_diff": 14.1327995590573,
+        "within_tolerance": 0.6062052505966588,
+        "n": 419
+      },
+      "qrs_ms": {
+        "mean_diff": 0.42,
+        "sd_diff": 13.286067890839638,
+        "within_tolerance": 0.834,
+        "n": 500
+      },
+      "qt_ms": {
+        "mean_diff": 0.1425661914460285,
+        "sd_diff": 22.882771308182136,
+        "within_tolerance": 0.8839103869653768,
+        "n": 491
+      }
+    },
+    "lead II strip only": {
+      "heart_rate_bpm": {
+        "mean_diff": 1.0563021674880548,
+        "sd_diff": 6.323304078250697,
+        "within_tolerance": 0.92,
+        "n": 500
+      },
+      "pr_ms": {
+        "mean_diff": 0.2894736842105263,
+        "sd_diff": 16.78440362318988,
+        "within_tolerance": 0.6736842105263158,
+        "n": 380
+      },
+      "qrs_ms": {
+        "mean_diff": -7.108,
+        "sd_diff": 41.28162225494536,
+        "within_tolerance": 0.37,
+        "n": 500
+      },
+      "qt_ms": {
+        "mean_diff": 11.52608695652174,
+        "sd_diff": 67.55089364704347,
+        "within_tolerance": 0.6978260869565217,
+        "n": 460
+      }
+    },
+    "2.5 s columns": {
+      "heart_rate_bpm": {
+        "mean_diff": 1.0563021674880548,
+        "sd_diff": 6.323304078250697,
+        "within_tolerance": 0.92,
+        "n": 500
+      },
+      "pr_ms": {
+        "mean_diff": 0.2894736842105263,
+        "sd_diff": 16.78440362318988,
+        "within_tolerance": 0.6736842105263158,
+        "n": 380
+      },
+      "qrs_ms": {
+        "mean_diff": 5.436,
+        "sd_diff": 34.51860228920053,
+        "within_tolerance": 0.576,
+        "n": 250
+      },
+      "qt_ms": {
+        "mean_diff": -2.131004366812227,
+        "sd_diff": 44.867883197888546,
+        "within_tolerance": 0.6593886462882096,
+        "n": 229
+      }
+    }
+  }
+}

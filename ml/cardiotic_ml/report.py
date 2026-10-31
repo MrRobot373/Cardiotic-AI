@@ -294,6 +294,81 @@ def _sex_and_site_section() -> list[str]:
     return out
 
 
+def _product_sections() -> list[str]:
+    """Results behind the product features that read paper, long recordings and flutter."""
+    out = []
+    dg = _load("digitiser_eval")
+    if dg:
+        out += ["## 9. ECG image digitiser", "",
+                f"Real PTB-XL test-fold ECGs ({dg['ecgs']}) were rendered as the product's PDF report, read back by the digitiser and compared with the "
+                "original samples (lead by lead, in the 10 s a printout shows). A scan is the page rendered at 200 dpi; the 'photo' is that scan rotated 2°, "
+                "blurred and JPEG-compressed at quality 70.", "",
+                "| Input | Leads compared | Median correlation | 10th percentile | Median error (µV) |", "|---|---:|---:|---:|---:|"]
+        for k, v in dg["kinds"].items():
+            out.append(f"| {k} | {v['leads']} | {v['median_correlation']:.3f} | {v['p10_correlation']:.3f} | {v['median_rmse_uV']:.0f} |")
+        out += ["", f"Files that failed to read: {sum(dg['failed_files'].values()) if dg['failed_files'] else 0}. The digitiser is also tested against printouts drawn by another renderer "
+                "(matplotlib). Limits: real phone photos add perspective, shadows and curved paper that are not simulated here; each cart's own printout style "
+                "needs a check with real printouts.", ""]
+    pl = _load("ecg12_printout_limits")
+    if pl:
+        sm, ms = pl["statements_full_model"], pl["measurements_vs_ge12sl"]
+        out += ["### 9.1 What a printed 3 × 4 ECG still contains", "",
+                f"A 3 × 4 printout shows each lead for 2.5 s (lead II for 10 s). PTB-XL validation fold ({pl['n_ecgs']} ECGs) masked that way:", "",
+                f"- Statements from the full-ECG model with no retraining: macro-AUC {sm['full ECG']['all']:.3f} → {sm['printout layout (no retraining)']['all']:.3f}; "
+                f"superclass {sm['full ECG']['superclass']:.3f} → {sm['printout layout (no retraining)']['superclass']:.3f}; atrial fibrillation AUC {sm['afib_auc'][0]:.3f} → {sm['afib_auc'][1]:.3f}.", "",
+                "| Measurement vs GE 12SL | From | Mean ± SD of difference | Within tolerance |", "|---|---|---:|---:|"]
+        names = {"heart_rate_bpm": "Heart rate (±5 bpm)", "pr_ms": "PR (±10 ms)", "qrs_ms": "QRS (±10 ms)", "qt_ms": "QT (±20 ms)"}
+        for k, nm in names.items():
+            for mode in ("full 12 leads", "lead II strip only", "2.5 s columns"):
+                if mode == "2.5 s columns" and k in ("heart_rate_bpm", "pr_ms"):
+                    continue  # rate and PR come from the rhythm strip, the same numbers as 'lead II strip only'
+                v = ms.get(mode, {}).get(k)
+                if v:
+                    out.append(f"| {nm} | {mode} | {v['mean_diff']:+.1f} ± {v['sd_diff']:.1f} | {_pct(v['within_tolerance'])} |")
+        out += ["", "**Decision:** from a 3 × 4 printout the engine reports heart rate and PR (from the 10 s rhythm strip) but not QRS, QT or QTc: "
+                "their error from one lead or 2.5 s columns is several times larger than from the full ECG. A 12 × 1 printout carries all leads for 10 s and is analysed in full.", ""]
+    sp = _load("ecg12_selection_print")
+    if sp:
+        v = sp["results"]["val"]
+        out += ["### 9.2 Printout statement model", "",
+                f"Rule, fixed before training: adopt `print-v0.1` for digitised printouts only if its validation macro-AUC (all statements, printout layout) beats v0.3 on the same masked data by at least "
+                f"{sp['rule']['min_gain_all']} and its superclass macro-AUC is at least {sp['rule']['min_superclass']}.", "",
+                "| Validation, printout layout | All statements | Superclass |", "|---|---:|---:|"]
+        for k, d in v.items():
+            out.append(f"| {k} | {d['all']:.3f} | {d['superclass']:.3f} |")
+        out += ["", f"Gain on all statements: {sp['gain_val_all']:+.3f}. **{'Adopted: print-v0.1' if sp['chosen'] else 'Not adopted: printouts get rate and rhythm only'}.**", ""]
+    hc = _load("holter_chunking")
+    if hc:
+        out += ["## 10. 24-hour Holter: analysis in 30-minute sections", "",
+                "Recordings longer than 32 minutes are analysed in 30-minute sections with a minute of overlap either side, then merged and summarised once "
+                "(the beat model was trained on 30-minute records). One-pass against sectioned analysis on 2 h of real MIT-BIH data:", "",
+                "| Data | Beats (one pass / sections) | Same beat position | Same beat class | Same rhythm window | Heart rate |", "|---|---:|---:|---:|---:|---|"]
+        for c in hc["two_hour_comparisons"]:
+            out.append(f"| {c['data']} | {c['beats'][0]:,} / {c['beats'][1]:,} | {f"{100 * c['beats_same_position']:.2f}%"} | {100 * c['beats_same_class']:.1f}% | {100 * c['rhythm_windows_same']:.1f}% | {c['heart_rate'][0]:.1f} / {c['heart_rate'][1]:.1f} |")
+        r24 = hc["recording_24h"]
+        out += ["", f"A 24 h recording ({r24['beats']:,} beats) takes {r24['seconds']:.0f} s and about {r24['peak_memory_mb']:.0f} MB (one pass: about 2,800 MB). "
+                "Where classes differ (joined records of different patients), the beat model's record-level amplitude scale is computed per section instead of over the joined recording; "
+                "for a single patient the two agree.", ""]
+    fl = _load("ecg12_flutter_detector")
+    if fl:
+        t = fl["test"]
+        out += ["## 11. Atrial flutter: can signal processing help?", "",
+                "Flutter is the weakest statement (Chapman sensitivity 9% at the PTB-XL threshold). Atrial-activity features (QRST cancellation, then spectral peak and "
+                "organisation at 3–10 Hz in II, aVF and V1; `ecg12/flutter.py`) were added to the model's own flutter and AF probabilities in a logistic regression. "
+                f"Rule, fixed before any result: adopt if 5-fold cross-validated F1 on the development half of Chapman–Shaoxing ({fl['n_dev']:,} ECGs, {fl['flutter_dev']} with flutter) "
+                f"beats the best F1 of the model's flutter probability alone by at least {fl['rule']['min_f1_gain']}.", "",
+                f"Development half: detector F1 {fl['dev']['detector_cv_f1']:.3f} vs model alone {fl['dev']['model_best_f1']:.3f} (gain {fl['dev']['detector_cv_f1'] - fl['dev']['model_best_f1']:+.3f}). "
+                f"**{'Adopted.' if fl['adopted'] else 'Not adopted.'}**", "",
+                f"Held-out half ({fl['n_test']:,} ECGs, {fl['flutter_test']} with flutter), scored once:", "",
+                "| | AUC | Sensitivity | PPV | F1 |", "|---|---:|---:|---:|---:|"]
+        for k, nm in (("detector", "Detector"), ("model_alone", "Model alone, best threshold"), ("model_ptbxl_threshold", "Model, PTB-XL threshold")):
+            d = t[k]
+            out.append(f"| {nm} | {d['auc']:.3f} | {_pct(d['sensitivity'])} | {_pct(d['ppv'])} | {d['f1']:.3f} |" if "auc" in d else f"| {nm} | — | {_pct(d['sensitivity'])} | {_pct(d['ppv'])} | {d['f1']:.3f} |")
+        out += ["", "The features help a little (AUC 0.90 → 0.93) but not enough to claim flutter detection: at about 54% sensitivity the PPV is about 30%. Flutter stays out of the product's claims; "
+                "the per-site thresholds (§7.7) remain the way to trade sensitivity against false alarms.", ""]
+    return out
+
+
 def write_results() -> str:
     out = ["# Cardiotic AI — research results", "",
            "Generated by `python -m cardiotic_ml.cli report` from the JSON files in this folder.",
@@ -532,7 +607,7 @@ def write_results() -> str:
             "14. **Rare 12-lead statements are still weak.** Atrial flutter: Chapman sensitivity 9% (no trustworthy flutter "
             "training labels: Ningbo's are mislabelled fibrillation). Long QT: AUC 0.93 on Chapman but sensitivity 22% at the "
             "PTB-XL threshold. WPW has 8 PTB-XL test ECGs. Per-site thresholds raise flutter sensitivity to about 67% but at about 22% "
-            "PPV (section 7.7), so flutter must not be claimed. Next: flutter data with verified labels (e.g. CODE-15%, "
+            "PPV (section 7.7), and atrial-activity features (section 11) did not clear the pre-declared bar, so flutter must not be claimed. Next: flutter data with verified labels (e.g. CODE-15%, "
             "MIMIC-IV-ECG; licences in PRODUCT_PLAN §7).",
             "15. **Sex gap in the 12-lead model.** Superclass macro-AUC on PTB-XL test: v0.1 0.914 women vs 0.935 men; v0.3 0.917 "
             "vs 0.939 — more data did not close it. "
@@ -548,8 +623,9 @@ def write_results() -> str:
             "18. **Two countries, no Indian or US data yet.** PTB-XL (Schiller devices, Germany, 1989–1996) and Chapman/Ningbo "
             "(China, 2013–2018). Performance on today's ECG carts in Indian and US hospitals is unknown until tested on partner data.",
             "19. **Thresholds are per site.** The same model needs different yes/no thresholds where hospitals label differently "
-            "(section 7.3–7.4). Tool and simulated installation: section 7.7. Next: wire site configurations into the engine "
-            "(versioned, approved by the cardiology lead, audit-logged).", ""]
+            "(section 7.3–7.4). Tool and simulated installation: section 7.7. The engine loads a signed-off site configuration "
+            "(`cardiotic-engine site-config` drafts it; the cardiology lead approves it).", ""]
+    out += _product_sections()
     path = REPORTS_DIR / "RESULTS.md"
     path.write_text("\n".join(out))
     return str(path)

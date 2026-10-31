@@ -65,6 +65,7 @@ def main(argv: list[str] | None = None) -> None:
     e12 = sub.add_parser("train-ecg12"); e12.add_argument("--version", default="v0.3", choices=["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "print-v0.1"])
     sub.add_parser("select-print")
     sub.add_parser("flutter-detector")
+    sub.add_parser("printout-limits")
     tm = sub.add_parser("tune-ecg12-measure"); tm.add_argument("--version", default="v0.2")
     em = sub.add_parser("eval-ecg12-measure"); em.add_argument("--version", default="v0.2"); em.add_argument("--split", default="val", choices=["val", "test"])
     ex = sub.add_parser("eval-ecg12-external"); ex.add_argument("--version", default="v0.1")
@@ -100,6 +101,9 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "site-thresholds":
         from cardiotic_ml.experiments_ecg12 import site_thresholds_chapman
         site_thresholds_chapman(args.version, args.policy)
+    elif args.cmd == "printout-limits":
+        from cardiotic_ml.experiments_ecg12 import printout_limits
+        printout_limits()
     elif args.cmd == "flutter-detector":
         from cardiotic_ml.experiments_ecg12 import flutter_detector
         flutter_detector()

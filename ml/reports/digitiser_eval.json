@@ -1,0 +1,25 @@
+{
+ "created_utc": "2026-10-31T16:32:32+00:00",
+ "ecgs": 40,
+ "failed_files": {},
+ "kinds": {
+  "vector PDF": {
+   "leads": 480,
+   "median_correlation": 0.9996766089182879,
+   "p10_correlation": 0.9984837185554163,
+   "median_rmse_uV": 3.9448949201173296
+  },
+  "scan, 200 dpi": {
+   "leads": 480,
+   "median_correlation": 0.9482615481506139,
+   "p10_correlation": 0.8884579799776869,
+   "median_rmse_uV": 47.00566216037507
+  },
+  "rotated, blurred JPEG (photo)": {
+   "leads": 480,
+   "median_correlation": 0.942636011441834,
+   "p10_correlation": 0.8786894446632268,
+   "median_rmse_uV": 49.863067364189575
+  }
+ }
+}

@@ -869,3 +869,77 @@ def flutter_detector(version: str = "v0.3", seed: int = 0) -> dict:
     _write("ecg12_flutter_detector", result)
     print(json.dumps({k: result[k] for k in ("dev", "adopted", "test")}, indent=1), flush=True)
     return result
+
+
+# ---------------------------------------------------------------- what a printed 3 x 4 ECG still contains (validation fold)
+def printout_limits(n: int = 500) -> dict:
+    """Validation-fold ECGs masked as a printout (ecg12/printlayout.py): how much of the full-ECG accuracy is left?
+    Statements with the full-ECG model, and rate / PR / QRS / QT against GE 12SL measured from the lead II strip
+    alone and from the 2.5 s columns. Writes ecg12_printout_limits.json; this is why QRS, QT and QTc are not
+    reported from printouts."""
+    from cardiotic_ml.ecg12 import analyze as A, printlayout as PL
+    from cardiotic_engine.api import Engine
+
+    eng = Engine()
+    mods = eng._m.ecg12
+    stm, sup = label_space()
+    labels = mods.card["labels"]
+    recs = [r for r in ptbxl.split(ptbxl.VAL_FOLDS)][:n]
+    ref = ptbxl.reference_measurements("12sl")
+    keys = {"heart_rate_bpm": ("HR__Global", 5), "pr_ms": ("PR_Int_Global", 10), "qrs_ms": ("QRS_Dur_Global", 10), "qt_ms": ("QT_Int_Global", 20)}
+    P, Q, Y = [], [], []
+    err = {m: {k: [] for k in keys} for m in ("full 12 leads", "lead II strip only", "2.5 s columns")}
+    for r in recs:
+        x = ptbxl.load_signal(r, hr=True)
+        P.append(A.probabilities(x, 500, mods)); Q.append(A.probabilities(PL.mask(x), 500, mods))
+        y = np.zeros(len(labels))
+        for c in r.codes:
+            if c in labels:
+                y[labels.index(c)] = 1
+        for s_ in ptbxl.superclasses(r):
+            y[labels.index("SUPER_" + s_)] = 1
+        Y.append(y)
+        rf = ref.get(r.ecg_id, {})
+        seg = x.shape[1] // 4
+        col = []
+        for c in range(4):
+            yy = np.zeros((12, seg))
+            for i, lead in enumerate(PL.LEADS):
+                if PL.COLUMN[lead] == c or lead == "II":
+                    yy[i] = x[i, c * seg:(c + 1) * seg]
+            col.append(ms.measure(yy, 500))
+        for mode, m in (("full 12 leads", ms.measure(x, 500)), ("lead II strip only", ms.measure(np.repeat(x[1:2], 12, 0), 500))):
+            for k, (cname, _) in keys.items():
+                rv = rf.get(cname)
+                if m.get("ok") and m.get(k) is not None and rv is not None and rv == rv and rv > 0:
+                    err[mode][k].append(m[k] - rv)
+        rate = ms.measure(np.repeat(x[1:2], 12, 0), 500)
+        for k, (cname, _) in keys.items():
+            rv = rf.get(cname)
+            if rv is None or rv != rv or rv <= 0:
+                continue
+            if k in ("heart_rate_bpm", "pr_ms"):
+                v = rate.get(k) if rate.get("ok") else None
+            else:
+                vals = [c_.get(k) for c_ in col if c_.get("ok") and c_.get(k) is not None]
+                v = float(np.median(vals)) if len(vals) >= 2 else None
+            if v is not None:
+                err["2.5 s columns"][k].append(v - rv)
+    P, Q, Y = map(np.array, (P, Q, Y))
+    cols = _task_cols(stm)
+
+    def mauc(Pr, c):
+        return float(np.mean([roc_auc_score(Y[:, j], Pr[:, j]) for j in c if 0 < Y[:, j].sum() < len(Y)]))
+    sup_cols = [labels.index("SUPER_" + s_) for s_ in ptbxl.SUPERCLASSES]
+    all_cols = list(range(len(labels)))
+    meas = {m: {k: {"mean_diff": float(np.mean(v)), "sd_diff": float(np.std(v)), "within_tolerance": float(np.mean(np.abs(v) <= keys[k][1])), "n": len(v)}
+                for k, v in d.items() if v} for m, d in err.items()}
+    result = _meta(task="ecg12_printout_limits", n_ecgs=len(recs), split="PTB-XL validation fold 9",
+                   statements_full_model={"full ECG": {"all": mauc(P, all_cols), "superclass": mauc(Q * 0 + P, sup_cols)},
+                                          "printout layout (no retraining)": {"all": mauc(Q, all_cols), "superclass": mauc(Q, sup_cols)},
+                                          "afib_auc": [float(roc_auc_score(Y[:, labels.index("AFIB")], P[:, labels.index("AFIB")])),
+                                                       float(roc_auc_score(Y[:, labels.index("AFIB")], Q[:, labels.index("AFIB")]))]},
+                   measurements_vs_ge12sl=meas)
+    _write("ecg12_printout_limits", result)
+    print(json.dumps(result, indent=1), flush=True)
+    return result
