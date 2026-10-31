@@ -6,9 +6,11 @@ For hospitals and medical-equipment manufacturers. On-premise. Markets: India an
 > **Status: working system, not yet validated or cleared for clinical use.** The AI (signal quality,
 > heartbeat detection, beat classification, rhythm, 12-lead measurements and 71 diagnostic statements) is
 > measured on public data, on patients the models never saw ([ml/reports/RESULTS.md](ml/reports/RESULTS.md)).
-> Around it runs a complete on-premise product: ECG file readers, server with accounts and storage, reading
-> and sign-off, audit log, HL7/FHIR export, install and backup tools. What is *not* done is listed in
-> [Not done yet](#not-done-yet).
+> Around it runs a complete on-premise product: ECG file readers (DICOM, HL7 aECG, GE MUSE, Philips, SCP-ECG, EDF, CSV,
+> and paper ECGs as PDF or image), machine feeds (folder, DICOM), HIS links in both directions (ADT and orders in, signed
+> reports with PDF out), accounts with LDAP, OpenID Connect and two-factor sign-in, reading and sign-off, audit log, 24 h Holter,
+> Live Assist for OT/ICU, install and backup tools. What this repository cannot contain is listed in
+> [What this repository does not contain](#what-this-repository-does-not-contain).
 
 ## Start here
 
@@ -34,16 +36,18 @@ For hospitals and medical-equipment manufacturers. On-premise. Markets: India an
 | B | **Live Assist** | Advisory review flags from live monitor streams, beside (never instead of) the bedside monitor's alarms. Silent-mode study first |
 | C | **Periop Insight** | ECG time-aligned with ABP, SpO₂ and other vitals for intra-operative case review |
 
-## Not done yet
+## What this repository does not contain
+
+Everything below needs a real hospital, real equipment or an agency, not more code:
 
 | Gap | Why it matters |
 |---|---|
-| Regulatory clearance (CDSCO / FDA) and a clinical validation on a partner hospital's ECGs | Nothing here may be used for patient care until then |
-| ECG readers tested on files built from the specifications, not on real vendor exports; Philips PageWriter XML (XLI), Huffman SCP-ECG, PDF / paper images not read | Each cart model needs a real-export test before it is listed as supported |
-| No direct machine feed (watched folder, DICOM storage endpoint); technicians upload files | |
-| HIS: text report, no PDF; no ADT feed; tested against our own MLLP listener only | Integration testing with the hospital's interface engine |
-| Live Assist (OT/ICU monitoring) and Periop Insight: not built (the board in the sample build replays recordings) | Roadmap phases 3–4 |
-| Atrial flutter, long QT weak; women's MI AUC 0.92 vs men's 0.95; 12-lead signal-quality model flags clean limb leads | ml/reports/RESULTS.md §7.6, §2.1, §8 |
+| Regulatory clearance (CDSCO / FDA), a quality system (ISO 13485 / IEC 62304 / ISO 14971) and a clinical validation on a partner hospital's ECGs | Nothing here may be used for patient care until then |
+| Real vendor files and real devices: the ECG readers, the DICOM receiver, the HL7 links, LDAP and OpenID Connect are tested against the specifications and test counterparts, not against each cart model, the hospital's interface engine or its identity provider | Each installation tests each of them once with the hospital's own equipment (deploy/INSTALL.md) |
+| Monitor gateways: Live Assist takes a documented JSON stream (`POST /api/live/ingest`); the converter from a given monitor vendor's own protocol to it is part of the hospital's integration | A gateway, or a vendor-specific adapter, is needed per monitor make |
+| Phone photographs of paper ECGs with perspective and shadows are not simulated in the digitiser tests; scans and PDFs are | Test with the hospital's own printouts |
+| AI limits, measured: atrial flutter and long QT stay weak (a flutter detector was tried and did not clear its pre-declared bar); women's MI AUC 0.92 vs men's 0.95; the 12-lead signal-quality model flags clean limb leads; QRS, QT and QTc are not reported from 3 × 4 printouts | ml/reports/RESULTS.md §7.6, §2.1, §9, §11 |
+| Silent-mode study of Live Assist before flags are shown to clinicians (site default: silent) | docs/PRODUCT_PLAN.md |
 
 ## Planned stack
 
