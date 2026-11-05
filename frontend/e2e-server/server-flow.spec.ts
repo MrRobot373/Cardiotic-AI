@@ -112,7 +112,7 @@ test("real sign-in, upload, reading, signing, delivery queue and audit", async (
   await expect(page.getByText("Uploaded ECG").first()).toBeVisible();
   await snap(page, "audit-log");
   await page.goto("/settings/integrations");
-  await expect(page.getByText("queued")).toBeVisible();
+  await expect(page.getByText(/queued/).first()).toBeVisible(); // one per signed report (12-lead and Holter)
   await snap(page, "his-delivery-queue");
   await page.goto("/settings/users");
   await expect(page.getByText("rsawant")).toBeVisible();

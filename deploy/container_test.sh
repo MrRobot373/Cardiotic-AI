@@ -31,6 +31,13 @@ curl -fs -X PUT $URL/api/settings -H "Authorization: Bearer $TOKEN" -H 'Content-
 
 python3 frontend/e2e-server/make_files.py >/dev/null
 rm -rf "$SHOTS" && mkdir -p "$SHOTS"
+# one critical-result notification for the banner flow (raising one from an uploaded ECG is covered by the server tests)
+docker compose exec -T cardiotic python - <<'PY' >/dev/null
+from cardiotic_server.db import Database
+db = Database("/data/cardiotic.db")
+with db.tx() as c:
+    c.execute("INSERT INTO notifications(at, recording_id, level, reason, location) VALUES (?,?,?,?,?)", ("2026-01-01T00:00:00+00:00", "E900001", "critical", "Complete heart block suggested", "Ward 4"))
+PY
 if ! (cd frontend && E2E_SERVER_URL=$URL SHOTS_DIR="$SHOTS" npx playwright test -c playwright.server.config.ts --reporter=line); then
   echo "FAIL  browser flow; server log:"; docker compose logs --tail 80; exit 1
 fi
