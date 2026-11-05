@@ -11,7 +11,8 @@ from __future__ import annotations
 import base64
 import binascii
 import math
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET  # machine-supplied XML is untrusted: no entity expansion, no external references
+from defusedxml.common import DefusedXmlException
 
 import numpy as np
 
@@ -48,7 +49,7 @@ def reconstruct_limb_leads(raw: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
 def read(data: bytes, fs: float | None = None, units: str | None = None):
     try:
         root = ET.fromstring(data)
-    except ET.ParseError as e:
+    except (ET.ParseError, DefusedXmlException) as e:
         raise IngestError(f"philips: not valid XML ({e})") from None
     sig = _find(root, "signalcharacteristics")
     pw = _find(root, "parsedwaveforms")

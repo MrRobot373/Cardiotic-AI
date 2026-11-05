@@ -8,8 +8,8 @@ For hospitals and medical-equipment manufacturers. On-premise. Markets: India an
 > measured on public data, on patients the models never saw ([ml/reports/RESULTS.md](ml/reports/RESULTS.md)).
 > Around it runs a complete on-premise product: ECG file readers (DICOM, HL7 aECG, GE MUSE, Philips, SCP-ECG, EDF, CSV,
 > and paper ECGs as PDF or image), machine feeds (folder, DICOM), HIS links in both directions (ADT and orders in, signed
-> reports with PDF out), accounts with LDAP, OpenID Connect and two-factor sign-in, reading and sign-off, audit log, 24 h Holter,
-> Live Assist for OT/ICU, install and backup tools. What this repository cannot contain is listed in
+> reports with PDF out), accounts with LDAP, OpenID Connect and two-factor sign-in, reading and sign-off with password confirmation, a keyed and anchorable audit log,
+> critical-result notifications, 24 h Holter with beat relabelling and reports, patient data export and erasure, site-threshold management, Live Assist for OT/ICU, install, backup, restore-drill and load-test tools, hashed lock file, SBOM and CI workflow. What this repository cannot contain is listed in
 > [What this repository does not contain](#what-this-repository-does-not-contain).
 
 ## Start here
@@ -24,9 +24,12 @@ For hospitals and medical-equipment manufacturers. On-premise. Markets: India an
 | [ml/](ml/) | AI research code: data loaders, signal processing, models, training, evaluation ([how to run](ml/README.md)) |
 | [ml/reports/RESULTS.md](ml/reports/RESULTS.md) | Measured results on patients the models never saw |
 | [docs/01_FEATURES_AND_LOGIC.md](docs/01_FEATURES_AND_LOGIC.md) | Every feature, how it works, the rules and logic behind it |
-| [docs/02_REMAINING_DEVELOPMENT.md](docs/02_REMAINING_DEVELOPMENT.md) | Engineering work still open, prioritised |
+| [docs/02_REMAINING_DEVELOPMENT.md](docs/02_REMAINING_DEVELOPMENT.md) | Development status: what is done and the few engineering items still open |
 | [docs/03_MANAGEMENT_ACTIONS.md](docs/03_MANAGEMENT_ACTIONS.md) | What the owner and management must do: regulatory, clinical, legal, security, people |
 | [docs/04_ARCHITECTURE.md](docs/04_ARCHITECTURE.md) | Architecture, modules, API, database, deployment, tests |
+| [docs/05_OWNER_TODO.md](docs/05_OWNER_TODO.md) | **What remains, in order, for the owner and management** (decisions, regulatory, clinical, data, security, go-to-market) |
+| [docs/OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md) | Running it: monitoring, backup and restore drill, upgrade, incidents, capacity (measured) |
+| [docs/regulatory/](docs/regulatory/README.md) | **Draft regulatory pack** for the consultant: intended use options, requirements and traceability, risk analysis, threat model, model cards, validation protocol, instructions for use |
 | [docs/PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md) | Review of the original research, product definition, regulatory path, data, AI/ML design, architecture, roadmap, team, risks and **open decisions** (section 14) |
 | [docs/ui-concept/index.html](docs/ui-concept/index.html) | Earlier static UI concept (superseded by frontend/). Open it in a browser; switch screens with the bar at the top and switch theme with the moon icon |
 

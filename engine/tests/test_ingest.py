@@ -221,3 +221,13 @@ def test_digitiser_refuses_what_it_cannot_read(x):
     Image.new("RGB", (300, 200), "white").save(tiny, "PNG")
     with pytest.raises(IngestError, match="too small"):
         parse(tiny.getvalue())
+
+
+def test_xml_with_entity_expansion_or_external_references_is_refused():
+    """A machine-supplied XML file must not be able to expand entities ('billion laughs') or read files."""
+    bomb = b'<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY lol "lol"><!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">]><AnnotatedECG xmlns="urn:hl7-org:v3">&lol2;</AnnotatedECG>'
+    xxe = b'<?xml version="1.0"?><!DOCTYPE x [<!ENTITY secret SYSTEM "file:///etc/passwd">]><AnnotatedECG xmlns="urn:hl7-org:v3">&secret;</AnnotatedECG>'
+    for body in (bomb, xxe):
+        assert detect(body) == "aecg"  # it does reach the XML reader
+        with pytest.raises(IngestError, match="not valid XML"):  # refused by the safe parser, not expanded
+            parse(body)

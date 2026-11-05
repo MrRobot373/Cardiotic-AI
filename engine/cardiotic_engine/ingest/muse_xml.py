@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import base64
 import binascii
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET  # machine-supplied XML is untrusted: no entity expansion, no external references
+from defusedxml.common import DefusedXmlException
 
 import numpy as np
 
@@ -24,7 +25,7 @@ def _text(el, name):
 def read(data: bytes, fs: float | None = None, units: str | None = None):
     try:
         root = ET.fromstring(data)
-    except ET.ParseError as e:
+    except (ET.ParseError, DefusedXmlException) as e:
         raise IngestError(f"muse: not valid XML ({e})") from None
     waves = [w for w in root.iter() if _local(w.tag) == "Waveform"]
     wave = next((w for w in waves if (_text(w, "WaveformType") or "").lower() == "rhythm"), waves[0] if waves else None)

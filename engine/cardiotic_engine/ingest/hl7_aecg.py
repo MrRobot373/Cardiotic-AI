@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET  # machine-supplied XML is untrusted: no entity expansion, no external references
+from defusedxml.common import DefusedXmlException
 
 import numpy as np
 
@@ -24,7 +25,7 @@ def _find(el, *path):
 def read(data: bytes, fs: float | None = None, units: str | None = None):
     try:
         root = ET.fromstring(data)
-    except ET.ParseError as e:
+    except (ET.ParseError, DefusedXmlException) as e:
         raise IngestError(f"aecg: not valid XML ({e})") from None
     best: dict[str, np.ndarray] = {}
     inc_s = None

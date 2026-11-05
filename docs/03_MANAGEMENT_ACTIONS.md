@@ -1,5 +1,7 @@
 # Cardiotic AI — What the Owner and Management Must Do
 
+**The ordered checklist with what is already prepared for each item is `05_OWNER_TODO.md`; the draft regulatory pack is in `docs/regulatory/`.** This file explains the reasons.
+
 None of this can be done by software. Each item says why it matters and what blocks if it is not done.
 This list is a planning aid, not legal or regulatory advice: confirm each point with a regulatory consultant
 and a lawyer in each country.

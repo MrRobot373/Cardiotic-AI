@@ -11,6 +11,7 @@ dependencies = [
   "sierraecg>=0.4,<0.5",  # Philips XLI waveform decoding (MIT)
   "pypdf>=4",             # ECG printouts as PDF (digitiser)
   "pillow>=10",           # ECG printouts as images (digitiser)
+  "defusedxml>=0.7",      # safe parsing of the XML files ECG machines produce (HL7 aECG, GE MUSE, Philips)
 ]
 
 [project.optional-dependencies]

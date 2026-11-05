@@ -1,78 +1,66 @@
-# Cardiotic AI — Remaining Development
+# Development status — what is done and what is left
 
-An audit of the whole project (code, tests, deployment, dependencies). Everything below is **engineering work
-that is still open**. Work that needs a hospital, a regulator or a decision by management is in
-`03_MANAGEMENT_ACTIONS.md`.
+This replaces the first audit list. Everything that could be built and verified without a hospital, a regulator, outside data or a person's decision is **done**.
+What is left is in two groups: engineering that needs an input, and engineering waiting on a decision. The owner-facing list, in order, is `05_OWNER_TODO.md`.
 
-**Overall:** the product works end to end and its tests pass. It is not yet "ship to a hospital" complete:
-P0 items below should be done before any pilot, P1 before general release.
+## Done since the first audit (all tested; see `01_FEATURES_AND_LOGIC.md` for how each works)
 
-Audit evidence: tests ml 32, engine 48, server 53, frontend 8 unit + 2 static flows + 5 server flows; Docker
-acceptance (10 checks, 18 screenshots) passed; typecheck and lint clean; `npm audit` 0 vulnerabilities;
-`pip-audit` shows only setuptools/wheel advisories in the base image; coverage server 85%, engine 83%.
-
----
-
-## P0 — before any pilot at a hospital
-
-| # | Item | Why | Rough size |
-|---|---|---|---|
-| 1 | **Access logging for record views** | The audit log records changes, not who *looked at* a patient. Hospitals and privacy law expect read access to be traceable | 1–2 days |
-| 2 | **Re-authentication at signing** | A signature should prove the cardiologist is present now (password or second factor at sign time) | 1–2 days |
-| 3 | **First-login password change, expiry, history** | Default/admin-set passwords must not live on | 2 days |
-| 4 | **Brute-force protection by IP** | Lockout exists per account only; add per-IP rate limits | 1 day |
-| 5 | **Allow-lists and TLS for DICOM and MLLP** | Today any host that can reach the port may push. Add permitted AE titles / source IPs and optional TLS | 2–3 days |
-| 6 | **Critical-result notification** | Critical ECGs wait in the worklist; there is no push/e-mail/pager/HL7 alert | 3–4 days |
-| 7 | **Engine manifest `intended_use` text** | It says "Research use only. Not a medical device." That is true today; it must be changed deliberately, and only with management's regulatory decision | 0.5 day (after decision) |
-| 8 | **`LICENSE` and `THIRD_PARTY_NOTICES.md`** | No licence file or third-party notices ship. `ldap3` is LGPL-3; the others are permissive (MIT/BSD/Apache/HPND). The notices file must list every dependency | 1 day |
-| 9 | **CinC 2017 data licence check** | The quality and rhythm models used this data; its terms must be confirmed for commercial use before shipping those weights | management + 0.5 day |
-
-## P1 — before general release
-
-| # | Item | Detail |
+| First-audit item | Status | Where |
 |---|---|---|
-| 10 | Holter report | The Holter review exists but has no PDF report and no HIS/FHIR export; beat relabelling (mark a beat N/V/S) is not in the UI |
-| 11 | Pagination and server-side search | The catalog endpoint returns everything in one response. Fine for thousands of ECGs, not for hundreds of thousands |
-| 12 | Retention, deletion and export tooling | Per-patient export and policy-based deletion for privacy requests; today only whole-database backup exists |
-| 13 | Time zones | Timestamps are stored in UTC; display and Holter clock times need a per-site zone setting |
-| 14 | Audit chain anchoring | The hash chain detects edits, but someone with the database file could rebuild all of it. Add a keyed HMAC and/or periodic external anchor (printed or e-mailed head hash) |
-| 15 | Site-configuration management in Settings | Operating-point files are loaded from disk (`CARDIOTIC_SITE_CONFIG`). Add upload, view, version history and approval trail in the UI |
-| 16 | Python lock files, SBOM and vulnerability scan in CI | Pin all Python dependencies with hashes, generate an SBOM, scan on every build |
-| 17 | Base image refresh | `setuptools`/`wheel` advisories in the Python base image; rebuild on a newer base and pin by digest |
-| 18 | CI pipeline | Tests run by script; there is no hosted CI definition that runs everything on each commit |
-| 19 | Accessibility audit | Basic labelling is in place; a full WCAG 2.1 AA review has not been done |
-| 20 | Hindi localisation (India) and a language framework | UI strings are English only |
-| 21 | Coverage gaps | `__main__` CLI, the simulator and the engine's `server.py` are lightly tested |
-| 22 | Real-photo digitiser tests | Tested on rendered printouts; no phone photos with shadow, curl or rotation, no scans from real device models |
-| 23 | Operational runbook | Monitoring/health alerts, log shipping, upgrade and rollback steps, restore drill. `INSTALL.md` covers install and backup only |
-| 24 | Load and soak test | No test of concurrent users or sustained upload rate at hospital scale |
-| 26 | Review history | Reviews keep a version counter, not full copies of each earlier version; add a review-history table so an amendment can show exactly what changed |
-| 25 | SQLite → PostgreSQL option | SQLite (WAL) is correct for a single-server site. Multi-site or high availability needs a server database |
+| 1 Access logging for record views | done | `security.ViewLog`, `test_security.py` |
+| 2 Re-authentication at signing | done | `auth.reauthenticate`, sign dialog, browser flow |
+| 3 First-login password change, expiry, history | done | `auth.py`, `ChangePassword.tsx` |
+| 4 Brute-force protection by address | done | `security.LoginLimiter` |
+| 5 DICOM / MLLP allow-lists and TLS | done (both directions) | `feeds.py`, `hl7in.py`, `export.send_mllp`, `security.py` |
+| 6 Critical-result notification | done (banner, sound, optional e-mail without patient data) | `notify.py`, `CriticalBanner.tsx` |
+| 7 Engine manifest `intended_use` text | **left unchanged on purpose** — it is true today and changes only with the owner's decision | `05_OWNER_TODO.md` §1 |
+| 8 `LICENSE` and `THIRD_PARTY_NOTICES.md` | done (LICENSE is a placeholder for the legal entity) | repository root, `deploy/make_notices.py` |
+| 9 CinC 2017 licence | **owner** — cannot be settled by software | `05_OWNER_TODO.md` §5 |
+| 10 Holter report, export, beat relabelling | done | `holter_report.py`, `BeatDialog.tsx` |
+| 11 Pagination / server-side search | done (search + windowed worklist above 5,000 recordings) | `records.search`, `store.catalog` |
+| 12 Retention, deletion, export tooling | done | `records.py`, `PatientRecords.tsx` |
+| 13 Time zones | done (site time zone; machine wall-clock times no longer shifted by the browser) | `lib/utils.ts` |
+| 14 Keyed / anchored audit chain | done | `db.py`, `audit-anchor` |
+| 15 Site-config management in Settings | done (upload, history, switch on, roll back; engine switches at run time) | `siteconfigs.py`, `Engine.apply_site_config` |
+| 16 Python lock files, SBOM, vulnerability scanning | done (hashed lock, CycloneDX SBOMs, pip-audit + npm audit clean) | `deploy/requirements.lock`, `deploy/sbom/` |
+| 17 Base image refresh | done (Python 3.13, pinned by digest, pip/setuptools/wheel upgraded) | `Dockerfile` |
+| 18 CI pipeline | **written, not yet run on a hosted runner** | `.github/workflows/ci.yml` |
+| 19 Accessibility audit | **left**: needs an expert (E2) | |
+| 20 Hindi localisation | **left**: needs a clinician-reviewed translation (E1) | |
+| 21 Coverage gaps (CLI, simulator, engine service) | done | `test_ops.py`, `test_engine_service.py` |
+| 22 Real-photo digitiser tests | **left**: needs real photos (E7) | |
+| 23 Operational runbook | done | `OPERATIONS_RUNBOOK.md`, `restore_drill.sh` |
+| 24 Load and soak test | done on this machine (4 cores); to repeat on the pilot hardware | `deploy/loadtest.py` |
+| 25 PostgreSQL / high availability | **left**: not needed at the tested scale (E11) | |
+| 26 Review history | done | `review_versions` |
+| AI: AF over-call | operating points built; *screening* shipped as an option, *fewer false alarms* mode not offered (failed its rule) | RESULTS §12 |
+| Security finding during this work | XML from machines is now parsed with `defusedxml` (entity-expansion and external-entity files are refused, tested) | `engine/ingest` |
 
-## P2 — improvements
+Two defects were found and fixed *while building*, both by tests, and are worth knowing about: when a stored site-threshold file no longer fitted the model at start-up the old thresholds stayed
+in memory (now the engine falls back to the model's own and the audit log says so); and backup verification at another path could not find the audit key (the scripts and the CLI now handle it, with a plain error and exit code 6).
+One mistake of mine is on record in RESULTS §12 (a threshold direction in a pre-declared rule), reported together with the first result.
 
-- Training-set expansion once a partner supplies labelled local ECGs (Indian population).
-- More vendor readers as real files arrive (Schiller, Mortara, Nihon Kohden, BPL).
-- Dedicated PR/QRS/QT evaluation on a locally annotated set.
-- Pediatric ECG support (models are trained on adults).
-- Mobile/tablet layout polish for the reading view.
-- Reproducible model training in a container with a data manifest.
+## Left — needs an input (the owner's side supplies it)
 
----
+| # | Item | Needs |
+|---|---|---|
+| E1 | Hindi and other languages | clinician-reviewed translation |
+| E2 | WCAG 2.1 AA accessibility audit | accessibility expert |
+| E3 | Browsers other than Chromium | a pass on the hospital's real workstations |
+| E4 | CI run on a hosted runner | repository on a company account with Actions enabled |
+| E5 | Better weak statements (anterior MI, long QT, flutter, AV block) and S/F beats | labelled data (Indian/US ECGs, verified flutter, INCART/LTAFDB after licence check) |
+| E7 | Digitiser on real phone photos and each cart's printout style | real printouts |
+| E9 | Failed-delivery alerts, SMS/paging for critical results | the hospital's gateways |
 
-## What is explicitly NOT a gap
+## Left — waiting for a decision
 
-- Models rejected by the pre-declared rules (quality v0.4/0.5/0.6, women's-MI v0.4, flutter detector) are
-  documented in `ml/reports/RESULTS.md`, not shipped.
-- The sex gap for MI (§7.6) is documented, and must be shown to clinicians and in the labelling.
+| # | Item | Decision |
+|---|---|---|
+| E8 | Second patient-identity check (barcode / order match) | clinical lead, after usability test |
+| E10 | Cryptographic signing of threshold files and releases; build provenance | company key-management |
+| E11 | Encryption at rest; PostgreSQL/HA | when a customer needs it |
+| E12 | Paediatric support | extend the intended use? |
+| E13 | Version numbers and release notes (all components are 0.1.0) | numbering scheme from the quality lead |
 
----
-
-## What I (the engineering side) can still build
-
-All of P0 items 1–6, 8 and all of P1 items 10–13, 15–18, 21 are pure software and can be built and tested
-here without outside help. Items 7, 9, 14 (anchor destination), 19 (external audit), 20 (translation review)
-and 22 (real files) need a decision or an input from you. Once P0 and P1 software items are built, the
-remaining blockers to a hospital go-live are the items in `03_MANAGEMENT_ACTIONS.md`.
-
-Suggested order: 1 → 2 → 3 → 4 → 5 → 6 → 8 → 10 → 11 → 12 → 15 → 16–18 → 14 → 13 → 21 → 23–24.
+## Known limits of what was verified
+Browser flows ran in Chromium only; the container acceptance and load test ran on one machine (4 cores); no real HIS, ECG cart or hospital network was involved; no external security test; the draft regulatory pack is unreviewed.

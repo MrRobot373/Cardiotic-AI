@@ -56,14 +56,18 @@ Every statement has a probability and a per-site threshold. The AI proposes; it 
 - Worklist sorted by triage, then age; filters for status and level.
 - 12-lead viewer with calipers, gain/speed, lead layouts, and beat-by-beat overlays.
 - Findings list: accept, reject, or add a finding; free-text conclusion; measurement edits.
-- **Review version counter:** every save increments the review's version number (used to detect two people editing at once); the audit log records each change, but earlier versions of the review are not kept as separate copies (listed in `02_REMAINING_DEVELOPMENT.md`).
-- **Sign:** only a cardiologist can sign. A signed report is immutable; changes need an amendment (new version).
-- PDF report (generated on the server) and a signed copy attached to the record.
+- **Review history:** every saved state of a review is kept with who changed what (decisions, added findings, measurement edits, note, signature, amendment); the version number also stops two people overwriting each other. Shown as "History" next to the report.
+- **Sign:** only a cardiologist can sign, and must **confirm with their password (or two-factor code)** at the moment of signing. A signed report is immutable; changes need an amendment.
+- PDF report (generated on the server) for 12-lead and Holter; the signed one is attached to the HIS message.
+- **Critical-result banner:** when a critical ECG arrives (rules in 3.2), every cardiologist and technician sees a banner on every screen until someone acknowledges it (optional sound; optional e-mail with no patient data). Not a replacement for the hospital's own procedure.
 
 ### 2.4 Holter
 - Long recording summary: heart-rate trend, pauses, bradycardia/tachycardia, ventricular and supraventricular
   ectopy, AF burden, ST/QT trends where available.
 - Event strips for the worst episodes; the cardiologist reviews and signs a Holter report.
+- **Beat relabelling:** the cardiologist clicks a beat and counts it as normal / supraventricular / ventricular / fusion; the counts, burdens and the report follow, each change is audited, and a signed report is locked.
+- **Holter report:** PDF, HL7 ORU^R01 and FHIR (study code 18754-2 is a proposal for the hospital to map), delivered through the same outbox as 12-lead reports.
+- **AF mode** (Settings → Site): *balanced* (default) or *screening* (finds more AF windows, more false alarms); measured trade-off shown next to the setting (RESULTS §12).
 
 ### 2.5 Live Assist (bedside monitoring)
 Advisory flags on a stream of ECG from monitors. Off by default; the site starts in **silent mode**.
@@ -79,12 +83,18 @@ Rules and constants are in 3.8. It is advisory only and is not an alarm system.
 | Standalone engine API (`/v1`) | For equipment makers: send a file/signal, get the analysis JSON |
 
 ### 2.7 Security and administration
-- Accounts with scrypt password hashing, lockout after repeated failures, idle and absolute session timeouts.
+- Accounts with scrypt password hashing, lockout after repeated failures (per account) and a block after many failures from one address, idle and absolute session timeouts.
+- **Passwords:** minimum length, no user name inside, last 5 not reusable, optional expiry; a password issued or reset by an administrator must be changed at first sign-in.
 - Roles: cardiologist, technician, admin (see 3.9).
-- Optional second factor (TOTP), LDAP, and OIDC (PKCE, RS256) single sign-on.
+- Optional second factor (TOTP, can be required), LDAP, and OIDC (PKCE, RS256) single sign-on.
 - Cookie sessions: `HttpOnly`, `SameSite=Strict`, CSRF header required on writes.
-- Hash-chained audit log; CLI check `verify-audit` detects edits or deletions.
-- Backups (`backup` CLI / `deploy/backup.sh`), restore procedure in `deploy/INSTALL.md`.
+- **Audit:** every change *and every reading* of patient data (ECG, Holter, report views, exports) is logged; the log is a **keyed** hash chain; `verify-audit`, `audit-anchor` and `verify-audit --anchor` detect edited or removed entries.
+- **Network protection of machine and HIS ports:** allow-lists of addresses / AE titles and optional TLS (both directions).
+- **Privacy tools (administrator):** export everything held about a patient (ZIP), erase a patient after the retention period (typed MRN, blocked while an HIS message is pending), list what is past retention.
+- **Site thresholds:** upload the approved threshold file, see its history, switch on / roll back at run time (Settings → Site).
+- **Time zone** of the hospital for signing times and the audit log; machine times are shown as recorded.
+- **Large archives:** search by name, MRN or recording number; above 5,000 recordings the worklist loads open and recent ones and search finds the rest.
+- Backups (`backup` CLI / `deploy/backup.sh`) verified with the audit key, restore drill (`deploy/restore_drill.sh`), operations runbook (`docs/OPERATIONS_RUNBOOK.md`).
 
 ### 2.8 Frontend
 React app, light and dark themes, keyboard-friendly, English only for now. Runs in two modes: against the
@@ -154,7 +164,7 @@ Measured results are in `RESULTS.md` §9. It has been tested on rendered printou
 and scans from several device makers still need testing** (see `02_REMAINING_DEVELOPMENT.md`).
 
 ### 3.7 Review and sign rules
-- Only a cardiologist signs, through a dedicated sign action (a plain edit cannot set "signed").
+- Only a cardiologist signs, through a dedicated sign action (a plain edit cannot set "signed"), after confirming with password or two-factor code; wrong confirmations count toward the account lockout. An administrator may switch the confirmation off (Settings; not recommended).
 - Technicians may send an ECG for reading or request a repeat; they cannot make decisions. Administrators cannot change reviews at all.
 - A signed report is locked. A cardiologist must re-open it as an amendment; this clears the signature, moves it back to "in review", raises the version number and writes an audit entry. It must then be signed again.
 - Signing builds the report and queues the HL7 message in the outbox in the same database transaction (all or nothing).
@@ -177,8 +187,10 @@ silence. Flags are advisory, acknowledged by a named user, and each acknowledgem
 | Users, feeds, HIS, authentication, audit view | no | no | yes |
 
 ### 3.10 Audit
-Every login, failed login, upload, edit, sign, export, setting change and user change is written to an
-append-only table; each row stores the hash of the previous row. `verify-audit` recomputes the chain.
+Every login, failed login, upload, edit, sign, view of a record or report, export, notification, setting change and user change is written to an
+append-only table. Each row stores a keyed hash (HMAC-SHA-256 with the audit key) over the entry and the previous row's hash, so someone who has only the database file cannot recompute the chain after
+changing it. Repeated views of the same record by the same person within 5 minutes are one entry. `verify-audit` recomputes the chain; an **anchor** (`audit-anchor`: length and head hash,
+recorded outside the server) lets `verify-audit --anchor` prove that nothing before it was changed *or removed*. The key is not in backups (see the runbook).
 
 ---
 
@@ -202,7 +214,10 @@ Rejected by the pre-declared rules and **not** shipped: quality v0.4/0.5/0.6, wo
 
 | Proven by tests | Not proven |
 |---|---|
-| Software behaviour: 32 ml, 48 engine, 53 server, 8 frontend unit + 2 static flows, 5 browser flows against the server; Docker image acceptance test (10 checks, 18 screenshots) | Clinical accuracy at *your* hospital |
-| Engine output equals research output | Behaviour on real vendor files from every device model |
-| Concurrency (signing while others poll) | Load at hospital scale |
-| Audit chain, auth, CSRF, session timeouts | Independent penetration test |
+| Software behaviour: 35 research, 56 engine, 116 server, 28 web unit tests, 2 static + 10 server browser flows, Docker acceptance on the pinned image (10 checks, 19 screenshots) | Clinical accuracy at *your* hospital (no Indian/US data yet) |
+| Engine output equals research output on real data | Behaviour on real vendor files from every device model; real phone photos of printouts |
+| Concurrency (signing while others poll); load test: 20 readers + 3 uploaders for 2 minutes, 0 errors, worklist 95th percentile 0.33 s (realistic) and 1.04 s (5× stress) | Hundreds of simultaneous users; archives far beyond a few thousand recordings under load |
+| Audit chain (keyed, anchored), auth, CSRF, session timeouts, allow-lists, TLS on the ports, password rules | An independent penetration test; use on a real HIS |
+| Dependencies: hashed lock file, pip-audit and npm audit clean, SBOM | The CI workflow on a hosted runner; browsers other than Chromium |
+
+What remains for people (not software) is in `05_OWNER_TODO.md`.
