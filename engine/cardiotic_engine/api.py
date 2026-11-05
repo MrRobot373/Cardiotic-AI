@@ -104,6 +104,22 @@ class Engine:
         if site:
             self._site_info = self._info_of(site, raw)
         self._m = _Loaded(manifest, ecg12, single)
+        self.af_mode = "balanced"
+
+    # ------------------------------------------------------------------ AF operating point (long recordings and Holter)
+    def af_modes(self) -> dict:
+        """The AF call modes the installed rhythm model offers, with their measured validation / test results."""
+        ops = self._m.manifest["models"].get("rhythm", {}).get("af_operating_points", {})
+        return {k: v for k, v in ops.get("modes", {}).items() if v.get("offered")}
+
+    def set_af_mode(self, mode: str) -> None:
+        """'balanced' (default: a 30 s window is AF when AF is the most probable class) or an offered mode such as 'screening'
+        (AF when p(AF) reaches the threshold chosen on validation data: fewer missed AF windows, more false alarms)."""
+        modes = self.af_modes()
+        if mode not in modes:
+            raise ValueError(f"AF mode must be one of {sorted(modes)}")
+        self._m.single.af_threshold = modes[mode]["threshold"]
+        self.af_mode = mode
 
     def _build12(self, site):
         run, m = self._run, self._cards12
@@ -145,6 +161,7 @@ class Engine:
                 "models_version": self._m.manifest["engine_models_version"],
                 "intended_use": self._m.manifest["intended_use"],
                 "models": {role: {"model": v["model"], "sha256": v["sha256"]} for role, v in self.integrity.items()},
+                "af_mode": self.af_mode,
                 **({"site_config": self._site_info} if self._site_info else {})}
 
     def _envelope(self, analysis: str, body: dict, t0: float, notes: list[str]) -> dict:

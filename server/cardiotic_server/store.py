@@ -22,7 +22,7 @@ CATALOG_FULL = int(os.environ.get("CARDIOTIC_CATALOG_FULL", "5000"))  # up to th
 CATALOG_DAYS = int(os.environ.get("CARDIOTIC_CATALOG_DAYS", "90"))   # beyond it: open recordings plus signed ones this recent
 DEFAULT_SITE = {"operatingPoint": "balanced", "thresholdOverrides": {}, "ratesFromMeasurements": False, "autoSendHis": True,
                 "siteName": "Department of Cardiology", "showReference": False,
-                "signReauth": True, "timeZone": "UTC", "retentionYears": 10}
+                "signReauth": True, "timeZone": "UTC", "retentionYears": 10, "afMode": "balanced"}
 REVIEW_STATUSES = ("new", "in_review", "signed", "repeat")
 
 
@@ -70,6 +70,8 @@ class Store:
             raise ValueError("siteName must not be empty")
         if "signReauth" in patch and user["role"] != "admin" and not patch["signReauth"]:
             raise Forbidden("only an administrator can turn off password confirmation at signing")
+        if "afMode" in patch and str(patch["afMode"]) not in self.engine.af_modes():
+            raise ValueError(f"afMode must be one of {sorted(self.engine.af_modes())}")
         if "retentionYears" in patch:
             if user["role"] != "admin":
                 raise Forbidden("only an administrator can change the retention period")
@@ -82,6 +84,8 @@ class Store:
             except Exception:
                 raise ValueError(f"unknown time zone {patch['timeZone']!r} (use a name like Asia/Kolkata or America/New_York)") from None
         site = {**self.site(), **patch}
+        if "afMode" in patch:
+            self.engine.set_af_mode(site["afMode"])
         self.db.set_setting("site", site)
         self.db.audit(user["name"], "Changed site settings", ", ".join(sorted(patch)))
         return site

@@ -21,7 +21,8 @@ function Row({ label, hint, children }: { label: string; hint?: ReactNode; child
   );
 }
 
-interface EngineInfo { version: string; models_version: string; site_config?: { site_id: string; config_version: string; approved_by: string; approved_at: string; statements: string[] } }
+interface AfMode { threshold: number | null; test: { sensitivity: number; ppv: number; false_af_windows: number; missed_af_windows: number; af_windows: number } }
+interface EngineInfo { version: string; models_version: string; af_modes?: Record<string, AfMode>; site_config?: { site_id: string; config_version: string; approved_by: string; approved_at: string; statements: string[] } }
 
 /** IANA names for the time-zone picker; the current value is always offered. */
 function zones(current: string) {
@@ -50,6 +51,22 @@ export function ServerSite() {
             <Input aria-label="Retention in years" type="number" min={0} max={100} className="w-28" defaultValue={site.retentionYears} onBlur={(e) => { const v = Number(e.target.value); if (v !== site.retentionYears && v >= 0) { updateSite({ retentionYears: v }); toast.success("Retention period saved"); } }} />
           </Row>
         )}
+        {info.data?.af_modes && Object.keys(info.data.af_modes).length > 1 && (() => {
+          const modes = info.data.af_modes!;
+          const pct = (x: number) => `${(100 * x).toFixed(1)}%`;
+          return (
+            <Row label="Atrial fibrillation in long recordings" hint="How the AI turns its rhythm probabilities into an AF call for Holter and rhythm strips. It does not change the 12-lead ECG.">
+              <div className="space-y-1.5 sm:w-80">
+                <Select id="af-mode" value={site.afMode} onValueChange={(v) => updateSite({ afMode: v })}
+                  options={[{ value: "balanced", label: "Balanced (default)" }, { value: "screening", label: "Screening: miss less AF" }]} />
+                <p className="text-[0.72rem] text-muted-foreground">
+                  Measured on public AF recordings never used to choose the setting ({modes.balanced.test.af_windows.toLocaleString()} AF windows): balanced finds {pct(modes.balanced.test.sensitivity)} of AF windows with {pct(modes.balanced.test.ppv)} of its AF calls right
+                  ({modes.balanced.test.false_af_windows} false); screening finds {pct(modes.screening.test.sensitivity)} with {pct(modes.screening.test.ppv)} right ({modes.screening.test.false_af_windows} false). Validate on this hospital's recordings before relying on either.
+                </p>
+              </div>
+            </Row>
+          );
+        })()}
         <SwitchRow label="Send signed reports to the HIS automatically" description="HL7 ORU^R01, queued as soon as a cardiologist signs. Delivery and retries are under Integrations." checked={site.autoSendHis} onCheckedChange={(v) => updateSite({ autoSendHis: v })} />
         <Row label="AI operating points" hint="The yes/no thresholds for each finding. They are set on this hospital's own validated ECGs and approved by the cardiology lead; the engine refuses a file made for other models.">
           {sc ? (

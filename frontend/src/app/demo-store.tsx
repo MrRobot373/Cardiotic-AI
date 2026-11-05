@@ -63,6 +63,8 @@ export interface SiteSettings {
   timeZone: string;
   /** server mode: signed reports younger than this many years cannot be erased */
   retentionYears: number;
+  /** server mode: how long recordings call atrial fibrillation: "balanced" (default) or "screening" */
+  afMode: string;
 }
 
 interface State {
@@ -74,7 +76,7 @@ interface State {
 
 const KEY = "cardiotic.demo.v1";
 const EMPTY_REVIEW: Review = { status: "new", decisions: {}, added: [], edits: {}, note: "" };
-const DEFAULT_SITE: SiteSettings = { operatingPoint: "balanced", thresholdOverrides: {}, ratesFromMeasurements: false, autoSendHis: true, siteName: "Department of Cardiology", showReference: false, signReauth: true, timeZone: "UTC", retentionYears: 10 };
+const DEFAULT_SITE: SiteSettings = { operatingPoint: "balanced", thresholdOverrides: {}, ratesFromMeasurements: false, autoSendHis: true, siteName: "Department of Cardiology", showReference: false, signReauth: true, timeZone: "UTC", retentionYears: 10, afMode: "balanced" };
 const INITIAL: State = { user: null, reviews: {}, audit: [], site: DEFAULT_SITE };
 
 function load(): State {

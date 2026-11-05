@@ -1,0 +1,205 @@
+{
+  "cardiotic_ml_version": "0.1.0",
+  "created_utc": "2026-11-05T20:24:07+00:00",
+  "torch": "2.15.0+cpu",
+  "python": "3.13.17",
+  "datasets": {
+    "mitdb": "PhysioNet MIT-BIH Arrhythmia Database 1.0.0 (ODC-By 1.0)",
+    "nstdb": "PhysioNet MIT-BIH Noise Stress Test Database 1.0.0 (ODC-By 1.0)"
+  },
+  "task": "af_operating_points",
+  "version": "v0.1",
+  "rule": "(written before any test-split result was computed; windows are pooled over AFDB-val and MIT-BIH-val):\n  REVIEW    (\"fewer false alarms\"): the lowest threshold t on p(AF) with val PPV >= 0.90 and val sensitivity >= 0.90.\n            Offered only if its val false-AF windows are at most 50% of argmax's and its val sensitivity is at most\n            5 points below argmax's.\n  SCREENING (\"do not miss AF\"): the highest threshold t with val sensitivity >= 0.99.\n            Offered only if its val sensitivity is at least 2 points above argmax's and its val PPV is >= 0.50.\n  An offered mode is shipped as an option the site can choose; the default stays argmax (\"balanced\"). The measured test\n  numbers of every mode are shown with the option. A mode that is not offered is not shipped.\n\nAMENDMENT (made after the first run, and recorded in the result file): REVIEW was declared as \"the lowest threshold\", which\nselects the end of the feasible interval with the MOST false alarms and contradicts its stated purpose. The first run followed the\ntext literally (\"review_as_declared\" in the result: not offered, because it failed the offering test) and its test numbers were\nprinted before the mistake was noticed. The corrected rule picks the HIGHEST threshold with val PPV >= 0.90 and val sensitivity >= 0.90\n(fewest false alarms among those that keep the sensitivity); everything else is unchanged and the threshold is still chosen on validation data only.",
+  "val_windows": 9912,
+  "test_windows": 9652,
+  "modes": {
+    "balanced (argmax)": {
+      "threshold": null,
+      "val": {
+        "af_windows": 4029,
+        "non_af_windows": 5883,
+        "false_af_windows": 200,
+        "missed_af_windows": 201,
+        "sensitivity": 0.9501116902457185,
+        "ppv": 0.9503475670307845,
+        "specificity": 0.9660037395886453,
+        "by_dataset": {
+          "afdb": {
+            "sensitivity": 0.949887808526552,
+            "false_af_windows": 162,
+            "ppv": 0.959214501510574
+          },
+          "mitdb": {
+            "sensitivity": 1.0,
+            "false_af_windows": 38,
+            "ppv": 0.32142857142857145
+          }
+        }
+      },
+      "offered": true,
+      "why": "default: AF when AF is the most probable class",
+      "test": {
+        "af_windows": 3367,
+        "non_af_windows": 6285,
+        "false_af_windows": 254,
+        "missed_af_windows": 88,
+        "sensitivity": 0.9738639738639738,
+        "ppv": 0.9281064251344466,
+        "specificity": 0.9595863166268894,
+        "by_dataset": {
+          "afdb": {
+            "sensitivity": 0.9740948813982522,
+            "false_af_windows": 148,
+            "ppv": 0.954726215968186
+          },
+          "mitdb": {
+            "sensitivity": 0.9693251533742331,
+            "false_af_windows": 106,
+            "ppv": 0.5984848484848485
+          }
+        }
+      }
+    },
+    "review": {
+      "threshold": 0.6110000014305115,
+      "val": {
+        "af_windows": 4029,
+        "non_af_windows": 5883,
+        "false_af_windows": 164,
+        "missed_af_windows": 402,
+        "sensitivity": 0.9002233804914371,
+        "ppv": 0.9567396465312582,
+        "specificity": 0.9721230664626891,
+        "by_dataset": {
+          "afdb": {
+            "sensitivity": 0.8997756170531039,
+            "false_af_windows": 141,
+            "ppv": 0.9624
+          },
+          "mitdb": {
+            "sensitivity": 1.0,
+            "false_af_windows": 23,
+            "ppv": 0.43902439024390244
+          }
+        }
+      },
+      "offered": false,
+      "why": "val PPV >= 0.90 and sensitivity >= 0.90; failed the offering test",
+      "test": {
+        "af_windows": 3367,
+        "non_af_windows": 6285,
+        "false_af_windows": 166,
+        "missed_af_windows": 134,
+        "sensitivity": 0.9602019602019602,
+        "ppv": 0.9511621065019124,
+        "specificity": 0.973587907716786,
+        "by_dataset": {
+          "afdb": {
+            "sensitivity": 0.9600499375780275,
+            "false_af_windows": 84,
+            "ppv": 0.9734177215189873
+          },
+          "mitdb": {
+            "sensitivity": 0.9631901840490797,
+            "false_af_windows": 82,
+            "ppv": 0.6569037656903766
+          }
+        }
+      }
+    },
+    "screening": {
+      "threshold": 0.1266999989748001,
+      "val": {
+        "af_windows": 4029,
+        "non_af_windows": 5883,
+        "false_af_windows": 314,
+        "missed_af_windows": 40,
+        "sensitivity": 0.9900719781583519,
+        "ppv": 0.9270276551243318,
+        "specificity": 0.9466258711541731,
+        "by_dataset": {
+          "afdb": {
+            "sensitivity": 0.9900274245823985,
+            "false_af_windows": 235,
+            "ppv": 0.9441274369947694
+          },
+          "mitdb": {
+            "sensitivity": 1.0,
+            "false_af_windows": 79,
+            "ppv": 0.18556701030927836
+          }
+        }
+      },
+      "offered": true,
+      "why": "val sensitivity >= 0.99",
+      "test": {
+        "af_windows": 3367,
+        "non_af_windows": 6285,
+        "false_af_windows": 610,
+        "missed_af_windows": 31,
+        "sensitivity": 0.9907929907929908,
+        "ppv": 0.8454130765331982,
+        "specificity": 0.9029435163086714,
+        "by_dataset": {
+          "afdb": {
+            "sensitivity": 0.9903245942571786,
+            "false_af_windows": 433,
+            "ppv": 0.879922351636162
+          },
+          "mitdb": {
+            "sensitivity": 1.0,
+            "false_af_windows": 177,
+            "ppv": 0.47941176470588237
+          }
+        }
+      }
+    },
+    "review_as_declared": {
+      "threshold": 0.03830000013113022,
+      "val": {
+        "af_windows": 4029,
+        "non_af_windows": 5883,
+        "false_af_windows": 444,
+        "missed_af_windows": 32,
+        "sensitivity": 0.9920575825266815,
+        "ppv": 0.9000225174510246,
+        "specificity": 0.9245283018867925,
+        "by_dataset": {
+          "afdb": {
+            "sensitivity": 0.9920219396659187,
+            "false_af_windows": 335,
+            "ppv": 0.9223458507185907
+          },
+          "mitdb": {
+            "sensitivity": 1.0,
+            "false_af_windows": 109,
+            "ppv": 0.14173228346456693
+          }
+        }
+      },
+      "offered": false,
+      "why": "val PPV >= 0.90 and sensitivity >= 0.90; failed the offering test",
+      "test": {
+        "af_windows": 3367,
+        "non_af_windows": 6285,
+        "false_af_windows": 1095,
+        "missed_af_windows": 11,
+        "sensitivity": 0.9967329967329968,
+        "ppv": 0.7539878678948551,
+        "specificity": 0.8257756563245824,
+        "by_dataset": {
+          "afdb": {
+            "sensitivity": 0.9965667915106118,
+            "false_af_windows": 794,
+            "ppv": 0.8008527715073991
+          },
+          "mitdb": {
+            "sensitivity": 1.0,
+            "false_af_windows": 301,
+            "ppv": 0.35129310344827586
+          }
+        }
+      }
+    }
+  }
+}

@@ -459,7 +459,7 @@ Site thresholds help where the hospital's convention differs (AF PPV, SVT and fl
 7b. **Statement model v0.2 learned 'no PVC' from 27,901 Ningbo ECGs** because the label map used a PVC code that dataset never uses (section 7.5). Fixed in v0.3 with a map built from the dataset's actual code list; Chapman PVC AUC 0.907 → 0.990. Lesson, now a rule: before training on a new dataset, list every label code it actually uses and check each mapped statement has positives.
 
 ### Open (next work)
-8. **AF over-called in ectopy-rich recordings — four candidates tried, none adopted** (section 4). Every candidate cut false AF substantially but lost real AF in some patient. With the MIT-BIH AF Database (8 validation AF patients) the pre-declared rule now catches this on validation. On fresh AFDB test patients, v0.1 itself finds 97.4% of AF windows with 95.5% positive predictivity, so the false-alarm problem is concentrated in non-AF patients with frequent ectopy (MIT-BIH DS2: PPV ~60%). Next options: (a) an explicit AF-probability operating point chosen on validation per use case (screening vs. review) — a transparent sensitivity/false-alarm trade-off; (b) more AF data (Long-Term AF Database, 84 patients); (c) beat labels inside AF for a beat classifier that is reliable during AF.
+8. **AF over-called in ectopy-rich recordings — four candidates tried, none adopted** (section 4). Every candidate cut false AF substantially but lost real AF in some patient. With the MIT-BIH AF Database (8 validation AF patients) the pre-declared rule now catches this on validation. On fresh AFDB test patients, v0.1 itself finds 97.4% of AF windows with 95.5% positive predictivity, so the false-alarm problem is concentrated in non-AF patients with frequent ectopy (MIT-BIH DS2: PPV ~60%). Done since: an AF-probability operating point per use case, chosen on validation (section 12): a screening mode ships as a site option; a fewer-false-alarms mode failed its offering test. Next options: (b) more AF data (Long-Term AF Database, 84 patients); (c) beat labels inside AF for a beat classifier that is reliable during AF.
 8b. **The beat classifier labels some AF beats as ventricular**, on handheld lead I especially (a quarter of CinC AF windows had ≥10% 'PVCs'). Anything built on its PVC labels must be restricted to leads where it is validated.
 9. **Supraventricular (S) and fusion (F) beats are weak** (S Se ~30%, F ~0%). The v0.2 augmentation recipe scored lower on validation and was not adopted. Next: more S/F data (INCART, long-term AF database), patient-adaptive RR features.
 10. **Beat-model calibration does not transfer across patients.** A temperature fitted on the 4 validation patients made test ECE worse (slightly under-confident). The rhythm model's calibration did improve on test. Next: calibrate beats on a larger, more varied patient set; until then beat confidence levels must not be shown as calibrated in any UI.
@@ -558,3 +558,35 @@ Held-out half (5,323 ECGs, 209 with flutter), scored once:
 | Model, PTB-XL threshold | — | 11.0% | 25.6% | 0.154 |
 
 The features help a little (AUC 0.90 → 0.93) but not enough to claim flutter detection: at about 54% sensitivity the PPV is about 30%. Flutter stays out of the product's claims; the per-site thresholds (§7.7) remain the way to trade sensitivity against false alarms.
+
+## 12. Atrial fibrillation operating points (long recordings)
+
+Four retraining attempts at the AF over-call were rejected (§4). Instead of retraining, the shipped rhythm model's own probabilities are turned into an AF call in different ways, and the site chooses. Windows are 30 s, from AFDB and MIT-BIH, pooled; the thresholds were chosen on the validation patients only and the test patients are scored once. The rule, fixed before the test split was computed:
+
+> (written before any test-split result was computed; windows are pooled over AFDB-val and MIT-BIH-val):
+>   REVIEW    ("fewer false alarms"): the lowest threshold t on p(AF) with val PPV >= 0.90 and val sensitivity >= 0.90.
+>             Offered only if its val false-AF windows are at most 50% of argmax's and its val sensitivity is at most
+>             5 points below argmax's.
+>   SCREENING ("do not miss AF"): the highest threshold t with val sensitivity >= 0.99.
+>             Offered only if its val sensitivity is at least 2 points above argmax's and its val PPV is >= 0.50.
+>   An offered mode is shipped as an option the site can choose; the default stays argmax ("balanced"). The measured test
+>   numbers of every mode are shown with the option. A mode that is not offered is not shipped.
+> 
+> AMENDMENT (made after the first run, and recorded in the result file): REVIEW was declared as "the lowest threshold", which
+> selects the end of the feasible interval with the MOST false alarms and contradicts its stated purpose. The first run followed the
+> text literally ("review_as_declared" in the result: not offered, because it failed the offering test) and its test numbers were
+> printed before the mistake was noticed. The corrected rule picks the HIGHEST threshold with val PPV >= 0.90 and val sensitivity >= 0.90
+> (fewest false alarms among those that keep the sensitivity); everything else is unchanged and the threshold is still chosen on validation data only.
+
+Validation windows: 9,912; test windows: 9,652.
+
+| Mode | Threshold on p(AF) | Offered | Val sensitivity | Val PPV | Test sensitivity | Test PPV | Test false-AF windows | Test missed AF windows |
+|---|---:|---|---:|---:|---:|---:|---:|---:|
+| Balanced (default: AF when most probable) | — | yes | 95.0% | 95.0% | 97.4% | 92.8% | 254 | 88 |
+| Screening | 0.127 | yes | 99.0% | 92.7% | 99.1% | 84.5% | 610 | 31 |
+| Review (fewer false alarms), corrected rule | 0.611 | no | 90.0% | 95.7% | 96.0% | 95.1% | 166 | 134 |
+| Review, rule exactly as first declared | 0.038 | no | 99.2% | 90.0% | 99.7% | 75.4% | 1095 | 11 |
+
+**Shipped:** *balanced* (unchanged default) and *screening* (a site setting: Settings → Site). Screening finds more AF windows and pays with more false alarms; both sides are shown next to the setting. **Not shipped:** the fewer-false-alarms mode failed its offering test on validation.
+
+**A mistake in the rule, recorded openly.** The rule first said the review mode takes the *lowest* threshold meeting the constraints, which selects the end with the *most* false alarms and contradicts the mode's purpose. The first run followed the text literally (last row: not offered; its test numbers were printed before the mistake was noticed). The direction was then corrected to the highest threshold (row 3) with everything else unchanged, and the threshold is still chosen on validation data only. The corrected mode was also not offered. Limits: public Holter data only; AFDB and MIT-BIH are 1980s–1990s recordings on two channels; the figures are window-level and pooled over patients, so a few records dominate the false alarms (§4); a 12-lead ECG's rhythm statements are unaffected.

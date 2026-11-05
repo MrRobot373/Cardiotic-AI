@@ -37,6 +37,7 @@ class Models:
     beats: object
     rhythm: object | None
     cards: dict
+    af_threshold: float | None = None  # None: a window is AF when AF is the most probable class; else when p(AF) >= this (experiments_afop.py)
 
 
 def load_models(directory=ARTIFACTS_DIR) -> Models:
@@ -84,6 +85,12 @@ def _rhythm(signal: np.ndarray, fs: float, usable: np.ndarray, models: Models,
         if usable[a:b].mean() < 0.5:
             continue  # rhythm is not called on mostly unusable signal
         k = int(prob.argmax())
+        if models.af_threshold is not None:
+            ia = RHYTHM_LABELS.index("A")
+            if prob[ia] >= models.af_threshold:
+                k = ia
+            elif k == ia:  # AF was the top class but below the (stricter) threshold: the best other class
+                k = [i for i in np.argsort(-prob) if i != ia][0]
         out.append({"start_s": float(st), "end_s": float(min(st + rd.WIN_S, len(signal) / fs)),
                     "rhythm": RHYTHM_LABELS[k], "probability": float(prob[k]), "confidence": confidence_level(float(prob[k])),
                     "probabilities": {l: float(v) for l, v in zip(RHYTHM_LABELS, prob)}})

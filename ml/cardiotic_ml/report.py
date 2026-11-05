@@ -377,6 +377,27 @@ def _product_sections() -> list[str]:
             out.append(f"| {nm} | {d['auc']:.3f} | {_pct(d['sensitivity'])} | {_pct(d['ppv'])} | {d['f1']:.3f} |" if "auc" in d else f"| {nm} | — | {_pct(d['sensitivity'])} | {_pct(d['ppv'])} | {d['f1']:.3f} |")
         out += ["", "The features help a little (AUC 0.90 → 0.93) but not enough to claim flutter detection: at about 54% sensitivity the PPV is about 30%. Flutter stays out of the product's claims; "
                 "the per-site thresholds (§7.7) remain the way to trade sensitivity against false alarms.", ""]
+    af = _load("rhythm_af_operating_points_v0.1")
+    if af:
+        m = af["modes"]
+        out += ["## 12. Atrial fibrillation operating points (long recordings)", "",
+                "Four retraining attempts at the AF over-call were rejected (§4). Instead of retraining, the shipped rhythm model's own probabilities are turned into an AF call "
+                "in different ways, and the site chooses. Windows are 30 s, from AFDB and MIT-BIH, pooled; the thresholds were chosen on the validation patients only and the test "
+                "patients are scored once. The rule, fixed before the test split was computed:", "", "> " + af["rule"].replace("\n", "\n> "), "",
+                f"Validation windows: {af['val_windows']:,}; test windows: {af['test_windows']:,}.", "",
+                "| Mode | Threshold on p(AF) | Offered | Val sensitivity | Val PPV | Test sensitivity | Test PPV | Test false-AF windows | Test missed AF windows |", "|---|---:|---|---:|---:|---:|---:|---:|---:|"]
+        for name, label in (("balanced (argmax)", "Balanced (default: AF when most probable)"), ("screening", "Screening"), ("review", "Review (fewer false alarms), corrected rule"), ("review_as_declared", "Review, rule exactly as first declared")):
+            d = m[name]
+            v, t = d.get("val"), d["test"]
+            out.append(f"| {label} | {'—' if d['threshold'] is None else f'{d['threshold']:.3f}'} | {'yes' if d['offered'] else 'no'} | "
+                       f"{_pct(v['sensitivity']) if v else '—'} | {_pct(v['ppv']) if v else '—'} | {_pct(t['sensitivity'])} | {_pct(t['ppv'])} | {t['false_af_windows']} | {t['missed_af_windows']} |")
+        out += ["", "**Shipped:** *balanced* (unchanged default) and *screening* (a site setting: Settings → Site). Screening finds more AF windows and pays with more false alarms; both sides are shown "
+                "next to the setting. **Not shipped:** the fewer-false-alarms mode failed its offering test on validation.",
+                "", "**A mistake in the rule, recorded openly.** The rule first said the review mode takes the *lowest* threshold meeting the constraints, which selects the end with the *most* false alarms and "
+                "contradicts the mode's purpose. The first run followed the text literally (last row: not offered; its test numbers were printed before the mistake was noticed). The direction was then corrected to the "
+                "highest threshold (row 3) with everything else unchanged, and the threshold is still chosen on validation data only. The corrected mode was also not offered. "
+                "Limits: public Holter data only; AFDB and MIT-BIH are 1980s–1990s recordings on two channels; the figures are window-level and pooled over patients, so a few records dominate the false alarms "
+                "(§4); a 12-lead ECG's rhythm statements are unaffected.", ""]
     return out
 
 
@@ -599,8 +620,9 @@ def write_results() -> str:
             "cut false AF substantially but lost real AF in some patient. With the MIT-BIH AF Database (8 validation AF patients) "
             "the pre-declared rule now catches this on validation. On fresh AFDB test patients, v0.1 itself finds 97.4% of AF "
             "windows with 95.5% positive predictivity, so the false-alarm problem is concentrated in non-AF patients with frequent "
-            "ectopy (MIT-BIH DS2: PPV ~60%). Next options: (a) an explicit AF-probability operating point chosen on validation per "
-            "use case (screening vs. review) — a transparent sensitivity/false-alarm trade-off; (b) more AF data (Long-Term AF "
+            "ectopy (MIT-BIH DS2: PPV ~60%). Done since: an AF-probability operating point per "
+            "use case, chosen on validation (section 12): a screening mode ships as a site option; a fewer-false-alarms mode failed its offering test. "
+            "Next options: (b) more AF data (Long-Term AF "
             "Database, 84 patients); (c) beat labels inside AF for a beat classifier that is reliable during AF.",
             "8b. **The beat classifier labels some AF beats as ventricular**, on handheld lead I especially (a quarter of CinC AF "
             "windows had ≥10% 'PVCs'). Anything built on its PVC labels must be restricted to leads where it is validated.",

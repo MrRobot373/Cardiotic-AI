@@ -64,6 +64,8 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
     store.mailer = notify.Mailer(store)
     from . import siteconfigs
     siteconfigs.restore_on_start(store)
+    if store.site().get("afMode", "balanced") in store.engine.af_modes():
+        store.engine.set_af_mode(store.site().get("afMode", "balanced"))
     limiter, views = security.LoginLimiter(), security.ViewLog(db)
     static = Path(static_dir).resolve() if static_dir else None
 
@@ -274,7 +276,7 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 _role(user, "admin")
                 return self._auth_settings(method, user)
             if method == "GET" and path == "/models":
-                return self._json(200, store.engine.info())
+                return self._json(200, {**store.engine.info(), "af_modes": store.engine.af_modes()})
             if method == "GET" and path == "/catalog":
                 return self._json(200, store.catalog([x for x in q.get("include", "").split(",") if x]))
             if method == "GET" and (g := m(r"/ecg/(E\d+)", path)):

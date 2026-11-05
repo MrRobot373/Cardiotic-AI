@@ -210,3 +210,18 @@ def test_search_result_can_be_opened_through_catalog_include(server, ecg, monkey
     assert c.call("GET", "/api/catalog")[1]["ecgs"] == []
     cat = c.call("GET", f"/api/catalog?include={rid},bad;drop,E1x", expect=200)[1]
     assert [e["id"] for e in cat["ecgs"]] == [rid] and [p["id"] for p in cat["patients"]] == [pid]
+
+
+def test_af_mode_is_a_site_setting_that_switches_the_engine(server):
+    a = client(server, "kdesai")
+    try:
+        assert a.call("GET", "/api/settings", expect=200)[1]["afMode"] == "balanced"
+        assert a.call("PUT", "/api/settings", {"afMode": "review"})[0] == 400
+        assert client(server, "rsawant").call("PUT", "/api/settings", {"afMode": "screening"})[0] == 403
+        a.call("PUT", "/api/settings", {"afMode": "screening"}, expect=200)
+        assert server.engine.info()["af_mode"] == "screening"
+        assert any(x[1] == "Changed site settings" and "afMode" in x[2] for x in _actions(server))
+        a.call("PUT", "/api/settings", {"afMode": "balanced"}, expect=200)
+        assert server.engine.info()["af_mode"] == "balanced"
+    finally:
+        server.engine.set_af_mode("balanced")

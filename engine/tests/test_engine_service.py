@@ -80,3 +80,39 @@ def test_unexpected_failure_does_not_leak_internals(base, monkeypatch, ecg):
     monkeypatch.setattr(Engine, "analyze_file", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("secret internal path /srv/x")))
     code, out = call(base, "POST", "/v1/file", w.dicom_file(ecg, 500))
     assert code == 500 and "secret" not in json.dumps(out)
+
+
+# ------------------------------------------------------------------ AF operating point
+def test_af_mode_changes_only_how_probabilities_become_a_call(monkeypatch, ecg):
+    import cardiotic_ml.pipeline as pl
+    eng = Engine()
+    assert eng.info()["af_mode"] == "balanced" and sorted(eng.af_modes()) == ["balanced", "screening"]
+    thr = eng.af_modes()["screening"]["threshold"]
+    T = eng._m.manifest["models"]["rhythm"].get("temperature", 1.0)
+
+    real = pl._batched
+
+    def fake(probs):  # rhythm logits that the pipeline's softmax(logits / T) turns back into `probs`; the other models run for real
+        monkeypatch.setattr(pl, "_batched", lambda model, *a: np.tile(T * np.log(np.array(probs)), (len(a[0]), 1)) if model is eng._m.single.rhythm else real(model, *a))
+
+    strip = np.tile(ecg[1], 8)
+    call = lambda: {s["rhythm"] for s in eng.analyze_rhythm(strip.tolist(), 500, "mV", "II")["result"]["rhythm_segments"]}  # noqa: E731
+    fake([0.70, thr + 0.05, 0.25 - thr, 0.0001 + 0.0])  # N most probable, AF a little above the screening threshold
+    assert call() == {"N"}
+    eng.set_af_mode("screening")
+    assert call() == {"A"} and eng.info()["af_mode"] == "screening"
+    fake([0.90, thr - 0.05, 0.15 - thr + 0.05 + 0.0, 0.0001])  # AF below the threshold: not called in either mode
+    assert call() == {"N"}
+    eng.set_af_mode("balanced")
+    fake([0.30, 0.45, 0.2499, 0.0001])  # AF most probable: called when balanced
+    assert call() == {"A"}
+    with pytest.raises(ValueError, match="AF mode must be one of"):
+        eng.set_af_mode("review")  # the fewer-false-alarms mode failed its offering test and is not shipped
+
+
+def test_offered_modes_carry_their_measured_results():
+    ops = Engine().af_modes()
+    for name, m in ops.items():
+        assert m["val"]["sensitivity"] > 0.9 and m["test"]["af_windows"] > 1000, name
+    assert ops["screening"]["test"]["sensitivity"] > ops["balanced"]["test"]["sensitivity"]
+    assert ops["screening"]["test"]["false_af_windows"] > ops["balanced"]["test"]["false_af_windows"]  # the cost is shown, not hidden

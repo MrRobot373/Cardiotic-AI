@@ -108,6 +108,51 @@
         "ectopy_features": false,
         "mitdb_train": false,
         "epochs": 14
+      },
+      "af_operating_points": {
+        "report": "ml/reports/rhythm_af_operating_points_v0.1.json",
+        "rule": "chosen on AFDB-val + MIT-BIH-val windows only; test reported once",
+        "modes": {
+          "balanced": {
+            "threshold": null,
+            "offered": true,
+            "val": {
+              "sensitivity": 0.9501,
+              "ppv": 0.9503,
+              "false_af_windows": 200,
+              "missed_af_windows": 201
+            },
+            "test": {
+              "sensitivity": 0.9739,
+              "ppv": 0.9281,
+              "false_af_windows": 254,
+              "missed_af_windows": 88,
+              "af_windows": 3367,
+              "non_af_windows": 6285
+            }
+          },
+          "screening": {
+            "threshold": 0.1266999989748001,
+            "offered": true,
+            "val": {
+              "sensitivity": 0.9901,
+              "ppv": 0.927,
+              "false_af_windows": 314,
+              "missed_af_windows": 40
+            },
+            "test": {
+              "sensitivity": 0.9908,
+              "ppv": 0.8454,
+              "false_af_windows": 610,
+              "missed_af_windows": 31,
+              "af_windows": 3367,
+              "non_af_windows": 6285
+            }
+          }
+        },
+        "not_offered": {
+          "review": "a fewer-false-alarms mode failed the pre-declared offering test (RESULTS.md section 12)"
+        }
       }
     },
     "ecg12": {
