@@ -24,7 +24,7 @@ async function signIn(page: Page, user: string, password = PASSWORD) {
 test("real sign-in, upload, reading, signing, delivery queue and audit", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  page.on("console", (m) => m.type() === "error" && !/401|409|400/.test(m.text()) && errors.push(m.text()));
+  page.on("console", (m) => m.type() === "error" && !/401|403|409|400/.test(m.text()) && errors.push(m.text()));
 
   // sign-in is real: no sample users, no single sign-on button, wrong password refused
   await page.goto("/");
@@ -71,6 +71,16 @@ test("real sign-in, upload, reading, signing, delivery queue and audit", async (
   await expect(sign).toBeEnabled();
   await snap(page, "findings-decided-ready-to-sign");
   await sign.click();
+  // a signature is confirmed with the password: a wrong one is refused and nothing is signed
+  const dialog = page.getByRole("dialog", { name: "Confirm your signature" });
+  await expect(dialog).toBeVisible();
+  await snap(page, "confirm-signature");
+  await dialog.getByLabel("Password").fill("not my password");
+  await dialog.getByRole("button", { name: "Sign report" }).click();
+  await expect(dialog.getByText(/password is not right/)).toBeVisible();
+  await expect(page.getByText(/Signed by/)).toHaveCount(0);
+  await dialog.getByLabel("Password").fill(PASSWORD);
+  await dialog.getByRole("button", { name: "Sign report" }).click();
   await expect(page.getByText(/Signed by Dr\. Ananya Rao/)).toBeVisible();
   await expect(page.getByText(/queued for the HIS/).first()).toBeVisible();
   await snap(page, "signed");

@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import os
 import secrets
 import time
@@ -14,6 +15,8 @@ from .db import Database, now
 ROLES = ("cardiologist", "technician", "admin")
 MIN_PASSWORD = 10
 MAX_FAILS, LOCK_SECONDS = 5, 300
+HISTORY = 5  # a new password may not be any of the last five
+REAUTH_OIDC_SECONDS = 600  # identity-provider accounts: signing needs a sign-in this recent
 IDLE_SECONDS = int(os.environ.get("CARDIOTIC_IDLE_MINUTES", "15")) * 60
 ABSOLUTE_SECONDS = int(os.environ.get("CARDIOTIC_SESSION_HOURS", "12")) * 3600
 _N, _R, _P = 2 ** 14, 8, 1
@@ -21,6 +24,10 @@ _N, _R, _P = 2 ** 14, 8, 1
 
 class AuthError(Exception):
     """Wrong credentials, locked account, or no valid session. The message is safe to show."""
+
+
+class ReauthError(Exception):
+    """Signing needs the person to confirm who they are (403, the session stays open). The message is safe to show."""
 
 
 def hash_password(password: str) -> str:
@@ -50,7 +57,8 @@ def check_password_policy(password: str, username: str = "") -> None:
         raise ValueError("password is too repetitive")
 
 
-def create_user(db: Database, username: str, name: str, role: str, password: str, title: str = "") -> int:
+def create_user(db: Database, username: str, name: str, role: str, password: str, title: str = "", must_change: bool = False) -> int:
+    """must_change: the person chooses their own password at first sign-in (accounts an administrator creates)."""
     username = username.strip().lower()
     if role not in ROLES:
         raise ValueError(f"role must be one of {ROLES}")
@@ -59,8 +67,8 @@ def create_user(db: Database, username: str, name: str, role: str, password: str
     check_password_policy(password, username)
     with db.tx() as c:
         try:
-            cur = c.execute("INSERT INTO users(username, name, role, title, pw_hash, created_at) VALUES (?,?,?,?,?,?)",
-                            (username, name.strip(), role, title.strip(), hash_password(password), now()))
+            cur = c.execute("INSERT INTO users(username, name, role, title, pw_hash, created_at, must_change, pw_changed) VALUES (?,?,?,?,?,?,?,?)",
+                            (username, name.strip(), role, title.strip(), hash_password(password), now(), 1 if must_change else 0, time.time()))
         except Exception as e:
             if "UNIQUE" in str(e):
                 raise ValueError(f"user name {username!r} already exists") from None
@@ -96,7 +104,7 @@ def _session(db: Database, u, scope: str = "full", how: str = "") -> tuple[str, 
         c.execute("INSERT INTO sessions(token_hash, user_id, created, last_seen, expires, scope) VALUES (?,?,?,?,?,?)",
                   (_th(token), u["id"], t, t, t + ABSOLUTE_SECONDS, scope))
         db.audit(u["name"], "Signed in" + (f" ({how})" if how else ""), u["title"] or u["role"], c)
-    return token, {**public(u), "enrol_2fa": scope == "enrol"}
+    return token, {**public(u), "enrol_2fa": scope == "enrol", "change_password": scope == "password"}
 
 
 def _fail(db: Database, u, username: str, what: str = "Sign-in failed") -> None:
@@ -147,8 +155,20 @@ def login(db: Database, username: str, password: str, ldap_options: dict | None 
         with db.tx() as w:
             w.execute("INSERT INTO challenges(token_hash, kind, user_id, expires) VALUES (?,?,?,?)", (_th(challenge), "totp", u["id"], t + 300))
         return {"totp_required": True, "challenge": challenge}
-    token, user = _session(db, u, "enrol" if cfg.get("require_2fa") else "full", how)
+    token, user = _session(db, u, _scope_after_password(cfg, u), how)
     return {"token": token, "user": user}
+
+
+def password_expired(cfg: dict, u) -> bool:
+    days = int(cfg.get("password_max_days", 0) or 0)
+    return bool(days) and u["source"] == "local" and u["pw_changed"] > 0 and time.time() - u["pw_changed"] > days * 86400
+
+
+def _scope_after_password(cfg: dict, u) -> str:
+    """'password': the person must choose a new password first; 'enrol': two-factor set-up is required first."""
+    if u["source"] == "local" and (u["must_change"] or password_expired(cfg, u)):
+        return "password"
+    return "enrol" if cfg.get("require_2fa") and not u["totp_enabled"] else "full"
 
 
 def login_totp(db: Database, challenge: str, code: str) -> dict:
@@ -167,7 +187,7 @@ def login_totp(db: Database, challenge: str, code: str) -> dict:
     with db.tx() as w:
         w.execute("DELETE FROM challenges WHERE token_hash=?", (ch["token_hash"],))
         w.execute("UPDATE users SET totp_last_step=? WHERE id=?", (step, u["id"]))
-    token, user = _session(db, u, "full", "two-factor")
+    token, user = _session(db, u, _scope_after_password(_auth_cfg(db), u), "two-factor")
     return {"token": token, "user": user}
 
 
@@ -229,7 +249,7 @@ def session_user(db: Database, token: str | None) -> dict:
         with db.tx() as w:
             w.execute("UPDATE sessions SET last_seen=? WHERE token_hash=?", (t, _th(token)))
     return {"id": r["uid"], "username": r["username"], "name": r["name"], "role": r["role"], "title": r["title"],
-            "two_factor": bool(r["totp_enabled"]), "source": r["source"], "scope": r["scope"]}
+            "two_factor": bool(r["totp_enabled"]), "source": r["source"], "scope": r["scope"], "session_created": r["created"]}
 
 
 def logout(db: Database, token: str | None, user: dict | None = None) -> None:
@@ -240,10 +260,93 @@ def logout(db: Database, token: str | None, user: dict | None = None) -> None:
                 db.audit(user["name"], "Signed out", "", c)
 
 
-def set_password(db: Database, username: str, password: str) -> None:
+def _check_history(u, password: str) -> None:
+    for old in [u["pw_hash"], *json.loads(u["pw_history"] or "[]")]:
+        if verify_password(password, old):
+            raise ValueError(f"choose a password you have not used before (the last {HISTORY} are remembered)")
+
+
+def _store_password(c, u, password: str, must_change: bool) -> None:
+    hist = ([u["pw_hash"]] + json.loads(u["pw_history"] or "[]"))[:HISTORY] if u["pw_hash"] and not u["pw_hash"].startswith("!") else []
+    c.execute("UPDATE users SET pw_hash=?, pw_history=?, pw_changed=?, must_change=?, failed=0, locked_until=0 WHERE id=?",
+              (hash_password(password), json.dumps(hist), time.time(), 1 if must_change else 0, u["id"]))
+
+
+def set_password(db: Database, username: str, password: str, must_change: bool = False) -> None:
+    """An administrator's reset (must_change=True: the person chooses a new one at next sign-in) or the command line."""
     check_password_policy(password, username)
     with db.tx() as c:
-        cur = c.execute("UPDATE users SET pw_hash=?, failed=0, locked_until=0 WHERE username=? AND source='local'", (hash_password(password), username.strip().lower()))
-        if cur.rowcount == 0:
+        u = c.execute("SELECT * FROM users WHERE username=? AND source='local'", (username.strip().lower(),)).fetchone()
+        if u is None:
             raise ValueError("no such local user (directory and identity-provider accounts change their password there)")
-        c.execute("DELETE FROM sessions WHERE user_id=(SELECT id FROM users WHERE username=?)", (username.strip().lower(),))
+        _store_password(c, u, password, must_change)
+        c.execute("DELETE FROM sessions WHERE user_id=?", (u["id"],))
+
+
+def change_own_password(db: Database, user: dict, current: str, new: str, token: str) -> None:
+    """The signed-in person changes their own password: the current one is checked, old ones are refused,
+    their other sessions end, this one becomes a full session (or two-factor set-up, if the hospital requires it)."""
+    with db.tx() as c:
+        u = c.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
+    if u["source"] != "local":
+        raise ValueError("this account's password is managed by the hospital directory or identity provider")
+    if not verify_password(current or "", u["pw_hash"]):
+        raise ReauthError("the current password is not right")
+    check_password_policy(new, u["username"])
+    _check_history(u, new)
+    with db.tx() as c:
+        _store_password(c, u, new, False)
+        u2 = c.execute("SELECT * FROM users WHERE id=?", (u["id"],)).fetchone()
+        c.execute("DELETE FROM sessions WHERE user_id=? AND token_hash!=?", (u["id"], _th(token)))
+        c.execute("UPDATE sessions SET scope=? WHERE token_hash=?", (_scope_after_password(_auth_cfg(db), u2), _th(token)))
+        db.audit(u["name"], "Changed own password", "", c)
+
+
+def reauthenticate(db: Database, user: dict, password: str = "", code: str = "", ldap_options: dict | None = None) -> str:
+    """Confirm that the signed-in person is the one at the keyboard now (before a signature). Returns how.
+    A two-factor code works for anyone who has one; otherwise local and directory accounts give their password,
+    and identity-provider accounts need a sign-in in the last 10 minutes. Wrong answers count towards the lockout."""
+    from . import sso
+
+    u = db.conn().execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
+    if code and u["totp_enabled"]:
+        step = sso.totp_verify(u["totp_secret"], code, u["totp_last_step"])
+        if step is not None:
+            with db.tx() as c:
+                c.execute("UPDATE users SET totp_last_step=?, failed=0 WHERE id=?", (step, u["id"]))
+            return "two-factor code"
+        _reauth_fail(db, u, "two-factor code")
+    if u["source"] == "oidc":
+        if time.time() - float(user.get("session_created") or 0) <= REAUTH_OIDC_SECONDS:
+            return "recent identity-provider sign-in"
+        raise ReauthError("sign out and sign in again through the identity provider to sign reports (or use your two-factor code)")
+    if not password:
+        raise ReauthError("enter your password to sign")
+    if u["source"] == "ldap":
+        cfg = _auth_cfg(db).get("ldap", {})
+        try:
+            ok = sso.ldap_authenticate(cfg, u["username"], password, **(ldap_options or {})) is not None
+        except Exception:
+            raise ReauthError("the hospital directory cannot be reached; try again") from None
+    else:
+        ok = verify_password(password, u["pw_hash"])
+    if not ok:
+        _reauth_fail(db, u, "password")
+    with db.tx() as c:
+        c.execute("UPDATE users SET failed=0 WHERE id=?", (u["id"],))
+    return "password"
+
+
+def _reauth_fail(db: Database, u, what: str) -> None:
+    t = time.time()
+    fails = u["failed"] + 1
+    with db.tx() as c:
+        if fails >= MAX_FAILS:  # same lockout as sign-in: the account is locked and every session ends
+            c.execute("UPDATE users SET failed=0, locked_until=? WHERE id=?", (t + LOCK_SECONDS, u["id"]))
+            c.execute("DELETE FROM sessions WHERE user_id=?", (u["id"],))
+        else:
+            c.execute("UPDATE users SET failed=? WHERE id=?", (fails, u["id"]))
+        db.audit(u["name"], "Signature confirmation failed", f"{what}, attempt {fails}", c)
+    if fails >= MAX_FAILS:
+        raise AuthError("Too many wrong attempts: the account is locked for 5 minutes")
+    raise ReauthError(f"that {what} is not right")

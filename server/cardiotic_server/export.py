@@ -136,8 +136,10 @@ def parse_ack(raw: bytes) -> tuple[bool, str]:
     return False, "no MSA segment in the reply"
 
 
-def send_mllp(host: str, port: int, message: str, timeout: float = 10.0) -> tuple[bool, str]:
-    with socket.create_connection((host, port), timeout=timeout) as s:
+def send_mllp(host: str, port: int, message: str, timeout: float = 10.0, tls=None) -> tuple[bool, str]:
+    """tls: an ssl.SSLContext (security.client_tls_context) for MLLP over TLS, or None for plain MLLP."""
+    with socket.create_connection((host, port), timeout=timeout) as raw:
+        s = tls.wrap_socket(raw, server_hostname=host) if tls is not None else raw
         s.settimeout(timeout)
         s.sendall(MLLP_START + message.encode("latin-1", "replace") + MLLP_END)
         buf = b""
@@ -221,9 +223,18 @@ class Worker(threading.Thread):
         if not his.get("enabled") or not his.get("host"):
             return 0
         sent = 0
+        from .security import client_tls_context
+        try:
+            tls = client_tls_context(his.get("tls", {}))
+        except (OSError, ValueError) as e:
+            tls, tls_error = None, f"TLS settings for the HIS cannot be used: {e}"
+        else:
+            tls_error = None
         for r in self.store.db.conn().execute("SELECT * FROM outbox WHERE status='pending' AND next_try<=? ORDER BY id LIMIT 20", (time.time(),)).fetchall():
             try:
-                ok, text = send_mllp(his["host"], int(his.get("port", 2575)), r["payload"])
+                if tls_error:
+                    raise OSError(tls_error)
+                ok, text = send_mllp(his["host"], int(his.get("port", 2575)), r["payload"], tls=tls)
                 err = None if ok else f"HIS rejected the message: {text}"
             except OSError as e:
                 ok, err = False, f"cannot reach the HIS: {e}"

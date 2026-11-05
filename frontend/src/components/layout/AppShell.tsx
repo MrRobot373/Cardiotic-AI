@@ -11,7 +11,9 @@ import { BrandMark } from "./BrandMark";
 import { CommandPaletteProvider, usePalette } from "./CommandPalette";
 import { NAV, PRIMARY_NAV, RAIL_NAV, visibleFor } from "./nav";
 import { UserMenu } from "./UserMenu";
+import { ChangePassword } from "@/features/auth/ChangePassword";
 import { TwoFactorSetup } from "@/features/auth/TwoFactorSetup";
+import { CriticalBanner } from "./CriticalBanner";
 
 const iconBtn = "glass relative flex size-10 items-center justify-center rounded-xl border border-white/70 text-muted-foreground shadow-card transition-colors hover:text-foreground dark:border-white/[0.06] [&_svg]:size-[18px]";
 
@@ -131,16 +133,36 @@ function EnrolTwoFactor() {
   );
 }
 
+/** First sign-in with an issued password, or the password has expired: nothing else opens until it is changed. */
+function MustChangePassword() {
+  const { signOut } = useDemo();
+  return (
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="mb-4 flex flex-col items-center text-center">
+          <BrandMark />
+          <h1 className="mt-4 text-xl font-semibold">Choose a new password</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Your password was issued by an administrator or has expired. Choose one only you know.</p>
+        </div>
+        <div className="rounded-2xl border bg-card p-5 shadow-card"><ChangePassword /></div>
+        <Button variant="ghost" className="mt-3 w-full" onClick={signOut}>Sign out</Button>
+      </div>
+    </div>
+  );
+}
+
 export function AppShell() {
   const { user, ready } = useDemo();
   const location = useLocation();
   if (!ready) return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  if (user.change_password) return <MustChangePassword />;
   if (user.enrol_2fa) return <EnrolTwoFactor />;
   return (
     <CommandPaletteProvider>
       <div className="min-h-screen">
         <TopBar />
+        <CriticalBanner />
         <div className="mx-auto flex w-full max-w-[1680px] gap-4 px-3 pb-6 md:px-6">
           <Rail />
           <main className="min-w-0 flex-1 pb-2">

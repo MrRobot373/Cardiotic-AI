@@ -1,6 +1,7 @@
 /** Settings screens that talk to the Cardiotic server: site, users and the HIS connection. */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, FolderInput, Plug, Plus, ShieldCheck, Trash2, Users } from "lucide-react";
+import { Bell, Building2, FolderInput, Plug, Plus, ShieldCheck, Trash2, Users } from "lucide-react";
+import { ChangePassword } from "@/features/auth/ChangePassword";
 import { TwoFactorSetup } from "@/features/auth/TwoFactorSetup";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -44,7 +45,7 @@ export function ServerSite() {
   );
 }
 
-interface UserRow { id: number; username: string; name: string; role: string; title: string; active: number; source?: string; two_factor?: number }
+interface UserRow { id: number; username: string; name: string; role: string; title: string; active: number; source?: string; two_factor?: number; must_change?: number }
 
 export function ServerUsers() {
   const { user } = useDemo();
@@ -75,7 +76,7 @@ export function ServerUsers() {
         {(users.data ?? []).map((u) => (
           <div key={u.username} className="flex items-center gap-3 rounded-xl border bg-card/70 p-3">
             <Avatar name={u.name} size="sm" />
-            <div className="flex-1"><div className="text-sm font-medium">{u.name} <span className="font-mono text-xs text-muted-foreground">{u.username}</span></div><div className="text-[0.78rem] text-muted-foreground">{[u.title, u.source === "ldap" ? "hospital directory" : u.source === "oidc" ? "identity provider" : "", u.two_factor ? "two-factor on" : ""].filter(Boolean).join(" · ")}</div></div>
+            <div className="flex-1"><div className="text-sm font-medium">{u.name} <span className="font-mono text-xs text-muted-foreground">{u.username}</span></div><div className="text-[0.78rem] text-muted-foreground">{[u.title, u.source === "ldap" ? "hospital directory" : u.source === "oidc" ? "identity provider" : "", u.two_factor ? "two-factor on" : "", u.must_change ? "must choose a new password" : ""].filter(Boolean).join(" · ")}</div></div>
             {admin && !!u.two_factor && <Button size="xs" variant="ghost" onClick={() => resetTotp.mutate(u.username)}>Reset two-factor</Button>}
             <Badge tone="outline" className="capitalize">{u.role}</Badge>
             <Button size="xs" variant="secondary" disabled={u.username === user?.username} onClick={() => toggle.mutate(u)}>{u.active ? "Deactivate" : "Activate"}</Button>
@@ -97,7 +98,7 @@ export function ServerUsers() {
   );
 }
 
-interface His { enabled: boolean; host?: string; port?: number; facility?: string; application?: string; attach_pdf?: boolean; inbound?: { enabled: boolean; port: number } }
+interface His { enabled: boolean; host?: string; port?: number; facility?: string; application?: string; attach_pdf?: boolean; tls?: Tls; inbound?: { enabled: boolean; port: number; allowed_hosts?: string[]; tls?: Tls } }
 interface Outbox { id: number; ecg_id: string; status: string; attempts: number; last_error: string | null; created_at: string; sent_at: string | null }
 
 export function ServerIntegrations() {
@@ -106,6 +107,7 @@ export function ServerIntegrations() {
     <div className="space-y-4">
       <ServerFeeds />
       <ServerHis />
+      {user?.role === "admin" && <ServerNotifications />}
       {user?.role === "admin" && <ServerMonitors />}
     </div>
   );
@@ -137,6 +139,9 @@ function ServerHis() {
             <div className="sm:col-span-4"><SwitchRow label="Deliver signed reports to the HIS" description="HL7 ORU^R01 with the PDF report attached" checked={!!cur.enabled} onCheckedChange={(v) => setDraft({ ...cur, enabled: v })} /></div>
             <div className="sm:col-span-3"><SwitchRow label="Receive patients and ECG orders from the HIS" description={`ADT (register, update, merge) and ORM orders over MLLP, port ${cur.inbound?.port ?? 2576}`} checked={!!cur.inbound?.enabled} onCheckedChange={(v) => setDraft({ ...cur, inbound: { port: cur.inbound?.port ?? 2576, enabled: v } })} /></div>
             <Input aria-label="Inbound port" type="number" value={cur.inbound?.port ?? 2576} onChange={(e) => setDraft({ ...cur, inbound: { enabled: !!cur.inbound?.enabled, port: Number(e.target.value) } })} />
+            <div className="sm:col-span-4"><Input aria-label="Allowed HIS addresses" placeholder="Addresses allowed to send to us, e.g. 10.5.0.10 (empty: any)" value={(cur.inbound?.allowed_hosts ?? []).join(", ")} onChange={(e) => setDraft({ ...cur, inbound: { enabled: !!cur.inbound?.enabled, port: cur.inbound?.port ?? 2576, ...cur.inbound, allowed_hosts: splitList(e.target.value) } })} /></div>
+            <div className="sm:col-span-4"><TlsFields label="Reports to the HIS" tls={cur.tls} onChange={(tls) => setDraft({ ...cur, tls })} caHint="CA that signed the HIS certificate (empty: the server's trusted CAs)" /></div>
+            <div className="sm:col-span-4"><TlsFields label="Patients and orders from the HIS" tls={cur.inbound?.tls} onChange={(tls) => setDraft({ ...cur, inbound: { enabled: !!cur.inbound?.enabled, port: cur.inbound?.port ?? 2576, ...cur.inbound, tls } })} caHint="CA that signed the HIS's certificate (it must then present one)" /></div>
             <Button type="submit" variant="strong" className="sm:col-span-4" disabled={save.isPending}>Save HIS connection</Button>
           </form>
         ) : <p className="text-sm text-muted-foreground">Only an administrator can change the connection.</p>}
@@ -163,7 +168,27 @@ function ServerHis() {
 
 interface FolderFeed { name: string; path: string; location?: string; enabled?: boolean }
 interface FeedStatus { received: number; failed: number; last_received?: string; last_error?: string; last_error_at?: string }
-interface Feeds { folders: FolderFeed[]; dicom: { enabled: boolean; port: number; ae_title: string; location?: string }; status: Record<string, FeedStatus>; dicom_running: boolean }
+interface Tls { enabled?: boolean; cert?: string; key?: string; ca?: string; verify_hostname?: boolean }
+interface Feeds { folders: FolderFeed[]; dicom: { enabled: boolean; port: number; ae_title: string; location?: string; allowed_ae_titles?: string[]; allowed_hosts?: string[]; tls?: Tls }; status: Record<string, FeedStatus>; dicom_running: boolean }
+
+const splitList = (v: string) => v.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
+
+/** Optional TLS for a network port: file paths on the server (the hospital's PKI issues them). */
+function TlsFields({ label, tls, onChange, caHint }: { label: string; tls?: Tls; onChange: (t: Tls) => void; caHint: string }) {
+  const t = tls ?? {};
+  return (
+    <div className="space-y-2">
+      <SwitchRow label={`${label} over TLS`} description="Encrypts the connection. Certificate files are paths on this server." checked={!!t.enabled} onCheckedChange={(v) => onChange({ ...t, enabled: v })} />
+      {t.enabled && (
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Input aria-label={`${label} certificate file`} placeholder="/certs/server.pem" value={t.cert ?? ""} onChange={(e) => onChange({ ...t, cert: e.target.value })} />
+          <Input aria-label={`${label} key file`} placeholder="/certs/server.key" value={t.key ?? ""} onChange={(e) => onChange({ ...t, key: e.target.value })} />
+          <Input aria-label={`${label} CA file`} placeholder="/certs/ca.pem" title={caHint} value={t.ca ?? ""} onChange={(e) => onChange({ ...t, ca: e.target.value })} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function useFeeds() {
   return useQuery({ queryKey: ["feeds"], queryFn: () => api<Feeds>("/feeds"), refetchInterval: 15000 });
@@ -223,6 +248,11 @@ export function ServerFeeds() {
               <Input aria-label="DICOM location" placeholder="Location" value={cur.dicom.location ?? ""} onChange={(e) => setDraft({ ...cur, dicom: { ...cur.dicom, location: e.target.value } })} />
             </div>
             <SwitchRow label="Receive ECGs over DICOM (C-STORE)" description={feeds.data?.dicom_running ? "Running" : "Stopped"} checked={cur.dicom.enabled} onCheckedChange={(v) => setDraft({ ...cur, dicom: { ...cur.dicom, enabled: v } })} />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input aria-label="Allowed ECG machines (AE titles)" placeholder="Allowed AE titles, comma separated (empty: any)" value={(cur.dicom.allowed_ae_titles ?? []).join(", ")} onChange={(e) => setDraft({ ...cur, dicom: { ...cur.dicom, allowed_ae_titles: splitList(e.target.value) } })} />
+              <Input aria-label="Allowed machine addresses" placeholder="Allowed addresses, e.g. 10.1.2.0/24 (empty: any)" value={(cur.dicom.allowed_hosts ?? []).join(", ")} onChange={(e) => setDraft({ ...cur, dicom: { ...cur.dicom, allowed_hosts: splitList(e.target.value) } })} />
+            </div>
+            <TlsFields label="DICOM" tls={cur.dicom.tls} onChange={(tls) => setDraft({ ...cur, dicom: { ...cur.dicom, tls } })} caHint="CA that signed the ECG machines' certificates (machines must then present one)" />
             <Button type="submit" variant="strong" disabled={save.isPending}>Save machine feeds</Button>
           </form>
         )}
@@ -239,7 +269,7 @@ export function ServerFeeds() {
 const ROLES = ["cardiologist", "technician", "admin"] as const;
 interface Ldap { enabled?: boolean; url?: string; base_dn?: string; user_filter?: string; bind_dn?: string; bind_password?: string; user_dn_template?: string; role_groups?: Record<string, string> }
 interface Oidc { enabled?: boolean; display_name?: string; issuer?: string; client_id?: string; client_secret?: string; redirect_uri?: string; role_claim?: string; role_map?: Record<string, string> }
-interface AuthSettings { require_2fa: boolean; ldap: Ldap; oidc: Oidc }
+interface AuthSettings { require_2fa: boolean; password_max_days?: number; ldap: Ldap; oidc: Oidc }
 
 function Text({ label, value, onChange, type = "text", placeholder }: { label: string; value?: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
   return <Input aria-label={label} placeholder={placeholder ?? label} type={type} value={value ?? ""} onChange={(e) => onChange(e.target.value)} />;
@@ -247,6 +277,7 @@ function Text({ label, value, onChange, type = "text", placeholder }: { label: s
 
 export function ServerSecurity() {
   const qc = useQueryClient();
+  const { site, updateSite } = useDemo();
   const q = useQuery({ queryKey: ["auth-settings"], queryFn: () => api<AuthSettings>("/auth-settings") });
   const [d, setD] = useState<AuthSettings | null>(null);
   const cur = d ?? q.data;
@@ -270,6 +301,10 @@ export function ServerSecurity() {
       <CardHeader title="Security" description="How people sign in" icon={<ShieldCheck />} />
       <form className="card-pad space-y-5" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
         <SwitchRow label="Require two-factor sign-in" description="Everyone signing in with a password also enters a code from an authenticator app. Sign-ins through the identity provider use its own two-factor." checked={cur.require_2fa} onCheckedChange={(v) => setD({ ...cur, require_2fa: v })} />
+        <Row label="Passwords expire after" hint="Local accounts choose a new password at the next sign-in after this many days. 0 means never.">
+          <Input aria-label="Password expiry in days" type="number" min={0} max={730} className="w-28" value={cur.password_max_days ?? 0} onChange={(e) => setD({ ...cur, password_max_days: Number(e.target.value) })} />
+        </Row>
+        <SwitchRow label="Ask for the password again when signing" description="A signature is a legal act: the cardiologist confirms with their password (or a two-factor code) every time. Recommended." checked={site.signReauth} onCheckedChange={(v) => updateSite({ signReauth: v })} />
         <div className="space-y-2">
           <SwitchRow label="Active Directory / LDAP" description="People sign in with their hospital account; their directory groups decide their role." checked={!!cur.ldap.enabled} onCheckedChange={(v) => ldap({ enabled: v })} />
           {cur.ldap.enabled && (
@@ -316,8 +351,77 @@ export function ServerAccount() {
           {user?.two_factor ? <Badge tone="success">On</Badge> : user?.source !== "oidc" && !setting && <Button variant="secondary" onClick={() => setSetting(true)}>Set up</Button>}
         </div>
         {setting && !user?.two_factor && <TwoFactorSetup onDone={() => setSetting(false)} />}
+        {user?.source === "local" && (
+          <div className="space-y-2 border-t pt-3">
+            <div className="font-medium">Change password</div>
+            <ChangePassword />
+          </div>
+        )}
         <p className="text-[0.75rem] text-muted-foreground">{user?.source === "ldap" ? "Your password is your hospital directory password." : user?.source === "oidc" ? "You sign in through the hospital identity provider." : "Lost your phone or password? An administrator can reset them."}</p>
       </div>
+    </Card>
+  );
+}
+
+interface NotifySettings { levels: string[]; sound: boolean; app_url: string; email: { enabled: boolean; host: string; port: number; security: string; username: string; password: string; sender: string; to: string[] } }
+interface NotifyRow { id: number; at: string; recording_id: string; level: string; reason: string; location: string; acknowledged_by?: string; acknowledged_at?: string; email_status: string; email_error?: string }
+
+export function ServerNotifications() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["notify-settings"], queryFn: () => api<NotifySettings>("/notify-settings") });
+  const history = useQuery({ queryKey: ["notify-history"], queryFn: () => api<NotifyRow[]>("/notifications/history"), refetchInterval: 15000 });
+  const [d, setD] = useState<NotifySettings | null>(null);
+  const cur = d ?? q.data;
+  const save = useMutation({
+    mutationFn: () => api("/notify-settings", { method: "PUT", json: cur }),
+    onSuccess: () => { toast.success("Notification settings saved"); setD(null); qc.invalidateQueries({ queryKey: ["notify-settings"] }); },
+    onError: fail,
+  });
+  const test = useMutation({ mutationFn: () => api("/notify-settings/test", { method: "POST", json: {} }), onSuccess: () => toast.success("Test e-mail sent"), onError: fail });
+  if (!cur) return null;
+  const email = (p: Partial<NotifySettings["email"]>) => setD({ ...cur, email: { ...cur.email, ...p } });
+  const level = (l: string, on: boolean) => setD({ ...cur, levels: on ? [...new Set([...cur.levels, l])] : cur.levels.filter((x) => x !== l) });
+  return (
+    <Card>
+      <CardHeader title="Result notifications" description="Tell the reading team when a critical ECG arrives" icon={<Bell />} />
+      <form className="card-pad space-y-4" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+        <SwitchRow label="Critical ECGs (complete heart block, AF/flutter ≥ 120 bpm, QTc ≥ 500 ms, rate ≥ 150 or < 40)" description="A banner on every screen until someone acknowledges it" checked={cur.levels.includes("critical")} onCheckedChange={(v) => level("critical", v)} />
+        <SwitchRow label="Urgent ECGs too (suspected infarction, AF, long QT, other urgent findings)" checked={cur.levels.includes("urgent")} onCheckedChange={(v) => level("urgent", v)} />
+        <SwitchRow label="Sound" description="A short beep in the browser when a new result arrives" checked={cur.sound} onCheckedChange={(v) => setD({ ...cur, sound: v })} />
+        <SwitchRow label="Also send an e-mail" description="To a ward or on-call address through the hospital's mail server. It carries no patient name or number." checked={cur.email.enabled} onCheckedChange={(v) => email({ enabled: v })} />
+        {cur.email.enabled && (
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Text label="Mail server" placeholder="smtp.hospital.local" value={cur.email.host} onChange={(v) => email({ host: v })} />
+            <Input aria-label="Mail port" type="number" value={cur.email.port} onChange={(e) => email({ port: Number(e.target.value) })} />
+            <Select id="mail-security" value={cur.email.security} onValueChange={(v) => email({ security: v })}
+              options={[{ value: "starttls", label: "STARTTLS" }, { value: "ssl", label: "SSL/TLS" }, { value: "none", label: "None (internal relay only)" }]} />
+            <Text label="Mail user name" value={cur.email.username} onChange={(v) => email({ username: v })} />
+            <Text label="Mail password" type="password" value={cur.email.password} onChange={(v) => email({ password: v })} />
+            <Text label="From address" placeholder="ecg@hospital.org" value={cur.email.sender} onChange={(v) => email({ sender: v })} />
+            <div className="sm:col-span-3"><Text label="To addresses" placeholder="oncall@hospital.org, ward4@hospital.org" value={cur.email.to.join(", ")} onChange={(v) => email({ to: splitList(v) })} /></div>
+            <div className="sm:col-span-3"><Text label="Link base address" placeholder="https://cardiotic.hospital.org (put in the e-mail as a link)" value={cur.app_url} onChange={(v) => setD({ ...cur, app_url: v })} /></div>
+          </div>
+        )}
+        <div className="flex gap-2">
+          <Button type="submit" variant="strong" disabled={save.isPending}>Save notification settings</Button>
+          {cur.email.enabled && !d && <Button type="button" variant="secondary" disabled={test.isPending} onClick={() => test.mutate()}>Send test e-mail</Button>}
+        </div>
+        <p className="text-[0.75rem] text-muted-foreground">The AI triage is a reading-order aid. These notifications do not replace the hospital's own critical-result procedure.</p>
+        <div>
+          <div className="text-label mb-2">Recent</div>
+          {(history.data ?? []).length === 0 && <p className="text-sm text-muted-foreground">No notification yet.</p>}
+          <div className="space-y-1.5">
+            {(history.data ?? []).slice(0, 8).map((n) => (
+              <div key={n.id} className="flex flex-wrap items-center gap-2 rounded-lg border bg-card/70 px-3 py-2 text-[0.8rem]">
+                <span className="font-mono text-xs">{n.recording_id}</span>
+                <Badge tone={n.level === "critical" ? "danger" : "warning"}>{n.level}</Badge>
+                <span className="min-w-0 flex-1 truncate text-muted-foreground">{n.reason}{n.acknowledged_by ? ` · acknowledged by ${n.acknowledged_by}` : " · waiting"}</span>
+                {n.email_status !== "off" && <Badge tone={n.email_status === "sent" ? "success" : n.email_status === "failed" ? "danger" : "warning"}>e-mail {n.email_status}</Badge>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </form>
     </Card>
   );
 }

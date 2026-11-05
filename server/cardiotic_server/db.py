@@ -9,7 +9,12 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+NOTIFICATIONS_SQL = ("CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY, at TEXT NOT NULL, recording_id TEXT NOT NULL, level TEXT NOT NULL, "
+                     "reason TEXT NOT NULL, location TEXT NOT NULL DEFAULT '', acknowledged_by TEXT, acknowledged_at TEXT, email_status TEXT NOT NULL DEFAULT 'off', "
+                     "email_attempts INTEGER NOT NULL DEFAULT 0, email_error TEXT)")
+REVIEW_VERSIONS_SQL = ("CREATE TABLE IF NOT EXISTS review_versions (id INTEGER PRIMARY KEY, ecg_id TEXT NOT NULL, version INTEGER NOT NULL, at TEXT NOT NULL, "
+                       "user TEXT NOT NULL, action TEXT NOT NULL, snapshot TEXT NOT NULL)")
 # Upgrades applied in order to databases created by an older version (each step runs once).
 MIGRATIONS = {
     2: [  # single sign-on and two-factor authentication
@@ -19,6 +24,13 @@ MIGRATIONS = {
         "ALTER TABLE users ADD COLUMN totp_last_step INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE sessions ADD COLUMN scope TEXT NOT NULL DEFAULT 'full'",
         "CREATE TABLE IF NOT EXISTS challenges (token_hash TEXT PRIMARY KEY, kind TEXT NOT NULL, user_id INTEGER, data TEXT NOT NULL DEFAULT '{}', expires REAL NOT NULL, attempts INTEGER NOT NULL DEFAULT 0)",
+    ],
+    3: [  # password policy, critical-result notifications, review history
+        "ALTER TABLE users ADD COLUMN must_change INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN pw_changed REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN pw_history TEXT NOT NULL DEFAULT '[]'",
+        NOTIFICATIONS_SQL,
+        REVIEW_VERSIONS_SQL,
     ],
 }
 SCHEMA = """

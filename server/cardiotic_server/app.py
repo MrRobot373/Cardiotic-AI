@@ -22,7 +22,7 @@ from urllib.parse import parse_qs, urlparse
 
 from cardiotic_engine.api import Engine, InputError
 
-from . import auth, export, feeds, hl7in, live
+from . import auth, export, feeds, hl7in, live, notify, security
 from .db import Database
 from .store import Conflict, Forbidden, NotFound, Store
 
@@ -61,6 +61,8 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
     store.folders, store.dicom = folders, dicom
     store.hl7in = hl7in.Listener(store)
     store.live = live.LiveHub(store)
+    store.mailer = notify.Mailer(store)
+    limiter, views = security.LoginLimiter(), security.ViewLog(db)
     static = Path(static_dir).resolve() if static_dir else None
 
     class Handler(BaseHTTPRequestHandler):
@@ -166,6 +168,10 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 self._json(e.code, {"error": e.message})
             except auth.AuthError as e:
                 self._json(401, {"error": str(e)})
+            except auth.ReauthError as e:
+                self._json(403, {"error": str(e), "reauth": True})
+            except security.RateLimited as e:
+                self._json(429, {"error": str(e)}, [("Retry-After", "900")])
             except Forbidden as e:
                 self._json(403, {"error": str(e)})
             except NotFound as e:
@@ -214,8 +220,17 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                                         "sso": oidc.get("display_name") or "single sign-on" if oidc.get("enabled") else None})
             if method == "POST" and path in ("/login", "/login/totp"):
                 b = self._json_body()
-                res = (auth.login(db, str(b.get("username", "")), str(b.get("password", ""))) if path == "/login"
-                       else auth.login_totp(db, str(b.get("challenge", "")), str(b.get("code", ""))))
+                ip = self._ip()
+                limiter.check(ip)
+                try:
+                    res = (auth.login(db, str(b.get("username", "")), str(b.get("password", ""))) if path == "/login"
+                           else auth.login_totp(db, str(b.get("challenge", "")), str(b.get("code", ""))))
+                except auth.AuthError:
+                    if limiter.failed(ip):
+                        db.audit(ip, "Sign-in blocked for this address", f"more than {limiter.limit} failures in {limiter.window // 60} minutes")
+                    raise
+                if "token" in res:
+                    limiter.succeeded(ip)
                 if "token" not in res:
                     return self._json(200, res)
                 return self._json(200, res, [("Set-Cookie", self._cookie(res["token"]))])
@@ -234,13 +249,20 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
             if method == "GET" and path == "/auth/oidc/callback":
                 return self._oidc_callback(q)
             user = self._user(method != "GET")
-            if user.get("scope") == "enrol" and path not in ("/me", "/me/totp/setup", "/me/totp/enable", "/logout"):
+            if user.get("scope") == "password" and path not in ("/me", "/me/password", "/logout"):
+                raise Forbidden("choose a new password first")
+            if user.get("scope") == "enrol" and path not in ("/me", "/me/totp/setup", "/me/totp/enable", "/me/password", "/logout"):
                 raise Forbidden("set up two-factor sign-in first (required at this hospital)")
             if method == "POST" and path == "/logout":
                 auth.logout(db, self._tok, user)
                 return self._json(200, {"ok": True}, [("Set-Cookie", f"{COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")])
             if method == "GET" and path == "/me":
-                return self._json(200, {"user": {**user, "enrol_2fa": user.get("scope") == "enrol"}, "site": store.site()})
+                me = {k: v for k, v in user.items() if k != "session_created"}
+                return self._json(200, {"user": {**me, "enrol_2fa": user.get("scope") == "enrol", "change_password": user.get("scope") == "password"}, "site": store.site()})
+            if method == "POST" and path == "/me/password":
+                b = self._json_body()
+                auth.change_own_password(db, user, str(b.get("current", "")), str(b.get("new", "")), self._tok)
+                return self._json(200, {"ok": True})
             if method == "POST" and path == "/me/totp/setup":
                 return self._json(200, auth.totp_setup(db, user, f"Cardiotic AI ({store.site()['siteName']})"))
             if method == "POST" and path == "/me/totp/enable":
@@ -254,9 +276,13 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
             if method == "GET" and path == "/catalog":
                 return self._json(200, store.catalog())
             if method == "GET" and (g := m(r"/ecg/(E\d+)", path)):
-                return self._json(200, store.recording(g[1], "ecg12"))
+                rec = store.recording(g[1], "ecg12")
+                views.record(user, "Viewed ECG", g[1])
+                return self._json(200, rec)
             if method == "GET" and (g := m(r"/holter/(H\d+)", path)):
-                return self._json(200, store.recording(g[1], "holter"))
+                rec = store.recording(g[1], "holter")
+                views.record(user, "Viewed Holter recording", g[1])
+                return self._json(200, rec)
             if method == "GET" and (g := m(r"/holter/(H\d+)/signal", path)):
                 sig = store.holter_signal(g[1])
                 if "from" in q or "to" in q:  # long recordings: the app loads only the minutes on screen
@@ -275,9 +301,14 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 if method == "PUT":
                     b = self._json_body()
                     return self._json(200, store.update_review(user, g[1], {k: v for k, v in b.items() if k not in ("version", "audit")}, b.get("version"), b["audit"][:100] if isinstance(b.get("audit"), str) else None))
+            if method == "GET" and (g := m(r"/reviews/([EH]\d+)/history", path)):
+                return self._json(200, store.history(g[1]))
             if method == "POST" and (g := m(r"/reviews/([EH]\d+)/sign", path)):
                 b = self._json_body()
-                return self._json(200, store.sign(user, g[1], b.get("note"), b.get("version")))
+                if user["role"] != "cardiologist":
+                    raise Forbidden("only a cardiologist can sign")
+                how = auth.reauthenticate(db, user, str(b.get("password", "")), str(b.get("code", ""))) if store.site().get("signReauth", True) else ""
+                return self._json(200, store.sign(user, g[1], b.get("note"), b.get("version"), how))
             if method == "POST" and path == "/upload":
                 data = self._body(MAX_UPLOAD)
                 if not data:
@@ -314,9 +345,11 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 if method == "PUT":
                     b = self._json_body()
                     inb = b.get("inbound", {}) if isinstance(b.get("inbound"), dict) else {}
+                    allowed = [str(x).strip() for x in inb.get("allowed_hosts", []) if str(x).strip()]
+                    security.parse_networks(allowed)  # a bad entry is refused here, not when the port starts
                     his = {"enabled": bool(b.get("enabled")), "host": str(b.get("host", "")).strip(), "port": int(b.get("port", 2575)), "facility": str(b.get("facility", ""))[:40],
-                           "application": str(b.get("application", "HIS"))[:40], "attach_pdf": bool(b.get("attach_pdf", True)),
-                           "inbound": {"enabled": bool(inb.get("enabled")), "port": int(inb.get("port", 2576))}}
+                           "application": str(b.get("application", "HIS"))[:40], "attach_pdf": bool(b.get("attach_pdf", True)), "tls": security.tls_settings(b.get("tls")),
+                           "inbound": {"enabled": bool(inb.get("enabled")), "port": int(inb.get("port", 2576)), "allowed_hosts": allowed, "tls": security.tls_settings(inb.get("tls"))}}
                     if not 0 < his["inbound"]["port"] < 65536:
                         raise ValueError("inbound port must be 1-65535")
                     if his["enabled"] and not his["host"]:
@@ -326,7 +359,7 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                     db.set_setting("his", his)
                     try:
                         store.hl7in.apply(his["inbound"])
-                    except OSError as e:
+                    except (OSError, ValueError) as e:
                         raise ValueError(f"HL7 listener could not start on port {his['inbound']['port']}: {e}") from None
                     db.audit(user["name"], "Changed HIS connection", f"{his['host']}:{his['port']} enabled={his['enabled']}")
                     return self._json(200, his)
@@ -345,14 +378,17 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                             raise ValueError("each folder feed needs a name and an absolute path")
                         folders_cfg.append({"name": name, "path": fpath, "location": str(f.get("location", ""))[:100], "enabled": bool(f.get("enabled", True))})
                     d = b.get("dicom", {})
+                    allowed = [str(x).strip() for x in d.get("allowed_hosts", []) if str(x).strip()]
+                    security.parse_networks(allowed)
+                    aets = [str(x).strip().upper()[:16] for x in d.get("allowed_ae_titles", []) if str(x).strip()]
                     dcfg = {"enabled": bool(d.get("enabled")), "port": int(d.get("port", 11112)), "ae_title": str(d.get("ae_title", "CARDIOTIC"))[:16].upper(),
-                            "location": str(d.get("location", ""))[:100]}
+                            "location": str(d.get("location", ""))[:100], "allowed_ae_titles": aets, "allowed_hosts": allowed, "tls": security.tls_settings(d.get("tls"))}
                     if not 0 < dcfg["port"] < 65536:
                         raise ValueError("port must be 1-65535")
                     db.set_setting("feeds", {"folders": folders_cfg, "dicom": dcfg})
                     try:
                         store.dicom.apply(dcfg)
-                    except OSError as e:
+                    except (OSError, ValueError) as e:
                         raise ValueError(f"DICOM receiver could not start on port {dcfg['port']}: {e}") from None
                     db.audit(user["name"], "Changed machine feeds", f"{len(folders_cfg)} folders, DICOM {'on' if dcfg['enabled'] else 'off'}")
                     return self._json(200, {"ok": True})
@@ -374,6 +410,7 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                     data = export.report_pdf(store, g[1], allow_draft=True)
                 except KeyError:
                     raise NotFound(g[1]) from None
+                views.record(user, "Viewed report (PDF)", g[1])
                 return self._bytes(200, data, "application/pdf", [("Content-Disposition", f'inline; filename="ECG-report-{g[1]}.pdf"')])
             if method == "GET" and (g := m(r"/report/(E\d+)\.(hl7|fhir\.json)", path)):
                 _role(user, "admin", "cardiologist", "technician")
@@ -383,11 +420,14 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                     raise NotFound(g[1]) from None
                 except ValueError as e:
                     raise Conflict(str(e)) from None
+                views.record(user, "Exported report (" + ("HL7" if g[2] == "hl7" else "FHIR") + ")", g[1])
                 if g[2] == "hl7":
                     his = db.get_setting("his", {})
                     return self._bytes(200, export.hl7_oru(rep, sending_facility=rep["site"][:20], receiving_facility=his.get("facility", ""), receiving_app=his.get("application", "HIS"),
                                                           pdf_bytes=export.report_pdf(store, g[1]) if his.get("attach_pdf", True) else None).encode("latin-1", "replace"), "text/plain; charset=iso-8859-1")
                 return self._json(200, export.fhir_bundle(rep, export.report_pdf(store, g[1])))
+            if path.startswith("/notifications") or path == "/notify-settings" or path == "/notify-settings/test":
+                return self._notifications(method, path, user)
             if path == "/users" or m(r"/users/[a-z0-9._-]+", path):
                 _role(user, "admin")
                 return self._users(method, path, user)
@@ -432,6 +472,44 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 db.set_setting("live", {"silent": silent})
                 db.audit(user["name"], "Live Assist silent mode " + ("on" if silent else "off"), "site")
                 return self._json(200, {"silent": silent})
+            raise HttpError(404, "not found")
+
+        def _ip(self) -> str:
+            return security.client_ip(self.client_address[0], self.headers.get("X-Forwarded-For"))
+
+        def _notifications(self, method, path, user):
+            if method == "GET" and path == "/notifications":
+                cfg = notify.settings(db)
+                items = notify.open_items(db) if user["role"] in ("cardiologist", "technician") else []
+                return self._json(200, {"items": items, "sound": cfg["sound"]})
+            if method == "POST" and (g := re.fullmatch(r"/notifications/(\d+)/ack", path)):
+                _role(user, "cardiologist", "technician")
+                try:
+                    notify.acknowledge(db, user, int(g[1]))
+                except KeyError:
+                    raise NotFound(g[1]) from None
+                return self._json(200, {"ok": True})
+            _role(user, "admin")
+            if method == "GET" and path == "/notifications/history":
+                return self._json(200, notify.recent(db))
+            if path == "/notify-settings":
+                if method == "GET":
+                    return self._json(200, notify.public(notify.settings(db)))
+                if method == "PUT":
+                    new = notify.validate(self._json_body(), notify.settings(db))
+                    db.set_setting("notify", new)
+                    db.audit(user["name"], "Changed result notifications", f"levels={','.join(new['levels']) or 'none'}, e-mail={'on' if new['email']['enabled'] else 'off'}")
+                    return self._json(200, notify.public(new))
+            if method == "POST" and path == "/notify-settings/test":
+                cfg = notify.settings(db)
+                if not cfg["email"]["host"]:
+                    raise ValueError("set the mail server first")
+                try:
+                    notify.send_email(cfg, notify.compose(cfg, {"level": "test", "recording_id": "E000000", "location": "", "reason": "Test message", "at": "now"}, store.site()["siteName"]))
+                except Exception as e:  # noqa: BLE001 - report the mail server's answer to the administrator
+                    raise ValueError(f"the mail server refused: {str(e)[:200]}") from None
+                db.audit(user["name"], "Sent test notification e-mail", ", ".join(cfg["email"]["to"]))
+                return self._json(200, {"ok": True})
             raise HttpError(404, "not found")
 
         def _cookie(self, token: str) -> str:
@@ -481,12 +559,14 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
             cfg = db.get_setting("auth", {})
             masked = lambda d, k: {**d, k: "********" if d.get(k) else ""}  # noqa: E731
             if method == "GET":
-                return self._json(200, {"require_2fa": bool(cfg.get("require_2fa")), "ldap": masked(cfg.get("ldap", {}), "bind_password"),
+                return self._json(200, {"require_2fa": bool(cfg.get("require_2fa")), "password_max_days": int(cfg.get("password_max_days", 0) or 0), "ldap": masked(cfg.get("ldap", {}), "bind_password"),
                                         "oidc": masked(cfg.get("oidc", {}), "client_secret")})
             if method != "PUT":
                 raise HttpError(405, "method not allowed")
             b = self._json_body()
-            new = {"require_2fa": bool(b.get("require_2fa", cfg.get("require_2fa", False)))}
+            new = {"require_2fa": bool(b.get("require_2fa", cfg.get("require_2fa", False))), "password_max_days": int(b.get("password_max_days", cfg.get("password_max_days", 0)) or 0)}
+            if not 0 <= new["password_max_days"] <= 730:
+                raise ValueError("password_max_days must be 0 (never) to 730")
             for kind, secret in (("ldap", "bind_password"), ("oidc", "client_secret")):
                 d = b.get(kind, cfg.get(kind, {})) or {}
                 if not isinstance(d, dict):
@@ -505,23 +585,23 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                         raise ValueError(f"{kind}: map at least one group or claim value to a role")
                 new[kind] = d
             db.set_setting("auth", new)
-            db.audit(admin["name"], "Changed sign-in settings", f"2FA required={new['require_2fa']}, LDAP={'on' if new['ldap'].get('enabled') else 'off'}, OIDC={'on' if new['oidc'].get('enabled') else 'off'}")
+            db.audit(admin["name"], "Changed sign-in settings", f"2FA required={new['require_2fa']}, password expiry={new['password_max_days'] or 'off'} days, LDAP={'on' if new['ldap'].get('enabled') else 'off'}, OIDC={'on' if new['oidc'].get('enabled') else 'off'}")
             return self._json(200, {"ok": True})
 
         def _users(self, method, path, admin):
             if method == "GET" and path == "/users":
-                rows = db.conn().execute("SELECT id, username, name, role, title, active, source, totp_enabled AS two_factor FROM users ORDER BY name").fetchall()
+                rows = db.conn().execute("SELECT id, username, name, role, title, active, source, totp_enabled AS two_factor, must_change, locked_until > strftime('%s','now') AS locked FROM users ORDER BY name").fetchall()
                 return self._json(200, [dict(r) for r in rows])
             if method == "POST" and path == "/users":
                 b = self._json_body()
-                uid = auth.create_user(db, str(b.get("username", "")), str(b.get("name", "")), str(b.get("role", "")), str(b.get("password", "")), str(b.get("title", "")))
+                uid = auth.create_user(db, str(b.get("username", "")), str(b.get("name", "")), str(b.get("role", "")), str(b.get("password", "")), str(b.get("title", "")), must_change=True)
                 db.audit(admin["name"], "Created user", f"{b.get('username')} ({b.get('role')})")
                 return self._json(201, {"id": uid})
             if method == "PATCH":
                 uname = path.rsplit("/", 1)[1]
                 b = self._json_body()
                 if "password" in b:
-                    auth.set_password(db, uname, str(b["password"]))
+                    auth.set_password(db, uname, str(b["password"]), must_change=True)
                     db.audit(admin["name"], "Reset password", uname)
                 if b.get("reset_totp"):
                     with db.tx() as c:
@@ -546,12 +626,13 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
         worker.start()
         folders.start()
         store.live.start()
+        store.mailer.start()
         try:
             dicom.apply(db.get_setting("feeds", {}).get("dicom", {}))
-        except OSError as e:  # port in use: the server still runs; Integrations shows the error
+        except (OSError, ValueError) as e:  # port in use or a TLS file missing: the server still runs; Integrations shows the error
             log.error("DICOM receiver could not start: %s", e)
         try:
             store.hl7in.apply(db.get_setting("his", {}).get("inbound", {}))
-        except OSError as e:
+        except (OSError, ValueError) as e:
             log.error("HL7 listener could not start: %s", e)
     return httpd, store, worker

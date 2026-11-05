@@ -30,5 +30,9 @@ pw = "correct horse battery"
 for u, n, r, t in (("arao", "Dr. Ananya Rao", "cardiologist", "Consultant cardiologist"), ("rsawant", "Rohit Sawant", "technician", "ECG technician"), ("kdesai", "Kiran Desai", "admin", "IT administrator")):
     auth.create_user(store.db, u, n, r, pw, t)
 store.update_site({"role": "admin", "name": "setup"}, {"siteName": "Pulse Care"})
+# the critical-result banner is exercised with one notification in this throw-away database (creation on upload is covered by the server tests)
+with store.db.tx() as c:
+    c.execute("INSERT INTO notifications(at, recording_id, level, reason, location) VALUES (?,?,?,?,?)",
+              ("2026-01-01T00:00:00+00:00", "E900001", "critical", "Complete heart block suggested", "Ward 4"))
 print("ready", flush=True)
 httpd.serve_forever()

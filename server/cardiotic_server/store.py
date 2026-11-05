@@ -18,7 +18,8 @@ from .db import Database, now
 
 FS_VIEW = 250
 DEFAULT_SITE = {"operatingPoint": "balanced", "thresholdOverrides": {}, "ratesFromMeasurements": False, "autoSendHis": True,
-                "siteName": "Department of Cardiology", "showReference": False}
+                "siteName": "Department of Cardiology", "showReference": False,
+                "signReauth": True, "timeZone": "UTC"}
 REVIEW_STATUSES = ("new", "in_review", "signed", "repeat")
 
 
@@ -64,6 +65,14 @@ class Store:
             raise ValueError("operatingPoint must be sensitive, balanced or specific")
         if "siteName" in patch and not str(patch["siteName"]).strip():
             raise ValueError("siteName must not be empty")
+        if "signReauth" in patch and user["role"] != "admin" and not patch["signReauth"]:
+            raise Forbidden("only an administrator can turn off password confirmation at signing")
+        if "timeZone" in patch:
+            from zoneinfo import ZoneInfo
+            try:
+                ZoneInfo(str(patch["timeZone"]))
+            except Exception:
+                raise ValueError(f"unknown time zone {patch['timeZone']!r} (use a name like Asia/Kolkata or America/New_York)") from None
         site = {**self.site(), **patch}
         self.db.set_setting("site", site)
         self.db.audit(user["name"], "Changed site settings", ", ".join(sorted(patch)))
@@ -163,10 +172,15 @@ class Store:
                        "unusable_leads": [l for l, q in r["lead_quality"].items() if q == "unusable"],
                        "noisy_leads": [l for l, q in r["lead_quality"].items() if q == "noisy"],
                        "notes": r["notes"] + out["input_notes"]}
+            from .triage import triage
+            summary["triage"] = triage(summary["statements"], summary["measurements"], STATEMENT_NAMES)
             c.execute("INSERT INTO recordings(id, kind, patient_id, recorded_at, location, ordered_by, device, summary, detail, file_sha256, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                       (eid, "ecg12", pid, summary["recorded_at"], location, ordered_by, summary["device"], json.dumps(summary, default=float), _z(detail), digest, user["name"], now()))
             c.execute("INSERT INTO reviews(ecg_id) VALUES (?)", (eid,))
             self.db.audit(user["name"], "Uploaded ECG", f"{eid} ({src['format']})", c)
+            if not summary["unusable_leads"] or len(summary["unusable_leads"]) < 6:  # an unreadable tracing is not a result to alert on
+                from . import notify
+                notify.create(self, c, eid, summary["triage"], location)
         return summary
 
     def _store_holter(self, user, out, parsed, filename, digest, mrn, patient, location, ordered_by, src) -> dict:
@@ -265,10 +279,29 @@ class Store:
             if amending:
                 sets += ["signed_by=NULL", "signed_at=NULL"]
             c.execute(f"UPDATE reviews SET {', '.join(sets)} WHERE ecg_id=?", (*vals, rid))
-            self.db.audit(user["name"], action or ("Re-opened signed report (amendment)" if amending else "Updated review"), rid, c)
+            what = action or ("Re-opened signed report (amendment)" if amending else "Updated review")
+            self.db.audit(user["name"], what, rid, c)
+            self._snapshot(c, rid, user, what)
         return self.review(rid)
 
-    def sign(self, user: dict, rid: str, note: str | None = None, version: int | None = None) -> dict:
+    def _snapshot(self, c, rid: str, user: dict, action: str) -> None:
+        """Every saved state of a review is kept (review_versions): an amendment can show exactly what changed."""
+        r = c.execute("SELECT * FROM reviews WHERE ecg_id=?", (rid,)).fetchone()
+        c.execute("INSERT INTO review_versions(ecg_id, version, at, user, action, snapshot) VALUES (?,?,?,?,?,?)",
+                  (rid, r["version"], now(), user["name"], action, json.dumps(self._review(r))))
+
+    def history(self, rid: str) -> list[dict]:
+        if not self.db.conn().execute("SELECT 1 FROM reviews WHERE ecg_id=?", (rid,)).fetchone():
+            raise NotFound(rid)
+        rows = self.db.conn().execute("SELECT version, at, user, action, snapshot FROM review_versions WHERE ecg_id=? ORDER BY id", (rid,)).fetchall()
+        out, prev = [], None
+        for r in rows:
+            snap = json.loads(r["snapshot"])
+            out.append({"version": r["version"], "at": r["at"], "user": r["user"], "action": r["action"], "review": snap, "changes": _diff(prev, snap)})
+            prev = snap
+        return out
+
+    def sign(self, user: dict, rid: str, note: str | None = None, version: int | None = None, how: str = "") -> dict:
         if user["role"] != "cardiologist":
             raise Forbidden("only a cardiologist can sign")
         with self.db.tx() as c:
@@ -287,7 +320,8 @@ class Store:
                 if undecided:
                     raise Conflict(f"decide on every AI finding before signing ({len(undecided)} left: {', '.join(undecided[:5])})")
             c.execute("UPDATE reviews SET status='signed', signed_by=?, signed_at=?, note=COALESCE(?, note), version=version+1 WHERE ecg_id=?", (user["name"], now(), note, rid))
-            self.db.audit(user["name"], "Signed ECG report", rid, c)
+            self.db.audit(user["name"], "Signed ECG report" if rec["kind"] == "ecg12" else "Signed Holter report", rid + (f" (confirmed by {how})" if how else ""), c)
+            self._snapshot(c, rid, user, "Signed")
             self.enqueue_export(c, rid, rec["kind"])
         return self.review(rid)
 
@@ -316,6 +350,30 @@ class Store:
             c.execute("UPDATE recordings SET patient_id=?, summary=? WHERE id=?", (p["id"], json.dumps(s), rid))
             self.db.audit(user["name"], "Matched recording to patient", f"{rid} -> {mrn}", c)
         return s
+
+
+def _diff(a: dict | None, b: dict) -> list[str]:
+    """Readable list of what changed between two saved review states."""
+    if a is None:
+        return ["first saved state"]
+    out = []
+    if a["status"] != b["status"]:
+        out.append(f"status {a['status']} -> {b['status']}")
+    for k in sorted(set(a["decisions"]) | set(b["decisions"])):
+        if a["decisions"].get(k) != b["decisions"].get(k):
+            out.append(f"{STATEMENT_NAMES.get(k, k)}: {a['decisions'].get(k) or 'undecided'} -> {b['decisions'].get(k) or 'undecided'}")
+    for k in sorted(set(b["added"]) - set(a["added"])):
+        out.append(f"added finding {STATEMENT_NAMES.get(k, k)}")
+    for k in sorted(set(a["added"]) - set(b["added"])):
+        out.append(f"removed finding {STATEMENT_NAMES.get(k, k)}")
+    for k in sorted(set(a["edits"]) | set(b["edits"])):
+        if a["edits"].get(k) != b["edits"].get(k):
+            out.append(f"measurement {k}: {a['edits'].get(k)} -> {b['edits'].get(k)}")
+    if a["note"] != b["note"]:
+        out.append("note changed")
+    if a["signedBy"] != b["signedBy"]:
+        out.append(f"signed by {b['signedBy']}" if b["signedBy"] else f"signature of {a['signedBy']} removed (amendment)")
+    return out
 
 
 def _derive(leads: dict, name: str) -> np.ndarray:

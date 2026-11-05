@@ -121,13 +121,21 @@ class DicomFeed:
         self.stop()
         self.config = dict(cfg)
         if cfg.get("enabled"):
-            self.start(int(cfg.get("port", 11112)), cfg.get("ae_title", "CARDIOTIC"), cfg.get("host", "0.0.0.0"))
+            self.start(int(cfg.get("port", 11112)), cfg.get("ae_title", "CARDIOTIC"), cfg.get("host", "0.0.0.0"),
+                       cfg.get("allowed_ae_titles", []), cfg.get("allowed_hosts", []), cfg.get("tls", {}))
 
-    def start(self, port: int, ae_title: str, host: str = "0.0.0.0") -> None:
+    def start(self, port: int, ae_title: str, host: str = "0.0.0.0", allowed_aets=(), allowed_hosts=(), tls: dict | None = None) -> None:
+        """allowed_aets / allowed_hosts: when set, only these ECG machines (calling AE titles) and addresses may send.
+        tls: {"enabled", "cert", "key", "ca"} for DICOM over TLS (with "ca", machines must present a certificate)."""
         from pynetdicom import AE, evt
         from pynetdicom.sop_class import AmbulatoryECGWaveformStorage, GeneralECGWaveformStorage, TwelveLeadECGWaveformStorage, Verification
 
+        from .security import address_allowed, parse_networks, server_tls_context
+        networks, ssl_ctx = parse_networks(allowed_hosts), server_tls_context(tls or {})
+        aets = [a.strip().upper() for a in allowed_aets if a.strip()]
         ae = AE(ae_title=ae_title)
+        if aets:
+            ae.require_calling_aet = aets  # others get an association reject (calling AE title not recognised)
         for sop in (TwelveLeadECGWaveformStorage, GeneralECGWaveformStorage, AmbulatoryECGWaveformStorage, Verification):
             ae.add_supported_context(sop)
 
@@ -141,7 +149,16 @@ class DicomFeed:
                                    (self.config or {}).get("location", ""))
             return 0x0000 if ok else 0xC000  # Success / Cannot understand
 
-        self.server = ae.start_server((host, port), block=False, evt_handlers=[(evt.EVT_C_STORE, on_store)])
+        def on_requested(event):  # before the association is accepted: refuse addresses that are not allowed
+            addr = event.assoc.requestor.address
+            if not address_allowed(addr, networks):
+                log.warning("DICOM association from %s refused (not in the allowed list)", addr)
+                self.store.db.audit("DICOM receiver", "DICOM connection refused", f"{addr} is not an allowed sender")
+                event.assoc.acse.send_reject(0x01, 0x01, 0x03)  # rejected-permanent, service user, calling AE not recognised
+                event.assoc.kill()
+
+        self.server = ae.start_server((host, port), block=False, ssl_context=ssl_ctx,
+                                      evt_handlers=[(evt.EVT_C_STORE, on_store), (evt.EVT_REQUESTED, on_requested)])
         log.info("DICOM receiver %s listening on %s:%d", ae_title, host, port)
 
     def stop(self) -> None:

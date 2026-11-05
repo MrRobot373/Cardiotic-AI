@@ -9,6 +9,7 @@ dependencies = [
   "pynetdicom>=2.0",           # DICOM receiver (machine feed)
   "ldap3>=2.9",                # Active Directory / LDAP sign-in
   "cryptography>=42",          # OpenID Connect ID-token signature check
+  "tzdata>=2024.1",            # time-zone database (slim container images have none)
 ]
 
 [project.optional-dependencies]

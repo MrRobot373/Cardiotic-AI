@@ -5,6 +5,7 @@ import pytest
 
 import ingest_writers as w
 from cardiotic_server import auth, export
+from conftest import PASSWORD
 from helpers import Client
 
 
@@ -139,17 +140,17 @@ def _signable(server, ecg):
 
 def test_sign_requires_every_finding_decided_and_a_cardiologist(server, ecg):
     t, c, rid = _signable(server, ecg)
-    assert t.call("POST", f"/api/reviews/{rid}/sign", {})[0] == 403
-    code, out = c.call("POST", f"/api/reviews/{rid}/sign", {})
+    assert t.call("POST", f"/api/reviews/{rid}/sign", {"password": PASSWORD})[0] == 403
+    code, out = c.call("POST", f"/api/reviews/{rid}/sign", {"password": PASSWORD})
     assert code == 409 and "decide on every AI finding" in out["error"]
     findings = [s["statement"] for s in c.call("GET", f"/api/ecg/{rid}")[1]["analysis"]["result"]["statements"] if not s["statement"].startswith("SUPER_")]
     dec = {f: "accepted" for f in findings}
     rv = c.call("PUT", f"/api/reviews/{rid}", {"decisions": dec, "note": "Reviewed.", "status": "in_review"}, expect=200)[1]
     assert rv["decisions"] == dec and rv["version"] == 1
-    signed = c.call("POST", f"/api/reviews/{rid}/sign", {"version": 1}, expect=200)[1]
+    signed = c.call("POST", f"/api/reviews/{rid}/sign", {"version": 1, "password": PASSWORD}, expect=200)[1]
     assert signed["status"] == "signed" and signed["signedBy"] == "Dr. Ananya Rao" and signed["signedAt"]
     assert c.call("PUT", f"/api/reviews/{rid}", {"note": "changed"})[0] == 409  # signed reports are read-only
-    assert c.call("POST", f"/api/reviews/{rid}/sign", {})[0] == 409
+    assert c.call("POST", f"/api/reviews/{rid}/sign", {"password": PASSWORD})[0] == 409
 
 
 def test_technician_can_send_for_reading_but_not_decide(server, ecg):
@@ -182,7 +183,7 @@ def test_amend_reopens_a_signed_report_with_audit(server, ecg):
     t, c, rid = _signable(server, ecg)
     findings = [s["statement"] for s in c.call("GET", f"/api/ecg/{rid}")[1]["analysis"]["result"]["statements"] if not s["statement"].startswith("SUPER_")]
     c.call("PUT", f"/api/reviews/{rid}", {"decisions": {f: "accepted" for f in findings}}, expect=200)
-    c.call("POST", f"/api/reviews/{rid}/sign", {}, expect=200)
+    c.call("POST", f"/api/reviews/{rid}/sign", {"password": PASSWORD}, expect=200)
     assert t.call("PUT", f"/api/reviews/{rid}", {"status": "in_review"})[0] == 409
     rv = c.call("PUT", f"/api/reviews/{rid}", {"status": "in_review"}, expect=200)[1]
     assert rv["status"] == "in_review" and rv["signedBy"] is None
@@ -215,7 +216,7 @@ def _sign_all(server, ecg):
     t, c, rid = _signable(server, ecg)
     findings = [s["statement"] for s in c.call("GET", f"/api/ecg/{rid}")[1]["analysis"]["result"]["statements"] if not s["statement"].startswith("SUPER_")]
     c.call("PUT", f"/api/reviews/{rid}", {"decisions": {f: "accepted" for f in findings[:-1]} | ({findings[-1]: "rejected"} if findings else {}), "note": "Rate | control & review"}, expect=200)
-    c.call("POST", f"/api/reviews/{rid}/sign", {}, expect=200)
+    c.call("POST", f"/api/reviews/{rid}/sign", {"password": PASSWORD}, expect=200)
     return c, rid, findings
 
 
@@ -247,7 +248,7 @@ def test_edited_qt_is_what_the_hospital_receives(server, ecg):
     t, c, rid = _signable(server, ecg)
     findings = [s["statement"] for s in c.call("GET", f"/api/ecg/{rid}")[1]["analysis"]["result"]["statements"] if not s["statement"].startswith("SUPER_")]
     c.call("PUT", f"/api/reviews/{rid}", {"decisions": {f: "accepted" for f in findings}, "edits": {"qt_ms": 400, "cal.tEnd": 123}}, expect=200)
-    c.call("POST", f"/api/reviews/{rid}/sign", {}, expect=200)
+    c.call("POST", f"/api/reviews/{rid}/sign", {"password": PASSWORD}, expect=200)
     hl7 = c.call("GET", f"/api/report/{rid}.hl7")[1].decode("latin-1")
     qt = next(s for s in (l.split("|") for l in hl7.split("\r")) if len(s) > 3 and s[0] == "OBX" and s[3].startswith("8634-8"))
     assert qt[5] == "400"
@@ -391,12 +392,12 @@ def test_signing_while_other_requests_run(server, ecg):
     for th in threads:
         th.start()
     try:
-        assert c.call("POST", f"/api/reviews/{rid}/sign", {})[0] == 200
+        assert c.call("POST", f"/api/reviews/{rid}/sign", {"password": PASSWORD})[0] == 200
         for _ in range(20):  # sign more ECGs while the others poll
             _, rec = upload(t, ecg * (1 + 0.01 * (_ + 1)), "dicom")
             fs = [s["statement"] for s in c.call("GET", f"/api/ecg/{rec['id']}")[1]["analysis"]["result"]["statements"] if not s["statement"].startswith("SUPER_")]
             c.call("PUT", f"/api/reviews/{rec['id']}", {"decisions": {f: "accepted" for f in fs}}, expect=200)
-            assert c.call("POST", f"/api/reviews/{rec['id']}/sign", {})[0] == 200
+            assert c.call("POST", f"/api/reviews/{rec['id']}/sign", {"password": PASSWORD})[0] == 200
     finally:
         stop.set()
         for th in threads:
@@ -413,7 +414,7 @@ def test_pdf_report_draft_then_final_and_attached_to_hl7_and_fhir(server, ecg):
     assert c.call("GET", "/api/report/E999999.pdf")[0] == 404
     findings = [s["statement"] for s in c.call("GET", f"/api/ecg/{rid}")[1]["analysis"]["result"]["statements"] if not s["statement"].startswith("SUPER_")]
     c.call("PUT", f"/api/reviews/{rid}", {"decisions": {f: "accepted" for f in findings}}, expect=200)
-    c.call("POST", f"/api/reviews/{rid}/sign", {}, expect=200)
+    c.call("POST", f"/api/reviews/{rid}/sign", {"password": PASSWORD}, expect=200)
     final = c.call("GET", f"/api/report/{rid}.pdf")[1]
     assert final != draft and b"/Count 1" in final
     hl7 = c.call("GET", f"/api/report/{rid}.hl7")[1].decode("latin-1")

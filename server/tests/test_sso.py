@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 
 from cardiotic_server import auth, sso
+from cardiotic_server.db import SCHEMA_VERSION
 from cardiotic_server.db import Database
 from helpers import Client
 
@@ -233,5 +234,5 @@ def test_database_from_version_1_is_upgraded(tmp_path):
     c.execute("INSERT INTO users(username, name, role, pw_hash, created_at) VALUES ('old','Old User','admin',?, 'x')", (auth.hash_password("an-old-password-1"),))
     c.commit(); c.close()
     db = Database(path)
-    assert db.conn().execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == "2"
+    assert db.conn().execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == str(SCHEMA_VERSION)
     assert auth.login(db, "old", "an-old-password-1")["user"]["source"] == "local"

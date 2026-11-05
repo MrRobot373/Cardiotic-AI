@@ -106,6 +106,23 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       queue.current = run;
       return run;
     },
+    signReport: (id, note, confirm) => {
+      const task = async (): Promise<string | null> => {
+        const cur = reviewsRef.current[id] ?? EMPTY;
+        try {
+          const next = await api<ServerReview>(`/reviews/${id}/sign`, { method: "POST", json: { note, version: cur.version, ...confirm } });
+          put({ ...reviewsRef.current, [id]: next });
+          loadAudit(user).catch(() => undefined);
+          return null;
+        } catch (e) {
+          if (!(e instanceof ApiError && e.status === 403)) loadReviews().catch(() => undefined);
+          return e instanceof ApiError ? e.message : "Could not reach the server";
+        }
+      };
+      const run = queue.current.then(task, task);
+      queue.current = run;
+      return run;
+    },
     log: () => undefined, // the server records its own audit entries
     updateSite: (patch) => {
       api<SiteSettings>("/settings", { method: "PUT", json: patch }).then((s) => { setSite({ ...DEFAULTS.site, ...s }); loadAudit(user).catch(() => undefined); }).catch((e) => toast.error(e instanceof ApiError ? e.message : "Could not reach the server"));

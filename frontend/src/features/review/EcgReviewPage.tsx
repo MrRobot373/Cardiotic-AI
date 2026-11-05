@@ -1,3 +1,4 @@
+import { SignDialog } from "./SignDialog";
 import {
   ArrowLeftRight, BrainCircuit, Check, ChevronLeft, ChevronRight, Cpu, Eye, FileText, HeartPulse, Info, Pencil, Plus, Printer,
   Ruler, Send, ShieldCheck, TriangleAlert, Undo2, X,
@@ -258,9 +259,10 @@ function Compare({ item }: { item: WorkItem }) {
 }
 
 function SignPanel({ item, detail, review }: { item: WorkItem; detail: EcgDetail; review: Review }) {
-  const { user, updateReview, serverMode, site } = useDemo();
+  const { user, updateReview, signReport, serverMode, site } = useDemo();
   const navigate = useNavigate();
   const [note, setNote] = useState(review.note);
+  const [confirming, setConfirming] = useState(false);
   const findings = detail.analysis.result.statements.filter((s) => !isGroup(s.statement));
   const pending = findings.filter((s) => !review.decisions[s.statement]).length;
   if (review.status === "signed") {
@@ -278,17 +280,22 @@ function SignPanel({ item, detail, review }: { item: WorkItem; detail: EcgDetail
       </Card>
     );
   }
-  const sign = async () => {
-    const ok = await updateReview(item.ecg.id, { status: "signed", note, signedBy: user!.name, signedAt: new Date().toISOString() }, "Signed ECG report");
-    if (ok) toast.success(serverMode ? "Report signed" : "Report signed and sent", { description: serverMode ? (site.autoSendHis ? "Queued for the HIS (HL7 ORU^R01)" : "Automatic sending to the HIS is off") : "HL7 ORU^R01 to the HIS · PDF stored · ordering doctor notified" });
+  const sign = async (confirm: { password?: string; code?: string } = {}) => {
+    const msg = await signReport(item.ecg.id, note, confirm);
+    if (msg) return msg;
+    {
+      toast.success(serverMode ? "Report signed" : "Report signed and sent", { description: serverMode ? (site.autoSendHis ? "Queued for the HIS (HL7 ORU^R01)" : "Automatic sending to the HIS is off") : "HL7 ORU^R01 to the HIS · PDF stored · ordering doctor notified" });
+    }
+    return null;
   };
   return (
     <Card>
+      <SignDialog open={confirming} onOpenChange={setConfirming} onConfirm={sign} />
       <div className="card-pad space-y-3">
         <Textarea value={note} onChange={(e) => setNote(e.target.value)} onBlur={() => note !== review.note && updateReview(item.ecg.id, { note })} placeholder="Interpretation note — kept with the ECG and printed on the report" />
         {canSign(user) ? (
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="strong" className="flex-1" disabled={pending > 0} onClick={sign}><ShieldCheck /> Sign & send report</Button>
+            <Button variant="strong" className="flex-1" disabled={pending > 0} onClick={() => (serverMode && site.signReauth ? setConfirming(true) : void sign())}><ShieldCheck /> Sign & send report</Button>
             <Button variant="secondary" onClick={async () => { if (await updateReview(item.ecg.id, { status: "repeat", note }, "Requested repeat ECG")) { toast("Repeat ECG requested", serverMode ? undefined : { description: `${item.ecg.location} notified` }); navigate("/"); } }}>Request repeat</Button>
           </div>
         ) : (

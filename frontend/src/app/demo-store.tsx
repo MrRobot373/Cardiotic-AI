@@ -18,6 +18,8 @@ export interface DemoUser {
   source?: string;
   /** server mode: the hospital requires two-factor sign-in and this account must set it up first */
   enrol_2fa?: boolean;
+  /** server mode: the person must choose a new password before anything else opens */
+  change_password?: boolean;
 }
 
 export const DEMO_USERS: DemoUser[] = [
@@ -55,6 +57,10 @@ export interface SiteSettings {
   siteName: string;
   /** Show the dataset cardiologists' labels next to the AI (validation / sales presentations). */
   showReference: boolean;
+  /** server mode: signing asks the cardiologist for their password (or a two-factor code) again */
+  signReauth: boolean;
+  /** IANA name, e.g. Asia/Kolkata: how the hospital's times are shown */
+  timeZone: string;
 }
 
 interface State {
@@ -66,7 +72,7 @@ interface State {
 
 const KEY = "cardiotic.demo.v1";
 const EMPTY_REVIEW: Review = { status: "new", decisions: {}, added: [], edits: {}, note: "" };
-const DEFAULT_SITE: SiteSettings = { operatingPoint: "balanced", thresholdOverrides: {}, ratesFromMeasurements: false, autoSendHis: true, siteName: "Department of Cardiology", showReference: false };
+const DEFAULT_SITE: SiteSettings = { operatingPoint: "balanced", thresholdOverrides: {}, ratesFromMeasurements: false, autoSendHis: true, siteName: "Department of Cardiology", showReference: false, signReauth: true, timeZone: "UTC" };
 const INITIAL: State = { user: null, reviews: {}, audit: [], site: DEFAULT_SITE };
 
 function load(): State {
@@ -93,6 +99,8 @@ export interface Ctx extends State {
   review: (id: string) => Review;
   /** Resolves true when the change was applied (server mode: accepted by the server). */
   updateReview: (id: string, patch: Partial<Review> | ((r: Review) => Partial<Review>), auditAction?: string) => Promise<boolean>;
+  /** Sign a report. Resolves null when signed, else the message to show (wrong password, undecided findings…). */
+  signReport: (id: string, note: string, confirm: { password?: string; code?: string }) => Promise<string | null>;
   log: (action: string, target: string) => void;
   updateSite: (patch: Partial<SiteSettings>) => void;
   reset: () => void;
@@ -132,6 +140,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       signIn: (u) => commit((s) => ({ ...s, user: u, audit: event({ ...s, user: u }, "Signed in", u.title) })),
       signOut: () => commit((s) => ({ ...s, user: null, audit: event(s, "Signed out", "") })),
       review: (id) => state.reviews[id] ?? EMPTY_REVIEW,
+      signReport: async (id, note) => {
+        commit((s) => ({ ...s, reviews: { ...s.reviews, [id]: { ...(s.reviews[id] ?? EMPTY_REVIEW), status: "signed", note, signedBy: s.user?.name, signedAt: new Date().toISOString() } }, audit: event(s, "Signed ECG report", id) }));
+        return null;
+      },
       updateReview: (id, patch, auditAction) => {
         commit((s) => {
           const cur = s.reviews[id] ?? EMPTY_REVIEW;

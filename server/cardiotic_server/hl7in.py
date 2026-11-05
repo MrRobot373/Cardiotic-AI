@@ -198,6 +198,28 @@ class _Handler(socketserver.BaseRequestHandler):
 class _Server(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
     daemon_threads = True
+    networks: list = []
+    tls = None
+
+    def verify_request(self, request, client_address) -> bool:
+        from .security import address_allowed
+        if address_allowed(client_address[0], self.networks):
+            return True
+        log.warning("HL7 connection from %s refused (not in the allowed list)", client_address[0])
+        self.store.db.audit("HIS (ADT/orders)", "HL7 connection refused", f"{client_address[0]} is not an allowed sender")
+        return False
+
+    def get_request(self):
+        sock, addr = super().get_request()
+        if self.tls is not None:
+            sock.settimeout(30)
+            try:
+                sock = self.tls.wrap_socket(sock, server_side=True)
+            except (OSError, ValueError) as e:
+                log.warning("HL7 TLS handshake with %s failed: %s", addr[0], e)
+                sock.close()
+                raise OSError("TLS handshake failed") from e
+        return sock, addr
 
 
 class Listener:
@@ -210,8 +232,10 @@ class Listener:
         self.stop()
         self.config = dict(cfg)
         if cfg.get("enabled"):
+            from .security import parse_networks, server_tls_context
+            networks, tls = parse_networks(cfg.get("allowed_hosts")), server_tls_context(cfg.get("tls", {}))
             self.server = _Server((cfg.get("host", "0.0.0.0"), int(cfg.get("port", 2576))), _Handler)
-            self.server.store = self.store
+            self.server.store, self.server.networks, self.server.tls = self.store, networks, tls
             threading.Thread(target=self.server.serve_forever, daemon=True, name="hl7-in").start()
             log.info("HL7 listener on port %s", cfg.get("port", 2576))
 
