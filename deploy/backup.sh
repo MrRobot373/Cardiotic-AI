@@ -6,8 +6,10 @@ DEST="${1:?usage: backup.sh DIRECTORY}"
 mkdir -p "$DEST"
 STAMP=$(date +%Y%m%d-%H%M%S)
 OUT="$DEST/cardiotic-$STAMP.db"
-cardiotic-server --db "${CARDIOTIC_DB:-/var/lib/cardiotic/cardiotic.db}" backup "$OUT"
-cardiotic-server --db "$OUT" verify-audit
+DB="${CARDIOTIC_DB:-/var/lib/cardiotic/cardiotic.db}"
+cardiotic-server --db "$DB" backup "$OUT"
+# the copy is verified with the live audit key (it is not in the backup on purpose: store it separately, see docs/OPERATIONS_RUNBOOK.md)
+CARDIOTIC_AUDIT_KEY_FILE="${CARDIOTIC_AUDIT_KEY_FILE:-$DB.audit.key}" cardiotic-server --db "$OUT" verify-audit
 gzip "$OUT"
 find "$DEST" -name 'cardiotic-*.db.gz' -mtime +30 -delete
 echo "backup: $OUT.gz"

@@ -26,7 +26,7 @@ time and no patient data leaves the machine except the HL7 messages you configur
 
 ```bash
 docker build -t cardiotic:0.1.0 .                       # where the internet is available
-#   Docker Hub rate-limited? the same official images: --build-arg NODE_IMAGE=mirror.gcr.io/library/node:22-slim --build-arg BASE_IMAGE=mirror.gcr.io/library/python:3.12-slim
+#   Docker Hub rate-limited? the same official images: --build-arg NODE_IMAGE=mirror.gcr.io/library/node:22-slim --build-arg BASE_IMAGE=mirror.gcr.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
 #   behind a TLS-inspecting proxy: --network host --secret id=ca,src=proxy-ca.pem --build-arg HTTPS_PROXY=…   (the CA is not stored in the image)
 docker save cardiotic:0.1.0 | gzip > cardiotic-0.1.0.tar.gz   # move to the hospital, then: docker load < …
 docker compose up -d
@@ -83,10 +83,10 @@ configuration is for other models or not signed off (exit code 4).
 
 | Task | How |
 |---|---|
-| Backup | `deploy/backup.sh /backup/cardiotic` nightly from cron; copies are patient data: encrypt, keep off-server, test a restore |
-| Restore | Stop the server, replace the database file with a backup (`gunzip`), start, run `cardiotic-server verify-audit` |
+| Backup | `deploy/backup.sh /backup/cardiotic` nightly from cron; copies are patient data: encrypt, keep off-server. **Keep the audit key separately** (it is not in the backup; see docs/OPERATIONS_RUNBOOK.md) |
+| Restore | Stop the server, replace the database file with a backup (`gunzip`), make the audit key available, start, run `cardiotic-server verify-audit`. Practise it every quarter: `deploy/restore_drill.sh` |
 | Upgrade | Install the new version, start: the database upgrades in place (take a backup first). Model files are verified at start |
-| Audit | Settings or `GET /api/audit`; `cardiotic-server verify-audit` finds any edited or deleted entry |
+| Audit | Settings or `GET /api/audit`; `cardiotic-server verify-audit` finds any edited entry; `audit-anchor` + `verify-audit --anchor` also finds removed ones |
 | Forgotten password | `cardiotic-server set-password USER` (ends the user's sessions) |
 | Logs | Request lines only; no ECG data or patient names |
 
@@ -105,4 +105,9 @@ the HIS before that.
 - [ ] Database and backups on encrypted storage; backup copies off-server
 - [ ] Administrator accounts named, not shared; unused accounts deactivated
 - [ ] Time synchronised (audit entries and signatures carry the server clock)
-- [ ] Interface to the HIS on an isolated segment (MLLP carries no encryption; use the hospital's VPN or TLS wrapper)
+- [ ] Interface to the HIS on an isolated segment; MLLP over TLS can be switched on in Settings → Integrations (certificate files on the server); without it use the hospital's VPN
+- [ ] DICOM and HL7 ports: allow-lists of machine addresses / AE titles set; TLS on where the machines support it
+- [ ] Audit key stored away from the database and its backups; an audit anchor recorded monthly
+- [ ] Passwords: expiry set to the hospital's policy; two-factor required for staff who sign
+- [ ] Result notifications set up with the clinical team (who reads the banner; optional e-mail address)
+- [ ] Restore drill done and the output filed; load test run on the pilot hardware (`deploy/loadtest.py`)

@@ -42,7 +42,7 @@ TOKEN=$(curl -fs $URL/api/login -H 'Content-Type: application/json' -d "{\"usern
 curl -fs $URL/api/reviews -H "Authorization: Bearer $TOKEN" | grep -q '"status": "signed"' && ok "signed report survives a restart (data on the volume)"
 
 docker compose exec -T cardiotic cardiotic-server backup /data/backup-test.db >/dev/null
-docker compose exec -T cardiotic cardiotic-server --db /data/backup-test.db verify-audit | grep -q "'ok': True" && ok "backup written and its audit chain verifies"
+docker compose exec -T -e CARDIOTIC_AUDIT_KEY_FILE=/data/cardiotic.db.audit.key cardiotic cardiotic-server --db /data/backup-test.db verify-audit | grep -q "'ok': True" && ok "backup written and its audit chain verifies"
 
 docker compose exec -T cardiotic python - <<'PY' && ok "optional libraries present in the image (LDAP, OpenID signature check, DICOM receiver, PDF/image digitiser, Philips XLI)"
 import ldap3, cryptography, pynetdicom, pypdf, PIL, sierraecg, pydicom

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
+import os
+import secrets
 import sqlite3
 import threading
 from datetime import datetime, timezone
@@ -76,6 +79,28 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+class AuditKeyMissing(RuntimeError):
+    """The database holds keyed audit entries but the key is not available: starting would make the log unverifiable."""
+
+
+def _load_audit_key(path: str, has_keyed_entries: bool) -> bytes | None:
+    """The audit chain's key: $CARDIOTIC_AUDIT_KEY, else the file $CARDIOTIC_AUDIT_KEY_FILE, else <database>.audit.key (created on first use, readable by the service user only).
+    Keep it somewhere an intruder who copies the database cannot also read (another volume, the host's secret store)."""
+    env = os.environ.get("CARDIOTIC_AUDIT_KEY")
+    if env:
+        return hashlib.sha256(env.encode()).digest()
+    f = os.environ.get("CARDIOTIC_AUDIT_KEY_FILE") or path + ".audit.key"  # the file variable also lets a backup copy be verified with the live key
+    if os.path.exists(f):
+        return bytes.fromhex(open(f).read().strip())
+    if has_keyed_entries:
+        raise AuditKeyMissing(f"the audit log is keyed but neither CARDIOTIC_AUDIT_KEY nor {f} exists; restore the key (it is needed to verify the log)")
+    key = secrets.token_bytes(32)
+    fd = os.open(f, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w") as fh:
+        fh.write(key.hex())
+    return key
+
+
 class Database:
     """One connection per thread, one writer at a time (SQLite allows a single writer; the lock keeps
     transactions short and ordered instead of failing with 'database is locked')."""
@@ -96,6 +121,13 @@ class Database:
                         t.execute(stmt)
                     t.execute("UPDATE meta SET value=? WHERE key='schema_version'", (str(v),))
         self.created = fresh
+        kf = c.execute("SELECT value FROM meta WHERE key='audit_keyed_from'").fetchone()
+        self._key = _load_audit_key(self.path, kf is not None)
+        if kf is None:  # entries written from now on are keyed; earlier ones stay verifiable with the plain hash
+            last = c.execute("SELECT COALESCE(MAX(id), 0) FROM audit").fetchone()[0]
+            c.execute("INSERT OR IGNORE INTO meta(key, value) VALUES ('audit_keyed_from', ?)", (str(last + 1),))
+            kf = c.execute("SELECT value FROM meta WHERE key='audit_keyed_from'").fetchone()
+        self._keyed_from = int(kf[0])
 
     def conn(self) -> sqlite3.Connection:
         c = getattr(self._local, "c", None)
@@ -132,20 +164,47 @@ class Database:
     def audit(self, user: str, action: str, target: str = "", c: sqlite3.Connection | None = None) -> None:
         c = c or self.conn()
         with self.write_lock:
-            prev = c.execute("SELECT hash FROM audit ORDER BY id DESC LIMIT 1").fetchone()
+            prev = c.execute("SELECT id, hash FROM audit ORDER BY id DESC LIMIT 1").fetchone()
             prev_hash = prev["hash"] if prev else "0" * 64
+            nid = (prev["id"] if prev else 0) + 1
             at = now()
-            h = hashlib.sha256(json.dumps([prev_hash, at, user, action, target]).encode()).hexdigest()
-            c.execute("INSERT INTO audit(at, user, action, target, prev_hash, hash) VALUES (?,?,?,?,?,?)", (at, user, action, target, prev_hash, h))
+            h = self._digest(nid, prev_hash, at, user, action, target)
+            c.execute("INSERT INTO audit(id, at, user, action, target, prev_hash, hash) VALUES (?,?,?,?,?,?,?)", (nid, at, user, action, target, prev_hash, h))
 
-    def verify_audit(self) -> dict:
+    def _digest(self, rid: int, prev_hash: str, at: str, user: str, action: str, target: str) -> str:
+        """Entries from audit_keyed_from on are HMAC-SHA256 over the entry and its number with the audit key: someone who only has the
+        database file cannot recompute the chain after changing it. Earlier entries (from before keying) use the plain SHA-256."""
+        if rid < self._keyed_from:
+            return hashlib.sha256(json.dumps([prev_hash, at, user, action, target]).encode()).hexdigest()
+        return hmac.new(self._key, json.dumps([rid, prev_hash, at, user, action, target]).encode(), hashlib.sha256).hexdigest()
+
+    def verify_audit(self, anchor: str | None = None) -> dict:
+        """Recompute the whole chain. anchor ("<entries>:<hash>", from an earlier `audit-anchor`) additionally proves that nothing up to that
+        entry was changed and nothing was cut off the end since it was recorded elsewhere."""
         prev, n = "0" * 64, 0
+        at_anchor = None
+        want_n, _, want_hash = (anchor or "").partition(":")
         for r in self.conn().execute("SELECT * FROM audit ORDER BY id"):
-            h = hashlib.sha256(json.dumps([prev, r["at"], r["user"], r["action"], r["target"]]).encode()).hexdigest()
+            h = self._digest(r["id"], prev, r["at"], r["user"], r["action"], r["target"])
             if r["prev_hash"] != prev or r["hash"] != h:
                 return {"ok": False, "first_bad_id": r["id"], "checked": n}
             prev, n = h, n + 1
-        return {"ok": True, "entries": n}
+            if anchor and str(n) == want_n:
+                at_anchor = h
+        out = {"ok": True, "entries": n, "head": prev}
+        if anchor:
+            if at_anchor is None or not hmac.compare_digest(at_anchor, want_hash):
+                return {"ok": False, "checked": n, "anchor": "the log no longer matches the anchor recorded earlier (entries were changed or removed)"}
+            out["anchor"] = f"matches the anchor at entry {want_n}"
+        return out
+
+    def anchor(self) -> dict:
+        """The log's current length and head hash. Record this line somewhere the database's administrators cannot rewrite
+        (the hospital's records system, a signed e-mail, a printout); `verify-audit --anchor` later proves nothing before it changed."""
+        v = self.verify_audit()
+        if not v["ok"]:
+            return v
+        return {"ok": True, "entries": v["entries"], "head": v["head"], "at": now(), "line": f"{v['entries']}:{v['head']}"}
 
 
 class _Tx:

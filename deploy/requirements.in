@@ -1,0 +1,15 @@
+# Direct third-party dependencies of the product (engine + server + research core), from the pyproject.toml files.
+# The exact, hashed set used in the container is requirements.lock; regenerate with:
+#   pip-compile --generate-hashes --strip-extras --allow-unsafe -o deploy/requirements.lock deploy/requirements.in
+numpy>=1.26
+scipy>=1.11
+onnxruntime>=1.18
+pydicom>=2.4
+pynetdicom>=2.0
+ldap3>=2.9
+cryptography>=42
+tzdata>=2024.1
+pypdf
+pillow
+sierraecg
+defusedxml

@@ -34,4 +34,4 @@ assert cat["ecgs"] and cat["ecgs"][0]["id"] == rec["id"] and cat["ecgs"][0]["mea
 print("smoke test passed:", rec["id"], len(cat["ecgs"][0]["statements"]), "findings")
 PY
 curl -fs http://127.0.0.1:8799/ | grep -q "<div id=\"root\">" && echo "web app served"
-"$S" backup "$WORK/b.db" && "$S" --db "$WORK/b.db" verify-audit
+"$S" backup "$WORK/b.db" && CARDIOTIC_AUDIT_KEY_FILE="$WORK/cardiotic.db.audit.key" "$S" --db "$WORK/b.db" verify-audit

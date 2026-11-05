@@ -364,7 +364,10 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 return self._json(200, [dict(r) for r in rows])
             if method == "GET" and path == "/audit/verify":
                 _role(user, "admin")
-                return self._json(200, db.verify_audit())
+                return self._json(200, db.verify_audit(q.get("anchor")))
+            if method == "GET" and path == "/audit/anchor":
+                _role(user, "admin")
+                return self._json(200, db.anchor())
             if method == "GET" and path == "/settings":
                 return self._json(200, store.site())
             if method == "PUT" and path == "/settings":

@@ -1,4 +1,4 @@
-"""cardiotic-server serve | init | create-user | set-password | backup | verify-audit"""
+"""cardiotic-server serve | init | create-user | set-password | backup | verify-audit | audit-anchor | live-simulator"""
 
 from __future__ import annotations
 
@@ -23,7 +23,9 @@ def main(argv=None) -> int:
     u.add_argument("username"); u.add_argument("name"); u.add_argument("role", choices=["cardiologist", "technician", "admin"]); u.add_argument("--title", default="")
     p = sub.add_parser("set-password"); p.add_argument("username")
     b = sub.add_parser("backup"); b.add_argument("dest")
-    sub.add_parser("verify-audit")
+    va = sub.add_parser("verify-audit", help="recompute the audit chain; --anchor N:HASH also proves nothing before entry N changed")
+    va.add_argument("--anchor", default=None)
+    sub.add_parser("audit-anchor", help="print the log's length and head hash to record outside the server")
     sub.add_parser("init")
     ls = sub.add_parser("live-simulator", help="stream a recording to Live Assist like a monitor gateway")
     ls.add_argument("--url", required=True); ls.add_argument("--token", required=True); ls.add_argument("--file", required=True, help="any ECG file the engine reads; the first lead (or II) is streamed")
@@ -63,9 +65,13 @@ def main(argv=None) -> int:
         except KeyboardInterrupt:
             pass
         return 0
-    db = Database(args.db)
+    from .db import AuditKeyMissing
     try:
+        db = Database(args.db)
         return _run(args, db, auth)
+    except AuditKeyMissing as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 6
     except ValueError as e:  # a refused password, an unknown user…: say why, no traceback
         print(f"error: {e}", file=sys.stderr)
         return 2
@@ -87,10 +93,15 @@ def _run(args, db, auth) -> int:
     elif args.cmd == "backup":
         db.backup(args.dest)
         print("backup written to", args.dest)
+        print("The audit key is NOT in the backup. Keep a copy of CARDIOTIC_AUDIT_KEY / the .audit.key file elsewhere: without it the log cannot be verified.")
     elif args.cmd == "verify-audit":
-        r = db.verify_audit()
+        r = db.verify_audit(args.anchor)
         print(r)
         return 0 if r["ok"] else 5
+    elif args.cmd == "audit-anchor":
+        r = db.anchor()
+        print(r["line"] if r.get("ok") else r)
+        return 0 if r.get("ok") else 5
     return 0
 
 
