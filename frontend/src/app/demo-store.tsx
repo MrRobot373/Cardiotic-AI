@@ -61,6 +61,8 @@ export interface SiteSettings {
   signReauth: boolean;
   /** IANA name, e.g. Asia/Kolkata: how the hospital's times are shown */
   timeZone: string;
+  /** server mode: signed reports younger than this many years cannot be erased */
+  retentionYears: number;
 }
 
 interface State {
@@ -72,7 +74,7 @@ interface State {
 
 const KEY = "cardiotic.demo.v1";
 const EMPTY_REVIEW: Review = { status: "new", decisions: {}, added: [], edits: {}, note: "" };
-const DEFAULT_SITE: SiteSettings = { operatingPoint: "balanced", thresholdOverrides: {}, ratesFromMeasurements: false, autoSendHis: true, siteName: "Department of Cardiology", showReference: false, signReauth: true, timeZone: "UTC" };
+const DEFAULT_SITE: SiteSettings = { operatingPoint: "balanced", thresholdOverrides: {}, ratesFromMeasurements: false, autoSendHis: true, siteName: "Department of Cardiology", showReference: false, signReauth: true, timeZone: "UTC", retentionYears: 10 };
 const INITIAL: State = { user: null, reviews: {}, audit: [], site: DEFAULT_SITE };
 
 function load(): State {

@@ -156,6 +156,9 @@ export interface Catalog {
   patients: Patient[];
   ecgs: EcgSummary[];
   holters: HolterSummary[];
+  /** server mode: a very large archive loads only open and recent recordings; older ones are found with search */
+  truncated?: boolean;
+  total_recordings?: number;
   statement_descriptions: Record<string, string>;
   disclaimer: string;
 }

@@ -96,16 +96,48 @@ class Engine:
         if site_config:
             raw = Path(site_config).read_bytes()
             site = json.loads(raw)
+        self._a12, self._run, self._cards12 = a12, run, m
         try:
-            ecg12 = a12.Models12(net=run["ecg12"], card=m["ecg12"], quality=run["quality"], q_card=m["quality"], site=site,
-                             print_net=run.get("ecg12_print"), print_card=m.get("ecg12_print"))
+            ecg12 = self._build12(site)
         except ValueError as e:
             raise SiteConfigError(f"site configuration refused: {e}") from None
         if site:
-            self._site_info = {"site_id": site["site_id"], "config_version": site["config_version"], "approved_by": site["approved_by"],
-                               "approved_at": site["approved_at"], "sha256": hashlib.sha256(raw).hexdigest(),
-                               "statements": sorted(site["statements"])}
+            self._site_info = self._info_of(site, raw)
         self._m = _Loaded(manifest, ecg12, single)
+
+    def _build12(self, site):
+        run, m = self._run, self._cards12
+        return self._a12.Models12(net=run["ecg12"], card=m["ecg12"], quality=run["quality"], q_card=m["quality"], site=site,
+                                  print_net=run.get("ecg12_print"), print_card=m.get("ecg12_print"))
+
+    @staticmethod
+    def _info_of(site: dict, raw: bytes) -> dict:
+        import hashlib
+        return {"site_id": site["site_id"], "config_version": site["config_version"], "approved_by": site["approved_by"],
+                "approved_at": site["approved_at"], "sha256": hashlib.sha256(raw).hexdigest(), "statements": sorted(site["statements"])}
+
+    def check_site_config(self, raw: bytes) -> dict:
+        """Validate a site configuration file against the loaded statement model without applying it.
+        Returns the parsed configuration or raises SiteConfigError with the reason."""
+        import json
+        try:
+            site = json.loads(raw)
+            if not isinstance(site, dict):
+                raise ValueError("the file must be a JSON object")
+            self._build12(site)
+        except (ValueError, KeyError, TypeError) as e:
+            raise SiteConfigError(f"site configuration refused: {e}") from None
+        return site
+
+    def apply_site_config(self, raw: bytes | None) -> dict | None:
+        """Switch the per-site thresholds while running (None: back to the model's own). The model weights never change.
+        Analyses already under way finish with the thresholds they started with."""
+        if raw is None:
+            self._m.ecg12, self._site_info = self._build12(None), None
+            return None
+        site = self.check_site_config(raw)
+        self._m.ecg12, self._site_info = self._build12(site), self._info_of(site, raw)
+        return self._site_info
 
     # ------------------------------------------------------------------ info
     def info(self) -> dict:

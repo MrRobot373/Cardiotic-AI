@@ -23,23 +23,84 @@ function Row({ label, hint, children }: { label: string; hint?: ReactNode; child
 
 interface EngineInfo { version: string; models_version: string; site_config?: { site_id: string; config_version: string; approved_by: string; approved_at: string; statements: string[] } }
 
+/** IANA names for the time-zone picker; the current value is always offered. */
+function zones(current: string) {
+  const all = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
+  const list = [...new Set(["UTC", ...all, current])];
+  return list.map((z) => ({ value: z, label: z.replace(/_/g, " ") }));
+}
+
 export function ServerSite() {
-  const { site, updateSite } = useDemo();
+  const { site, updateSite, user } = useDemo();
   const info = useQuery({ queryKey: ["engine-info"], queryFn: () => api<EngineInfo>("/models") });
   const sc = info.data?.site_config;
   return (
+    <div className="space-y-4">
     <Card>
       <CardHeader title="Site" description="How this installation presents itself and sends reports" icon={<Building2 />} />
       <div className="px-[var(--card-pad)] pb-[var(--card-pad)]">
         <Row label="Site name" hint="Shown in the header, on sign-in and on every printed report.">
           <Input className="w-full sm:w-72" defaultValue={site.siteName} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== site.siteName) { updateSite({ siteName: v }); toast.success("Site name saved"); } }} />
         </Row>
+        <Row label="Time zone" hint="How signing times and the audit log are shown. Times written by ECG machines are shown as recorded.">
+          <Select id="site-tz" value={site.timeZone} onValueChange={(v) => updateSite({ timeZone: v })} options={zones(site.timeZone)} />
+        </Row>
+        {user?.role === "admin" && (
+          <Row label="Keep records for (years)" hint="Signed reports younger than this cannot be erased. Set it to what the hospital's records policy and the law require.">
+            <Input aria-label="Retention in years" type="number" min={0} max={100} className="w-28" defaultValue={site.retentionYears} onBlur={(e) => { const v = Number(e.target.value); if (v !== site.retentionYears && v >= 0) { updateSite({ retentionYears: v }); toast.success("Retention period saved"); } }} />
+          </Row>
+        )}
         <SwitchRow label="Send signed reports to the HIS automatically" description="HL7 ORU^R01, queued as soon as a cardiologist signs. Delivery and retries are under Integrations." checked={site.autoSendHis} onCheckedChange={(v) => updateSite({ autoSendHis: v })} />
         <Row label="AI operating points" hint="The yes/no thresholds for each finding. They are set on this hospital's own validated ECGs and approved by the cardiology lead; the engine refuses a file made for other models.">
           {sc ? (
             <div className="text-right text-[0.8rem]"><Badge tone="success">Site configuration</Badge><div className="mt-1">{sc.site_id} · v{sc.config_version}</div><div className="text-muted-foreground">approved by {sc.approved_by}, {sc.approved_at} · {sc.statements.length} findings</div></div>
           ) : <div className="text-right text-[0.8rem]"><Badge tone="neutral">Model defaults</Badge><div className="mt-1 text-muted-foreground">no site configuration loaded</div></div>}
         </Row>
+      </div>
+    </Card>
+    {(user?.role === "admin" || user?.role === "cardiologist") && <ServerThresholds />}
+    </div>
+  );
+}
+
+interface SiteCfg { id: number; uploaded_at: string; uploaded_by: string; site_id: string; config_version: string; approved_by: string; approved_at: string; statements: number; activated_at?: string; activated_by?: string; active: boolean }
+
+/** The site's approved threshold files: upload, see history, switch on, roll back. */
+function ServerThresholds() {
+  const { user } = useDemo();
+  const qc = useQueryClient();
+  const admin = user?.role === "admin";
+  const q = useQuery({ queryKey: ["site-config"], queryFn: () => api<{ model: string; env_managed: boolean; versions: SiteCfg[] }>("/site-config") });
+  const refresh = () => { void qc.invalidateQueries({ queryKey: ["site-config"] }); void qc.invalidateQueries({ queryKey: ["engine-info"] }); };
+  const upload = useMutation({ mutationFn: async (f: File) => api("/site-config", { method: "POST", body: await f.text(), headers: { "Content-Type": "application/json" } }), onSuccess: () => { toast.success("File checked and saved. Switch it on when the cardiology lead is ready."); refresh(); }, onError: fail });
+  const activate = useMutation({ mutationFn: (id: number) => api(`/site-config/${id}/activate`, { method: "POST", json: {} }), onSuccess: () => { toast.success("Site thresholds are on"); refresh(); }, onError: fail });
+  const off = useMutation({ mutationFn: () => api("/site-config/deactivate", { method: "POST", json: {} }), onSuccess: () => { toast.success("Back to the model's own thresholds"); refresh(); }, onError: fail });
+  if (!q.data) return null;
+  return (
+    <Card>
+      <CardHeader title="Site thresholds" description={`Yes/no points for each finding, set on this hospital's own labelled ECGs and approved by the cardiology lead · model ${q.data.model}`} icon={<ShieldCheck />} />
+      <div className="card-pad space-y-3">
+        {q.data.env_managed && <p className="rounded-lg bg-subtle p-2.5 text-[0.8rem]">The thresholds come from a file named in the server's settings (CARDIOTIC_SITE_CONFIG) and are changed there.</p>}
+        {q.data.versions.length === 0 && <p className="text-sm text-muted-foreground">No threshold file uploaded. The AI uses the model's own thresholds, which were learned on public data and may not suit this hospital.</p>}
+        <div className="space-y-1.5">
+          {q.data.versions.map((v) => (
+            <div key={v.id} className="flex flex-wrap items-center gap-2 rounded-lg border bg-card/70 px-3 py-2 text-[0.8rem]">
+              <span className="min-w-0 flex-1"><span className="font-medium">{v.site_id} · version {v.config_version}</span>
+                <span className="block text-muted-foreground">approved by {v.approved_by} on {v.approved_at} · {v.statements} findings · uploaded by {v.uploaded_by} {fmtDateTime(v.uploaded_at)}{v.activated_by ? ` · switched on by ${v.activated_by}` : ""}</span></span>
+              {v.active ? <Badge tone="success">On</Badge> : admin && !q.data.env_managed && <Button size="xs" variant="secondary" disabled={activate.isPending} onClick={() => activate.mutate(v.id)}>Switch on</Button>}
+            </div>
+          ))}
+        </div>
+        {admin && !q.data.env_managed && (
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted">
+              Upload approved file
+              <input aria-label="Upload site threshold file" type="file" accept="application/json,.json" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = ""; }} />
+            </label>
+            {q.data.versions.some((v) => v.active) && <Button variant="ghost" onClick={() => off.mutate()}>Use the model's own thresholds</Button>}
+          </div>
+        )}
+        <p className="text-[0.75rem] text-muted-foreground">A file is refused unless it was made for the exact model installed and is signed off. Switching on takes effect at once for new analyses; earlier versions stay here so a change can be rolled back.</p>
       </div>
     </Card>
   );

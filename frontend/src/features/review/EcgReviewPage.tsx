@@ -1,3 +1,4 @@
+import { ReviewHistory } from "./ReviewHistory";
 import { SignDialog } from "./SignDialog";
 import {
   ArrowLeftRight, BrainCircuit, Check, ChevronLeft, ChevronRight, Cpu, Eye, FileText, HeartPulse, Info, Pencil, Plus, Printer,
@@ -437,6 +438,7 @@ export default function EcgReviewPage() {
           <Analysis item={item} detail={detail} review={rv} />
           <Findings item={item} detail={detail} review={rv} onShow={setHighlight} showing={highlight} />
           <SignPanel item={item} detail={detail} review={rv} />
+          <ReviewHistory id={item.ecg.id} />
         </div>
       </div>
       <Dialog open={infoOpen} onOpenChange={setInfoOpen}>

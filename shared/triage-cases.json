@@ -1,0 +1,21 @@
+[
+  {"statements": ["3AVB"], "m": {}, "priority": "critical", "reason": "Complete heart block suggested"},
+  {"statements": ["AFIB"], "m": {"heart_rate_bpm": 125}, "priority": "critical", "reason": "AF/flutter with rate 125 bpm"},
+  {"statements": ["AFLT"], "m": {"heart_rate_bpm": 120}, "priority": "critical"},
+  {"statements": ["AFIB"], "m": {"heart_rate_bpm": 90}, "priority": "urgent"},
+  {"statements": ["NORM"], "m": {"qtc_bazett_ms": 520, "qrs_ms": 90}, "priority": "critical", "reason": "QTc 520 ms"},
+  {"statements": ["NORM"], "m": {"qtc_bazett_ms": 520, "qrs_ms": 130}, "priority": "normal"},
+  {"statements": ["PACE"], "m": {"qtc_bazett_ms": 520}, "priority": "routine"},
+  {"statements": ["NORM"], "m": {"heart_rate_bpm": 155}, "priority": "critical", "reason": "Rate 155 bpm"},
+  {"statements": ["NORM"], "m": {"heart_rate_bpm": 38}, "priority": "critical", "reason": "Rate 38 bpm"},
+  {"statements": ["NORM"], "m": {"heart_rate_bpm": 149.5}, "priority": "normal"},
+  {"statements": ["NORM"], "m": {"heart_rate_bpm": 150.4}, "priority": "critical", "reason": "Rate 150 bpm"},
+  {"statements": ["IMI"], "m": {"heart_rate_bpm": 80}, "priority": "urgent"},
+  {"statements": ["SUPER_MI", "NORM"], "m": {}, "priority": "normal"},
+  {"statements": ["LNGQT"], "m": {"heart_rate_bpm": 70}, "priority": "urgent"},
+  {"statements": ["CLBBB"], "m": {"qrs_ms": 160, "qtc_bazett_ms": 540}, "priority": "urgent"},
+  {"statements": ["LVH"], "m": {"heart_rate_bpm": 70}, "priority": "routine"},
+  {"statements": [], "m": {}, "priority": "routine", "reason": "Not classified normal"},
+  {"statements": ["NORM", "SR"], "m": {"heart_rate_bpm": 70}, "priority": "normal"},
+  {"statements": ["SR"], "m": {"heart_rate_bpm": 70}, "priority": "routine", "reason": "Not classified normal"}
+]

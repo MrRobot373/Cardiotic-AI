@@ -9,10 +9,15 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 5
 NOTIFICATIONS_SQL = ("CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY, at TEXT NOT NULL, recording_id TEXT NOT NULL, level TEXT NOT NULL, "
                      "reason TEXT NOT NULL, location TEXT NOT NULL DEFAULT '', acknowledged_by TEXT, acknowledged_at TEXT, email_status TEXT NOT NULL DEFAULT 'off', "
                      "email_attempts INTEGER NOT NULL DEFAULT 0, email_error TEXT)")
+SITE_CONFIGS_SQL = ("CREATE TABLE IF NOT EXISTS site_configs (id INTEGER PRIMARY KEY, uploaded_at TEXT NOT NULL, uploaded_by TEXT NOT NULL, sha256 TEXT NOT NULL, raw TEXT NOT NULL, "
+                    "site_id TEXT NOT NULL, config_version TEXT NOT NULL, approved_by TEXT NOT NULL, approved_at TEXT NOT NULL, statements INTEGER NOT NULL, "
+                    "activated_at TEXT, activated_by TEXT, deactivated_at TEXT)")
+BEAT_LABELS_SQL = ("CREATE TABLE IF NOT EXISTS beat_labels (rec_id TEXT NOT NULL, beat_time REAL NOT NULL, label TEXT NOT NULL, user TEXT NOT NULL, at TEXT NOT NULL, "
+                   "PRIMARY KEY (rec_id, beat_time))")
 REVIEW_VERSIONS_SQL = ("CREATE TABLE IF NOT EXISTS review_versions (id INTEGER PRIMARY KEY, ecg_id TEXT NOT NULL, version INTEGER NOT NULL, at TEXT NOT NULL, "
                        "user TEXT NOT NULL, action TEXT NOT NULL, snapshot TEXT NOT NULL)")
 # Upgrades applied in order to databases created by an older version (each step runs once).
@@ -24,6 +29,12 @@ MIGRATIONS = {
         "ALTER TABLE users ADD COLUMN totp_last_step INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE sessions ADD COLUMN scope TEXT NOT NULL DEFAULT 'full'",
         "CREATE TABLE IF NOT EXISTS challenges (token_hash TEXT PRIMARY KEY, kind TEXT NOT NULL, user_id INTEGER, data TEXT NOT NULL DEFAULT '{}', expires REAL NOT NULL, attempts INTEGER NOT NULL DEFAULT 0)",
+    ],
+    5: [  # site threshold files kept with their history
+        SITE_CONFIGS_SQL,
+    ],
+    4: [  # Holter beat relabelling
+        BEAT_LABELS_SQL,
     ],
     3: [  # password policy, critical-result notifications, review history
         "ALTER TABLE users ADD COLUMN must_change INTEGER NOT NULL DEFAULT 0",

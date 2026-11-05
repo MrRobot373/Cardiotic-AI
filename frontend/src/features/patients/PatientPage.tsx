@@ -7,6 +7,7 @@ import { Badge, Button, Card, CardHeader, EmptyState, Skeleton } from "@/compone
 import { statementName } from "@/data/clinical";
 import { useWorkItems } from "@/data/derived";
 import { fmtDate, fmtDateTime } from "@/lib/utils";
+import { PatientRecords } from "./PatientRecords";
 
 export default function PatientPage() {
   const { id } = useParams();
@@ -26,7 +27,7 @@ export default function PatientPage() {
   return (
     <div className="animate-fade-in">
       <PatientHeader patient={patient} chips={<Badge tone="outline">{ecgs.length} ECGs · {holters.length} Holter</Badge>}
-        actions={ecgs.length > 0 && <Button variant="strong" asChild><Link to={`/ecg/${ecgs[ecgs.length - 1].ecg.id}`}>Open latest ECG</Link></Button>} />
+        actions={<div className="flex items-center gap-2"><PatientRecords id={patient.id} mrn={patient.mrn} />{ecgs.length > 0 && <Button variant="strong" asChild><Link to={`/ecg/${ecgs[ecgs.length - 1].ecg.id}`}>Open latest ECG</Link></Button>}</div>} />
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="min-w-0 space-y-4">
           {ecgs.length > 1 && (

@@ -33,6 +33,12 @@ def make(out: Path = Path(__file__).parent / ".files") -> Path:
         strip = np.load(ROOT / "engine" / "tests" / "fixtures" / "fixtures.npz")["strip"]
     (out / "live-strip.json").write_text(_json.dumps([round(float(v), 4) for v in strip]))
     (out / "holter-2h30.edf").write_bytes(w.edf_file(sig[None].repeat(12, 0)[:, : int(len(sig) // fs * fs)], fs, leads=("II",)))
+    # a 60 s single-lead strip (a short Holter) and a signed-off site threshold file for the model installed
+    (out / "holter-60s.csv").write_bytes(w.csv_file(np.vstack([np.tile(ecg[1], 6)] * 12), 500, comment=True, leads=("II",)))
+    from cardiotic_engine.api import Engine
+    card = Engine()._m.manifest["models"]["ecg12"]
+    (out / "site-config.json").write_text(_json.dumps({"site_id": "PULSE-1", "config_version": "1", "model": f"{card['name']}_{card['version']}", "approved_by": "Dr. Ananya Rao",
+                                                      "approved_at": "2026-11-01", "statements": {"AFIB": {"threshold": 0.35}, "LNGQT": {"threshold": 0.2}}}))
     return out
 
 

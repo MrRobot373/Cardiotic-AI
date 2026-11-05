@@ -6,18 +6,39 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** The hospital's time zone (IANA name, from Settings). Moments with a zone (signing time, audit log) are shown in it. */
+let displayZone: string | null = null;
+export function setDisplayZone(zone: string | null | undefined) {
+  displayZone = zone || null;
+}
+
+const hasZone = (v: string) => /[zZ]|[+-]\d{2}:?\d{2}$/.test(v);
+
 export function toDate(value: string | Date | null | undefined): Date | null {
   if (!value) return null;
   if (value instanceof Date) return value;
-  // Date-only strings are calendar dates, not instants.
+  // Date-only strings are calendar dates, not instants; a time without a zone is the wall-clock time the machine recorded
+  // (it is shown as written, not shifted by the viewer's browser).
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return parseISO(value);
-  const hasZone = /[zZ]|[+-]\d{2}:?\d{2}$/.test(value);
-  return new Date(hasZone ? value : `${value}Z`);
+  return hasZone(value) ? new Date(value) : parseISO(value);
+}
+
+/** A Date whose local fields read as `d` does in `zone`, so date-fns can format it. */
+function inZone(d: Date, zone: string): Date {
+  try {
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: zone, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" })
+      .formatToParts(d).map((x) => [x.type, x.value]));
+    return new Date(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+  } catch {
+    return d;
+  }
 }
 
 export function fmtDate(value: string | Date | null | undefined, pattern = "d MMM yyyy") {
   const d = toDate(value);
-  return d ? format(d, pattern) : "—";
+  if (!d) return "—";
+  const instant = value instanceof Date || (typeof value === "string" && hasZone(value));
+  return format(instant && displayZone ? inZone(d, displayZone) : d, pattern);
 }
 
 export function fmtDateTime(value: string | Date | null | undefined) {

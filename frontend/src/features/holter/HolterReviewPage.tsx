@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, Flag, HeartPulse, ShieldCheck, Waves } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, FileText, Flag, HeartPulse, ShieldCheck, Waves } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { Area, AreaChart, CartesianGrid, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from "recharts";
@@ -8,9 +9,14 @@ import { StatusBadge } from "@/components/clinical/badges";
 import { PatientHeader } from "@/components/clinical/PatientHeader";
 import { BEAT_COLORS, HolterStrip } from "@/components/ecg/HolterStrip";
 import { Badge, Button, Card, CardHeader, EmptyState, Segmented, Skeleton, Slider } from "@/components/ui";
+import { ReviewHistory } from "@/features/review/ReviewHistory";
+import { SignDialog } from "@/features/review/SignDialog";
+import { api, serverMode } from "@/lib/server";
+import { BeatDialog } from "./BeatDialog";
 import { useCatalog, useHolter, useHolterWindow } from "@/data/api";
 import { BEAT_NAMES, RHYTHM_NAMES } from "@/data/clinical";
 import { fmtClock, fmtDur, holterAnalytics, type HolterEvent } from "@/data/holter";
+import type { Beat } from "@/data/types";
 import { cn } from "@/lib/utils";
 
 const RHYTHM_COLOR: Record<string, string> = { N: "bg-success/70", A: "bg-danger/80", O: "bg-warning/80", "~": "bg-muted-foreground/40" };
@@ -30,7 +36,11 @@ export default function HolterReviewPage() {
   const { id } = useParams();
   const { data: c } = useCatalog();
   const { data, isLoading, error } = useHolter(id);
-  const { review, updateReview, user, site } = useDemo();
+  const { review, updateReview, signReport, user, site } = useDemo();
+  const qc = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
+  const [picked, setPicked] = useState<Beat | null>(null);
+  const relabels = useQuery({ queryKey: ["beat-labels", id], queryFn: () => api<{ labels: Record<string, string>; counts: { N: number; S: number; V: number; F: number; changed: number } }>(`/holter/${id}/beats`), enabled: serverMode && !!id });
   const [t, setT] = useState(0);
   const [span, setSpan] = useState<"10" | "30" | "60">("30");
   const [filter, setFilter] = useState<"all" | "af" | "ventricular" | "pause">("all");
@@ -45,25 +55,36 @@ export default function HolterReviewPage() {
   const seconds = Number(span);
   const rows = seconds === 10 ? 1 : seconds === 30 ? 3 : 4;
   const rv = review(h.id);
+  const labels = relabels.data?.labels ?? {};
+  const beats = r.beats.map((b) => { const l = labels[b.time_s.toFixed(3)]; return l ? { ...b, class: l as Beat["class"] } : b; });
+  const counts = relabels.data?.counts ?? { N: 0, S: m.beat_counts.S ?? 0, V: m.beat_counts.V ?? 0, F: m.beat_counts.F ?? 0, changed: 0 };
+  const total = Math.max(1, m.beats_analysed);
+  const done = async () => { await Promise.all([qc.invalidateQueries({ queryKey: ["beat-labels", id] }), qc.invalidateQueries({ queryKey: ["review-history", id] })]); };
   const jump = (s: number) => setT(Math.max(0, Math.min(a.dur - seconds, s - 2)));
   const events = a.events.filter((e) => filter === "all" || (filter === "af" && e.kind === "af") || (filter === "ventricular" && (e.kind === "pvc_run" || e.kind === "couplet")) || (filter === "pause" && e.kind === "pause"));
   const rates = a.hr.filter((x) => x.hr !== null).map((x) => x.hr!) ;
   return (
     <div className="animate-fade-in">
       <PatientHeader patient={p} chips={<><Badge tone="outline">Holter · {h.lead} · {fmtDur(a.dur)}</Badge><StatusBadge status={rv.status} /></>}
-        actions={canSign(user) && rv.status !== "signed" ? (
-          <Button variant="strong" onClick={() => { updateReview(h.id, { status: "signed", signedBy: user!.name, signedAt: new Date().toISOString() }, "Signed Holter report"); toast.success("Holter report signed and sent"); }}><ShieldCheck /> Sign Holter report</Button>
-        ) : rv.status === "signed" ? <Badge tone="success"><ShieldCheck /> Signed by {rv.signedBy}</Badge> : undefined} />
+        actions={<div className="flex items-center gap-2">
+          {serverMode && <Button variant="secondary" asChild><a href={`/api/report/${h.id}.pdf`} target="_blank" rel="noreferrer"><FileText /> {rv.status === "signed" ? "Report (PDF)" : "Draft report (PDF)"}</a></Button>}
+          {canSign(user) && rv.status !== "signed" ? (
+            <Button variant="strong" onClick={() => { if (serverMode && site.signReauth) setConfirming(true); else { updateReview(h.id, { status: "signed", signedBy: user!.name, signedAt: new Date().toISOString() }, "Signed Holter report"); toast.success("Holter report signed and sent"); } }}><ShieldCheck /> Sign Holter report</Button>
+          ) : rv.status === "signed" ? <Badge tone="success"><ShieldCheck /> Signed by {rv.signedBy}</Badge> : undefined}
+          {canSign(user) && rv.status === "signed" && <Button variant="ghost" onClick={() => updateReview(h.id, { status: "in_review", signedAt: undefined, signedBy: undefined }, "Re-opened signed report (amendment)")}>Amend</Button>}
+        </div>} />
+      <SignDialog open={confirming} onOpenChange={setConfirming} onConfirm={async (confirm) => { const msg = await signReport(h.id, rv.note, confirm); if (!msg) toast.success("Holter report signed", { description: "Queued for the HIS (HL7 ORU^R01)" }); return msg; }} />
+      <BeatDialog id={h.id} beat={picked} aiClass={r.beats.find((b) => b.time_s === picked?.time_s)?.class ?? picked?.class ?? "N"} canEdit={serverMode && canSign(user) && rv.status !== "signed"} onClose={() => setPicked(null)} onChanged={() => void done()} />
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
         <Stat label="Beats analysed" value={m.beats_analysed.toLocaleString()} sub={`${Math.round(m.usable_fraction * 100)}% of signal usable`} />
         <Stat label="Mean HR" value={`${Math.round(m.heart_rate_bpm)} bpm`} sub={rates.length ? `${Math.min(...rates)}–${Math.max(...rates)} (30 s means)` : undefined} />
         <Stat label="AF burden" value={`${Math.round(a.afBurden * 100)}%`} sub={a.episodes.length ? `${a.episodes.length} episode${a.episodes.length > 1 ? "s" : ""}` : "None"} />
-        <Stat label="Ventricular ectopy" value={(m.beat_counts.V ?? 0).toLocaleString()} sub={`${(a.vBurden * 100).toFixed(1)}% of beats`} />
-        <Stat label="Supraventricular" value={(m.beat_counts.S ?? 0).toLocaleString()} sub={`${(a.sBurden * 100).toFixed(1)}% of beats`} />
+        <Stat label="Ventricular ectopy" value={(serverMode ? counts.V : m.beat_counts.V ?? 0).toLocaleString()} sub={serverMode ? `${(100 * counts.V / total).toFixed(1)}% of beats${counts.changed ? " · incl. your changes" : ""}` : `${(a.vBurden * 100).toFixed(1)}% of beats`} />
+        <Stat label="Supraventricular" value={(serverMode ? counts.S : m.beat_counts.S ?? 0).toLocaleString()} sub={serverMode ? `${(100 * counts.S / total).toFixed(1)}% of beats` : `${(a.sBurden * 100).toFixed(1)}% of beats`} />
         <Stat label="Runs / couplets" value={`${a.events.filter((e) => e.kind === "pvc_run").length} / ${a.events.filter((e) => e.kind === "couplet").length}`} sub="Ventricular" />
         <Stat label="Pauses ≥ 2 s" value={String(a.events.filter((e) => e.kind === "pause").length)} sub={`Longest RR ${m.rr_max_s.toFixed(2)} s`} />
-        <Stat label="Fusion beats" value={String(m.beat_counts.F ?? 0)} />
+        <Stat label="Fusion beats" value={String(serverMode ? counts.F : m.beat_counts.F ?? 0)} />
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -118,8 +139,8 @@ export default function HolterReviewPage() {
               <Slider value={[t]} min={0} max={Math.max(0, a.dur - seconds)} step={1} onValueChange={([v]) => setT(v)} aria-label="Position in recording" />
             </div>
             <div className="card-pad">
-              {!data.signal && !windowed ? <Skeleton className="h-64" /> : <HolterStrip signal={data.signal ?? windowed!.signal} offset={data.signal ? 0 : windowed!.offset} fs={data.detail.fs} start={t} seconds={seconds} rows={rows} beats={r.beats} unusable={a.unusable}
-                onBeatClick={(b) => toast(`${BEAT_NAMES[b.class]} beat at ${fmtClock(b.time_s)}`, { description: `AI probability ${Math.round(b.probability * 100)}% (${b.confidence}). Relabelling beats is part of the full review workflow.` })} />}
+              {!data.signal && !windowed ? <Skeleton className="h-64" /> : <HolterStrip signal={data.signal ?? windowed!.signal} offset={data.signal ? 0 : windowed!.offset} fs={data.detail.fs} start={t} seconds={seconds} rows={rows} beats={beats} unusable={a.unusable}
+                onBeatClick={(b) => (serverMode ? setPicked(b) : toast(`${BEAT_NAMES[b.class]} beat at ${fmtClock(b.time_s)}`, { description: `AI probability ${Math.round(b.probability * 100)}% (${b.confidence}).` }))} />}
               <div className="mt-2 flex flex-wrap gap-3 text-[0.72rem] text-muted-foreground">
                 {Object.entries(BEAT_COLORS).map(([k, col]) => <span key={k} className="flex items-center gap-1"><span className="font-bold" style={{ color: col }}>{k}</span>{BEAT_NAMES[k]}</span>)}
                 <span>· numbers: RR interval (ms); bold ≥ 2 s</span>
@@ -145,6 +166,7 @@ export default function HolterReviewPage() {
               ))}
             </div>
           </Card>
+          <ReviewHistory id={h.id} />
           {site.showReference && <Card className="p-4 text-[0.8rem]">
             <div className="mb-1 flex items-center gap-1.5 font-semibold"><ShieldCheck className="size-4 text-success" /> Checked against the reference cardiologists</div>
             <p className="text-muted-foreground">

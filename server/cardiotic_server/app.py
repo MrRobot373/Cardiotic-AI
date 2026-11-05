@@ -62,6 +62,8 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
     store.hl7in = hl7in.Listener(store)
     store.live = live.LiveHub(store)
     store.mailer = notify.Mailer(store)
+    from . import siteconfigs
+    siteconfigs.restore_on_start(store)
     limiter, views = security.LoginLimiter(), security.ViewLog(db)
     static = Path(static_dir).resolve() if static_dir else None
 
@@ -274,7 +276,7 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
             if method == "GET" and path == "/models":
                 return self._json(200, store.engine.info())
             if method == "GET" and path == "/catalog":
-                return self._json(200, store.catalog())
+                return self._json(200, store.catalog([x for x in q.get("include", "").split(",") if x]))
             if method == "GET" and (g := m(r"/ecg/(E\d+)", path)):
                 rec = store.recording(g[1], "ecg12")
                 views.record(user, "Viewed ECG", g[1])
@@ -293,6 +295,17 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                         raise HttpError(400, "from / to must be seconds") from None
                     sig = sig[2 * int(a * fs): 2 * int(b * fs)]
                 return self._bytes(200, sig, "application/octet-stream")
+            if (g := m(r"/holter/(H\d+)/beats", path)):
+                if method == "GET":
+                    return self._json(200, store.beat_labels(g[1]))
+                if method == "PUT":
+                    b = self._json_body()
+                    try:
+                        return self._json(200, store.relabel_beat(user, g[1], float(b.get("time_s")), b.get("label")))
+                    except (TypeError, ValueError) as e:
+                        if "label" in str(e) or "beat" in str(e):
+                            raise
+                        raise ValueError("time_s must be a number of seconds") from None
             if method == "GET" and path == "/reviews":
                 return self._json(200, store.reviews())
             if (g := m(r"/reviews/([EH]\d+)", path)):
@@ -327,6 +340,24 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 return self._json(201, store.create_patient(user, str(b.get("mrn", "")), str(b.get("name", "")), str(b.get("sex", "")), b.get("birth_date")))
             if method == "POST" and (g := m(r"/recordings/([EH]\d+)/patient", path)):
                 return self._json(200, store.assign_patient(user, g[1], str(self._json_body().get("mrn", ""))))
+            if method == "GET" and path == "/search":
+                from . import records
+                try:
+                    return self._json(200, records.search(store, q.get("q", ""), q.get("kind", ""), q.get("status", ""), int(q.get("limit", 50)), int(q.get("offset", 0))))
+                except ValueError:
+                    raise HttpError(400, "limit and offset must be numbers") from None
+            if method == "GET" and (g := m(r"/patients/(P\d+)/export", path)):
+                _role(user, "admin")
+                from . import records
+                return self._bytes(200, records.export_patient(store, user, g[1]), "application/zip", [("Content-Disposition", f'attachment; filename="patient-{g[1]}.zip"')])
+            if method == "DELETE" and (g := m(r"/patients/(P\d+)", path)):
+                _role(user, "admin")
+                from . import records
+                return self._json(200, records.erase_patient(store, user, g[1], str(self._json_body().get("confirm_mrn", ""))))
+            if method == "GET" and path == "/retention":
+                _role(user, "admin")
+                from . import records
+                return self._json(200, {"retentionYears": records.retention_years(store), "eligible": records.expired(store)})
             if method == "GET" and path == "/audit":
                 _role(user, "admin", "cardiologist")
                 rows = db.conn().execute("SELECT at, user, action, target FROM audit ORDER BY id DESC LIMIT ?", (min(int(q.get("limit", 300)), 2000),)).fetchall()
@@ -405,16 +436,26 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                         raise NotFound(g[1])
                     db.audit(user["name"], "Retried HIS delivery", g[1], c)
                 return self._json(200, {"ok": True})
-            if method == "GET" and (g := m(r"/report/(E\d+)\.pdf", path)):
+            if method == "GET" and (g := m(r"/report/([EH]\d+)\.pdf", path)):
                 try:
                     data = export.report_pdf(store, g[1], allow_draft=True)
                 except KeyError:
                     raise NotFound(g[1]) from None
                 views.record(user, "Viewed report (PDF)", g[1])
                 return self._bytes(200, data, "application/pdf", [("Content-Disposition", f'inline; filename="ECG-report-{g[1]}.pdf"')])
-            if method == "GET" and (g := m(r"/report/(E\d+)\.(hl7|fhir\.json)", path)):
+            if method == "GET" and (g := m(r"/report/([EH]\d+)\.(hl7|fhir\.json)", path)):
                 _role(user, "admin", "cardiologist", "technician")
                 try:
+                    if g[1].startswith("H"):
+                        from . import holter_report
+                        rep = holter_report.content(store, g[1])
+                        views.record(user, "Exported report (" + ("HL7" if g[2] == "hl7" else "FHIR") + ")", g[1])
+                        pdf_b = export.report_pdf(store, g[1])
+                        if g[2] == "hl7":
+                            his = db.get_setting("his", {})
+                            return self._bytes(200, holter_report.hl7(rep, sending_facility=rep["site"][:20], receiving_facility=his.get("facility", ""), receiving_app=his.get("application", "HIS"),
+                                                                       pdf_bytes=pdf_b if his.get("attach_pdf", True) else None).encode("latin-1", "replace"), "text/plain; charset=iso-8859-1")
+                        return self._json(200, holter_report.fhir(rep, pdf_b))
                     rep = export.report_content(store, g[1])
                 except KeyError:
                     raise NotFound(g[1]) from None
@@ -426,6 +467,8 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                     return self._bytes(200, export.hl7_oru(rep, sending_facility=rep["site"][:20], receiving_facility=his.get("facility", ""), receiving_app=his.get("application", "HIS"),
                                                           pdf_bytes=export.report_pdf(store, g[1]) if his.get("attach_pdf", True) else None).encode("latin-1", "replace"), "text/plain; charset=iso-8859-1")
                 return self._json(200, export.fhir_bundle(rep, export.report_pdf(store, g[1])))
+            if path.startswith("/site-config"):
+                return self._site_config(method, path, user)
             if path.startswith("/notifications") or path == "/notify-settings" or path == "/notify-settings/test":
                 return self._notifications(method, path, user)
             if path == "/users" or m(r"/users/[a-z0-9._-]+", path):
@@ -472,6 +515,24 @@ def make_app(db_path: str | Path, static_dir: str | Path | None = None, engine: 
                 db.set_setting("live", {"silent": silent})
                 db.audit(user["name"], "Live Assist silent mode " + ("on" if silent else "off"), "site")
                 return self._json(200, {"silent": silent})
+            raise HttpError(404, "not found")
+
+        def _site_config(self, method, path, user):
+            from cardiotic_engine.api import SiteConfigError
+            from . import siteconfigs
+            try:
+                if method == "GET" and path == "/site-config":
+                    _role(user, "admin", "cardiologist")
+                    return self._json(200, siteconfigs.listing(store))
+                _role(user, "admin")
+                if method == "POST" and path == "/site-config":
+                    return self._json(201, siteconfigs.upload(store, user, self._body(1 << 20)))
+                if method == "POST" and path == "/site-config/deactivate":
+                    return self._json(200, siteconfigs.deactivate(store, user))
+                if method == "POST" and (g := re.fullmatch(r"/site-config/(\d+)/activate", path)):
+                    return self._json(200, siteconfigs.activate(store, user, int(g[1])))
+            except SiteConfigError as e:
+                raise HttpError(400, str(e)) from None
             raise HttpError(404, "not found")
 
         def _ip(self) -> str:

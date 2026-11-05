@@ -23,12 +23,18 @@ function shiftTimes(c: Catalog): Catalog {
   };
 }
 
+/** Older recordings opened from a search: the next catalog load includes them (a large archive loads only open and recent ones). */
+const pinned = new Set<string>();
+export function pinRecording(id: string) {
+  pinned.add(id);
+}
+
 export function useCatalog() {
   return useQuery({
     queryKey: ["catalog"],
     staleTime: Infinity,
     queryFn: async () => {
-      const c = serverMode ? await api<Catalog>("/catalog") : shiftTimes(await getJson<Catalog>("catalog.json"));
+      const c = serverMode ? await api<Catalog>(`/catalog${pinned.size ? `?include=${[...pinned].join(",")}` : ""}`) : shiftTimes(await getJson<Catalog>("catalog.json"));
       registerDescriptions(c.statement_descriptions);
       return c;
     },

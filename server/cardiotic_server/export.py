@@ -92,8 +92,11 @@ def _ts(iso: str | None) -> str:
 
 
 def report_pdf(store, rid: str, c=None, allow_draft: bool = False) -> bytes:
-    from . import pdf
+    from . import holter_report, pdf
     c = c or store.db.conn()
+    if rid.startswith("H"):
+        rep = holter_report.content(store, rid, c, allow_draft)
+        return holter_report.pdf_bytes(rep, draft=rep["signed_by"] is None)
     rep = report_content(store, rid, c, allow_draft)
     detail = _unz(c.execute("SELECT detail FROM recordings WHERE id=?", (rid,)).fetchone()["detail"])
     return pdf.ecg_report(rep, detail["leads"], detail["fs"], draft=rep["signed_by"] is None)
@@ -193,10 +196,15 @@ def fhir_bundle(rep: dict, pdf_bytes: bytes | None = None) -> dict:
 # ------------------------------------------------------------------ outbox
 def enqueue(store, c, rid: str) -> None:
     """Called inside the signing transaction: the message is built now (what was signed is what is sent)."""
-    rep = report_content(store, rid, c)
     his = store.db.get_setting("his", {})
-    msg = hl7_oru(rep, sending_facility=rep["site"][:20], receiving_facility=his.get("facility", ""), receiving_app=his.get("application", "HIS"),
-                  pdf_bytes=report_pdf(store, rid, c) if his.get("attach_pdf", True) else None)
+    pdf_b = report_pdf(store, rid, c) if his.get("attach_pdf", True) else None
+    if rid.startswith("H"):
+        from . import holter_report
+        rep = holter_report.content(store, rid, c)
+        msg = holter_report.hl7(rep, sending_facility=rep["site"][:20], receiving_facility=his.get("facility", ""), receiving_app=his.get("application", "HIS"), pdf_bytes=pdf_b)
+    else:
+        rep = report_content(store, rid, c)
+        msg = hl7_oru(rep, sending_facility=rep["site"][:20], receiving_facility=his.get("facility", ""), receiving_app=his.get("application", "HIS"), pdf_bytes=pdf_b)
     c.execute("INSERT INTO outbox(ecg_id, kind, payload, created_at) VALUES (?,?,?,?)", (rid, "hl7-oru", msg, now()))
 
 

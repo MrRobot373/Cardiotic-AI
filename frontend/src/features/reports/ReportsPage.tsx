@@ -4,12 +4,17 @@ import { Link } from "react-router";
 import { StatusBadge } from "@/components/clinical/badges";
 import { Avatar, Badge, Button, Card, EmptyState, PageHeader, Segmented, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
 import { statementName } from "@/data/clinical";
+import { useCatalog } from "@/data/api";
+import { useDemo } from "@/app/demo-store";
 import { useWorkItems } from "@/data/derived";
+import { FindRecords } from "./FindRecords";
 import { finalStatements } from "@/features/review/EcgReviewPage";
 import { fmtDateTime } from "@/lib/utils";
 
 export default function ReportsPage() {
   const { items } = useWorkItems();
+  const { serverMode } = useDemo();
+  const { data: cat } = useCatalog();
   const [tab, setTab] = useState<"signed" | "draft">("signed");
   const rows = useMemo(() => items.filter((i) => (tab === "signed" ? i.review.status === "signed" : i.review.status !== "signed"))
     .sort((a, b) => (b.review.signedAt ?? b.ecg.recorded_at).localeCompare(a.review.signedAt ?? a.ecg.recorded_at)), [items, tab]);
@@ -17,6 +22,7 @@ export default function ReportsPage() {
     <div className="animate-fade-in">
       <PageHeader title="Reports" description="Signed reports go to the hospital information system as HL7 ORU^R01 (or FHIR DiagnosticReport) with the PDF. Drafts never leave Cardiotic AI."
         actions={<Segmented value={tab} onChange={setTab} options={[{ value: "signed", label: "Signed" }, { value: "draft", label: "Drafts" }]} />} />
+      {serverMode && <FindRecords truncated={cat?.truncated} total={cat?.total_recordings} />}
       <Card className="overflow-hidden">
         {rows.length === 0 ? (
           <EmptyState icon={<FileText />} title={tab === "signed" ? "No signed reports yet" : "No drafts"} description={tab === "signed" ? "Open an ECG from the worklist, review the AI findings and sign it." : undefined}

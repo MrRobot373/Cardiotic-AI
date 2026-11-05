@@ -3,6 +3,7 @@ network allow-lists, critical-result notifications, review history."""
 
 import json
 import socket
+from pathlib import Path
 import time
 
 import pytest
@@ -318,23 +319,16 @@ def echo_addr(port):
 CRIT = {"statements": [{"statement": "AFIB"}], "m": {"heart_rate_bpm": 130}}
 
 
-@pytest.mark.parametrize("statements,m,priority", [
-    (["3AVB"], {}, "critical"),
-    (["AFIB"], {"heart_rate_bpm": 125}, "critical"),
-    (["AFIB"], {"heart_rate_bpm": 90}, "urgent"),
-    (["NORM"], {"qtc_bazett_ms": 520, "qrs_ms": 90}, "critical"),
-    (["NORM"], {"qtc_bazett_ms": 520, "qrs_ms": 130}, "normal"),  # wide QRS: QTc not interpretable
-    (["PACE"], {"qtc_bazett_ms": 520}, "routine"),
-    (["NORM"], {"heart_rate_bpm": 155}, "critical"),
-    (["NORM"], {"heart_rate_bpm": 38}, "critical"),
-    (["IMI"], {"heart_rate_bpm": 80}, "urgent"),
-    (["SUPER_MI", "NORM"], {}, "normal"),
-    (["LVH"], {"heart_rate_bpm": 70}, "routine"),
-    ([], {}, "routine"),
-    (["NORM", "SR"], {"heart_rate_bpm": 70}, "normal"),
-])
-def test_server_triage_rules(statements, m, priority):
-    assert triage([{"statement": s} for s in statements], m)["priority"] == priority
+SHARED = json.loads((Path(__file__).resolve().parents[2] / "shared" / "triage-cases.json").read_text())
+
+
+@pytest.mark.parametrize("case", SHARED, ids=lambda c: "+".join(c["statements"]) + str(c["m"]))
+def test_server_triage_matches_the_shared_cases(case):
+    """frontend/tests/clinical.test.ts runs the same file through the web app's rules: the two implementations cannot drift apart."""
+    out = triage([{"statement": s} for s in case["statements"]], case["m"])
+    assert out["priority"] == case["priority"]
+    if "reason" in case:
+        assert out["reason"] == case["reason"]
 
 
 def test_critical_upload_raises_a_notification_that_can_be_acknowledged(server, ecg, monkeypatch):

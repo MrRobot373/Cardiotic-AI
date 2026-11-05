@@ -6,8 +6,9 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import os
 import zlib
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -17,9 +18,11 @@ from cardiotic_engine.api import LEADS, Engine, InputError
 from .db import Database, now
 
 FS_VIEW = 250
+CATALOG_FULL = int(os.environ.get("CARDIOTIC_CATALOG_FULL", "5000"))  # up to this many recordings the worklist loads everything
+CATALOG_DAYS = int(os.environ.get("CARDIOTIC_CATALOG_DAYS", "90"))   # beyond it: open recordings plus signed ones this recent
 DEFAULT_SITE = {"operatingPoint": "balanced", "thresholdOverrides": {}, "ratesFromMeasurements": False, "autoSendHis": True,
                 "siteName": "Department of Cardiology", "showReference": False,
-                "signReauth": True, "timeZone": "UTC"}
+                "signReauth": True, "timeZone": "UTC", "retentionYears": 10}
 REVIEW_STATUSES = ("new", "in_review", "signed", "repeat")
 
 
@@ -67,6 +70,11 @@ class Store:
             raise ValueError("siteName must not be empty")
         if "signReauth" in patch and user["role"] != "admin" and not patch["signReauth"]:
             raise Forbidden("only an administrator can turn off password confirmation at signing")
+        if "retentionYears" in patch:
+            if user["role"] != "admin":
+                raise Forbidden("only an administrator can change the retention period")
+            if not isinstance(patch["retentionYears"], (int, float)) or not 0 <= patch["retentionYears"] <= 100:
+                raise ValueError("retentionYears must be a number of years between 0 and 100")
         if "timeZone" in patch:
             from zoneinfo import ZoneInfo
             try:
@@ -205,18 +213,30 @@ class Store:
         return STATEMENT_NAMES
 
     # ---------------------------------------------------------------- reading
-    def catalog(self) -> dict:
+    def catalog(self, include: list[str] | None = None) -> dict:
+        """Everything for the worklist. Up to CATALOG_FULL recordings that is the whole archive; beyond that, every recording that
+        is not signed yet plus the signed ones of the last CATALOG_DAYS days, and `truncated` is true (older ones: /api/search). `include`: recording numbers to add anyway (a search result being opened)."""
         c = self.db.conn()
-        patients = [self.patient_row(r) for r in c.execute("SELECT * FROM patients ORDER BY id")]
+        total = c.execute("SELECT COUNT(*) FROM recordings").fetchone()[0]
+        truncated = total > CATALOG_FULL
+        if truncated:
+            since = (datetime.now() - timedelta(days=CATALOG_DAYS)).strftime("%Y-%m-%dT%H:%M")
+            extra = [i for i in (include or [])[:50] if isinstance(i, str) and i[:1] in "EH" and i[1:].isdigit()]
+            rows = c.execute("SELECT r.kind, r.summary, r.patient_id FROM recordings r JOIN reviews v ON v.ecg_id=r.id WHERE v.status!='signed' OR r.recorded_at >= ? OR r.id IN (%s) ORDER BY r.recorded_at" % ",".join("?" * len(extra)), (since, *extra)).fetchall()
+            keep = {r["patient_id"] for r in rows}
+            patients = [self.patient_row(r) for r in c.execute("SELECT * FROM patients ORDER BY id") if r["id"] in keep]
+        else:
+            rows = c.execute("SELECT kind, summary FROM recordings ORDER BY recorded_at").fetchall()
+            patients = [self.patient_row(r) for r in c.execute("SELECT * FROM patients ORDER BY id")]
         ecgs, holters = [], []
-        for r in c.execute("SELECT kind, summary FROM recordings ORDER BY recorded_at"):
+        for r in rows:
             (ecgs if r["kind"] == "ecg12" else holters).append(json.loads(r["summary"]))
         desc = {}
         for e in ecgs:
             for s in e["statements"]:
                 desc.setdefault(s["statement"], STATEMENT_NAMES.get(s["statement"], s["statement"]))
         return {"generated": now(), "engine": self.engine.info(), "patients": patients, "ecgs": ecgs, "holters": holters,
-                "statement_descriptions": desc, "disclaimer": ""}
+                "statement_descriptions": desc, "disclaimer": "", "truncated": truncated, "total_recordings": total}
 
     def recording(self, rid: str, kind: str) -> dict:
         r = self.db.conn().execute("SELECT detail FROM recordings WHERE id=? AND kind=?", (rid, kind)).fetchone()
@@ -329,8 +349,43 @@ class Store:
         """Hook for the HIS outbox (export.py); signing never waits for the HIS."""
         from . import export
 
-        if kind == "ecg12" and self.site().get("autoSendHis"):
+        if self.site().get("autoSendHis"):
             export.enqueue(self, c, rid)
+
+    # ---------------------------------------------------------------- Holter beat relabelling
+    def beat_labels(self, rid: str) -> dict:
+        from . import holter_report
+        c = self.db.conn()
+        if not c.execute("SELECT 1 FROM recordings WHERE id=? AND kind='holter'", (rid,)).fetchone():
+            raise NotFound(rid)
+        lab = holter_report.relabels(c, rid)
+        counts = holter_report.counts(_unz(c.execute("SELECT detail FROM recordings WHERE id=?", (rid,)).fetchone()["detail"]), lab)
+        return {"labels": {f"{t:.3f}": v for t, v in lab.items()}, "counts": counts}
+
+    def relabel_beat(self, user: dict, rid: str, time_s: float, label: str | None) -> dict:
+        from . import holter_report
+        if user["role"] != "cardiologist":
+            raise Forbidden("only a cardiologist can relabel beats")
+        if label is not None and label not in holter_report.CLASSES:
+            raise ValueError(f"label must be one of {list(holter_report.CLASSES)} or null")
+        t = round(float(time_s), 3)
+        with self.db.tx() as c:
+            rec = c.execute("SELECT detail FROM recordings WHERE id=? AND kind='holter'", (rid,)).fetchone()
+            if not rec:
+                raise NotFound(rid)
+            if c.execute("SELECT status FROM reviews WHERE ecg_id=?", (rid,)).fetchone()["status"] == "signed":
+                raise Conflict("this report is signed; a cardiologist must amend it first")
+            beats = {round(float(b["time_s"]), 3): b["class"] for b in _unz(rec["detail"])["analysis"]["result"]["beats"]}
+            if t not in beats:
+                raise ValueError(f"no beat at {t} s in this recording")
+            if label is None or label == beats[t]:
+                c.execute("DELETE FROM beat_labels WHERE rec_id=? AND beat_time=?", (rid, t))
+            else:
+                c.execute("INSERT INTO beat_labels(rec_id, beat_time, label, user, at) VALUES (?,?,?,?,?) ON CONFLICT(rec_id, beat_time) DO UPDATE SET label=excluded.label, user=excluded.user, at=excluded.at",
+                          (rid, t, label, user["name"], now()))
+            c.execute("UPDATE reviews SET version=version+1 WHERE ecg_id=?", (rid,))
+            self.db.audit(user["name"], "Relabelled Holter beat", f"{rid} at {t:.3f} s: {beats[t]} -> {label or beats[t]}", c)
+        return self.beat_labels(rid)
 
     # ---------------------------------------------------------------- assigning an unmatched recording
     def assign_patient(self, user: dict, rid: str, mrn: str) -> dict:

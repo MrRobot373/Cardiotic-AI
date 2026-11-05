@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { qtcInterpretable, rangeFlag, statementName, triage } from "@/data/clinical";
 import { holterAnalytics } from "@/data/holter";
 import { effectiveMeasurements, finalStatements } from "@/features/review/EcgReviewPage";
@@ -22,6 +24,15 @@ describe("triage", () => {
     expect(triage(st("SUPER_NORM", "NORM", "SR"), m({})).priority).toBe("normal");
     expect(triage(st("SR"), m({})).priority).toBe("routine");
     expect(triage(st("IMI"), m({})).reason).toBe("Inferior myocardial infarction");
+  });
+});
+
+describe("triage shared with the server", () => {
+  const cases = JSON.parse(readFileSync(resolve(__dirname, "../../shared/triage-cases.json"), "utf8")) as { statements: string[]; m: object; priority: string; reason?: string }[];
+  it.each(cases)("$statements $m", (c) => {
+    const out = triage(st(...c.statements), m(c.m));
+    expect(out.priority).toBe(c.priority);
+    if (c.reason) expect(out.reason).toBe(c.reason);
   });
 });
 
@@ -66,5 +77,17 @@ describe("holter analytics", () => {
     expect(a.episodes).toEqual([[0, 45]]);
     expect(a.events.find((e) => e.kind === "pvc_run")?.label).toBe("Ventricular run ×3");
     expect(a.events.filter((e) => e.kind === "pause")).toHaveLength(1);
+  });
+});
+
+describe("times", () => {
+  it("shows a machine's wall-clock time as written and a signing moment in the hospital's zone", async () => {
+    const { fmtDateTime, setDisplayZone } = await import("@/lib/utils");
+    setDisplayZone("Asia/Kolkata");
+    expect(fmtDateTime("2026-11-02T10:15")).toBe("2 Nov 2026, 10:15"); // as recorded, whatever the browser's zone
+    expect(fmtDateTime("2026-11-02T10:15:00+00:00")).toBe("2 Nov 2026, 15:45"); // an instant, in the site's zone (UTC+5:30)
+    setDisplayZone("America/New_York");
+    expect(fmtDateTime("2026-11-02T10:15:00Z")).toBe("2 Nov 2026, 05:15");
+    setDisplayZone(null);
   });
 });

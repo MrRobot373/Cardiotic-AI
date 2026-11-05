@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { api, ApiError, siteName } from "@/lib/server";
+import { setDisplayZone } from "@/lib/utils";
 import { DEFAULTS, DemoContext, EMPTY, type AuditEvent, type Ctx, type DemoUser, type Review, type SiteSettings } from "./demo-store";
 
 interface ServerReview extends Review {
@@ -33,6 +34,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   const enter = useCallback(async (me: { user: DemoUser; site: SiteSettings }) => {
     setUser(me.user);
     setSite({ ...DEFAULTS.site, ...me.site });
+    setDisplayZone(me.site.timeZone);
     if (me.user.enrol_2fa) return; // nothing else is open until two-factor sign-in is set up
     await Promise.all([loadReviews(), loadAudit(me.user)]);
   }, [loadReviews, loadAudit]);
@@ -125,7 +127,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     },
     log: () => undefined, // the server records its own audit entries
     updateSite: (patch) => {
-      api<SiteSettings>("/settings", { method: "PUT", json: patch }).then((s) => { setSite({ ...DEFAULTS.site, ...s }); loadAudit(user).catch(() => undefined); }).catch((e) => toast.error(e instanceof ApiError ? e.message : "Could not reach the server"));
+      api<SiteSettings>("/settings", { method: "PUT", json: patch }).then((s) => { setSite({ ...DEFAULTS.site, ...s }); setDisplayZone(s.timeZone); loadAudit(user).catch(() => undefined); }).catch((e) => toast.error(e instanceof ApiError ? e.message : "Could not reach the server"));
     },
     reset: () => undefined,
   }), [ready, user, reviews, audit, site, qc, enter, loadReviews, loadAudit]);
